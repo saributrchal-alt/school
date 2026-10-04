@@ -44,6 +44,14 @@ function fixture() {
       if (value.startsWith('in.(')) return value.slice(4,-1).split(',').includes(String(row[key]));
       throw new Error('Unexpected filter '+value);
     }));
+    const order=url.searchParams.get('order');
+    if(order)result.sort((a,b)=>{
+      for(const part of order.split(',')){
+        const [field,direction]=part.split('.'),comparison=a[field]<b[field]?-1:a[field]>b[field]?1:0;
+        if(comparison)return direction==='desc'?-comparison:comparison;
+      }
+      return 0;
+    });
     result = result.slice(Number(url.searchParams.get('offset')||0),Number(url.searchParams.get('offset')||0)+Number(url.searchParams.get('limit')||1000));
     const select = url.searchParams.get('select');
     if (select && select!=='*') result=result.map(row=>Object.fromEntries(select.split(',').filter(k=>k in row).map(k=>[k,row[k]])));
@@ -91,6 +99,14 @@ test('practice API keeps results private until a manager publishes them',async t
       assert.equal(summary.body.ready,true);assert.equal('is_correct' in summary.body.answers[0],false);
       assert.equal(JSON.stringify(summary.body).includes('teacher-only'),false);
       assert.equal(summary.body.counts[0].total_count,2);
+    });
+    await t.test('next question follows chapter order when local sort numbers restart',async()=>{
+      f.rows.school_practice_questions.push({...f.rows.school_practice_questions[0],question_id:'P01-ENG-02.01',topic_id:'ENG-02.01',sort_order:1});
+      try{
+        const r=await f.call('subject','student',undefined,{set_no:1,subject_id:'ENG'});
+        assert.equal(r.status,200);
+        assert.deepEqual(r.body.questions.map(q=>q.topic_id),['ENG-01.01','ENG-01.02','ENG-02.01']);
+      }finally{f.rows.school_practice_questions.pop();}
     });
     await t.test('teacher can preview explanations but cannot grade or see other students answers',async()=>{
       const r=await f.call('subject','teacher',undefined,{set_no:1,subject_id:'ENG'});
