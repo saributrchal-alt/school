@@ -36,6 +36,14 @@ test('database credentials and safe bridge readiness diagnostics', async t => {
       assert.equal(requests.at(-1).options.headers.Authorization, 'Bearer ' + process.env.SUPABASE_SECRET_KEY);
       process.env.SUPABASE_SECRET_KEY = 'sb_secret_fixture_only';
     });
+    await t.test('Project URL and copied Data API URLs generate the same valid REST path', async () => {
+      for (const suffix of ['', '/', '/rest/v1', '/rest/v1/', '/rest/v1/school_members?select=*&apikey=discarded#example']) {
+        process.env.SUPABASE_URL = 'https://school-db.invalid' + suffix;
+        await db('school_members?select=member_id&limit=0');
+        assert.equal(requests.at(-1).url, 'https://school-db.invalid/rest/v1/school_members?select=member_id&limit=0');
+      }
+      process.env.SUPABASE_URL = 'https://school-db.invalid';
+    });
     await t.test('public readiness checks zero rows and never returns member data', async () => {
       requests.length = 0;
       reply = () => new Response(JSON.stringify([{ member_name: 'private fixture name' }]));

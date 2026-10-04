@@ -36,3 +36,5 @@ There are two Vercel Node functions (`api/session.js`, `api/school.js`), below t
 `GET /api/school?route=health` verifies database access and the columns of the two bridge tables using `limit=0`. It returns readiness or a safe error category without reading or returning member rows. It cannot import members or grant permissions. Database failures log only the table, HTTP method/status and PostgREST error code; keys and member data are never logged.
 
 Opaque Supabase secret keys use the `apikey` header. Legacy service-role JWTs additionally use the Bearer header. A missing-schema error means the SQL must be run in the project selected by School's `SUPABASE_URL`; successful SQL verification in a different project does not prepare School's configured database.
+
+`SUPABASE_URL` can be the Project URL or a copied HTTPS Data API URL ending in `/rest/v1` (or a table path below it). The server normalizes that path and removes copied query parameters before adding its own table route, preventing duplicated `/rest/v1` paths and `PGRST125` errors.
