@@ -1,8 +1,1 @@
-{
-  "name": "nathoeng-school",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "scripts": { "test": "node --test tests/bridge.test.js tests/database.test.js" },
-  "engines": { "node": ">=22" }
-}
+{"name":"school-ui-synthetic-preview","private":true,"engines":{"node":">=22"}}

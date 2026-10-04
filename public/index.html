@@ -5,18 +5,444 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#193e35">
   <meta name="referrer" content="strict-origin-when-cross-origin">
-  <title>School · วัดพุทธอุทยานนาเทิง</title>
-  <link rel="stylesheet" href="/style.css">
+  <title>School · ทดสอบหน้าจอด้วยข้อมูลสมมติ</title>
+  <style>:root{font-family:"Leelawadee UI",Tahoma,system-ui,sans-serif;color:#253c34;background:#f6f7f2;font-synthesis:none;--green:#193e35;--muted:#738078;--line:#e0e7de;--gold:#d7af6d}*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button,a,input,select,summary{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button:disabled{cursor:wait;opacity:.65}a{color:inherit}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #ceaa66;outline-offset:4px}.topbar{height:88px;display:flex;align-items:center;justify-content:space-between;padding:0 max(28px,calc((100vw - 1180px)/2));gap:22px;background:#fff;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:13px;text-decoration:none}.brand-mark{display:grid;place-items:center;width:43px;height:43px;border-radius:50%;background:var(--green);color:#e2c38f;font-size:26px}.brand strong{font-family:system-ui,sans-serif;letter-spacing:1px;font-size:15px;font-weight:500;display:block}.brand b{font-weight:750}.brand small{display:block;font-size:11px;color:var(--muted);margin-top:4px}.account{display:flex;align-items:center;gap:13px;font-size:13px}.account-name{max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.account button{border:0;background:transparent;color:var(--muted);padding:8px}.role{display:inline-block;background:#eef3ea;border-radius:30px;padding:4px 9px;font-size:11px;color:#426246}.role+.role{margin-left:4px}main{max-width:1180px;margin:auto;padding:38px 28px 50px}.hero{position:relative;overflow:hidden;background:var(--green);color:#f9fcf6;border-radius:24px;padding:36px 40px;margin-bottom:23px}.hero:after{content:"";position:absolute;width:270px;height:270px;border:1px solid #ffffff18;right:-40px;top:-115px;border-radius:50%;box-shadow:0 0 0 35px #ffffff06,0 0 0 70px #ffffff04}.eyebrow{font-family:system-ui,sans-serif;font-size:10px;letter-spacing:2px;font-weight:700;color:#d9bc88}.hero h1{font-size:30px;line-height:1.35;max-width:750px;margin:12px 0 8px;font-weight:600}.hero p{font-size:14px;line-height:1.8;color:#d1e0d7;max-width:700px;margin:0}.hero .secondary{position:relative;z-index:1;margin-top:22px;background:#fff;color:var(--green)}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:35px}.stat{background:#fff;border:1px solid var(--line);border-radius:15px;padding:20px 22px;display:flex;align-items:baseline;gap:10px}.stat strong{font:600 28px system-ui,sans-serif;letter-spacing:-1px}.stat span{font-size:13px;color:var(--muted)}.section-title{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:17px}.section-title h2{font-size:21px;margin:0 0 6px;font-weight:600}.section-title p{font-size:13px;color:var(--muted);margin:0;line-height:1.7}.secondary{border:1px solid #ccd8cd;border-radius:10px;padding:9px 15px;background:#fff;text-decoration:none;display:inline-block;font-size:13px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:20px 0}.tab{border:1px solid var(--line);background:#fff;border-radius:30px;padding:10px 19px;font-size:13px;color:#61736a}.tab.active{background:var(--green);border-color:var(--green);color:#fff}.search-row{display:grid;grid-template-columns:1fr 180px;gap:12px;margin-bottom:20px}.search-row input,.search-row select{border:1px solid var(--line);border-radius:12px;background:#fff;padding:13px 16px;color:#394e43;width:100%;min-width:0}.search-row input::placeholder{color:#89958e}.progress-note{font-size:12px;color:var(--muted);margin:0 0 20px;line-height:1.8}.progress-note strong{color:var(--green)}.chapter{background:#fff;border:1px solid var(--line);border-radius:15px;margin:0 0 12px;overflow:hidden}.chapter summary{display:flex;align-items:center;gap:13px;cursor:pointer;list-style:none;padding:20px 23px}.chapter summary::-webkit-details-marker{display:none}.chapter summary:after{content:"＋";margin-left:auto;color:#748c7c;font-size:19px}.chapter[open] summary:after{content:"−"}.chapter-code{font:600 11px system-ui,sans-serif;background:#eff3eb;color:#54735d;padding:8px 10px;border-radius:8px;flex-shrink:0}.chapter-name{font-weight:600;font-size:15px}.chapter small{margin-left:auto;font-size:11px;white-space:nowrap;color:var(--muted)}.chapter[open] summary{border-bottom:1px solid #edf0e9}.topic{display:grid;grid-template-columns:1fr auto;gap:12px;padding:17px 23px;border-bottom:1px solid #eef1eb;align-items:center}.topic:last-child{border-bottom:0}.topic-head{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap}.topic-code{font:600 11px system-ui,sans-serif;color:#829485}.topic-name{font-size:14px}.topic-meta{color:#85938a;font-size:11px;line-height:1.8;margin-top:5px}.topic button{background:transparent;color:#537663;border:0;text-decoration:underline;text-underline-offset:3px;padding:0;margin-left:8px;font-size:11px}.topic select{font-size:12px;padding:8px;border:1px solid #e1e8dc;border-radius:8px;background:#f7f9f4;color:#526954;width:130px}.status{font-size:11px;border-radius:8px;background:#f3f6ef;padding:7px 10px;color:#718269}.empty{padding:35px;text-align:center;color:var(--muted);background:white;border:1px solid var(--line);border-radius:15px;font-size:14px}.loading{padding:100px 20px;text-align:center;color:var(--muted)}.welcome{max-width:750px;margin:25px auto 40px}.welcome .hero{padding:45px}.welcome h1{font-size:34px}.welcome .steps{line-height:2.1;font-size:14px;padding:25px 10px}.welcome .error{color:#94502f;font-size:13px;background:#fff8ee;border:1px solid #e8d9bb;border-radius:12px;padding:13px 16px}.welcome .hint{font-size:13px;color:var(--muted);line-height:1.8}.welcome .primary{display:inline-block;margin-top:24px;background:#e9c895;color:#1c3e31;padding:13px 23px;text-decoration:none;border-radius:12px;font-weight:700}.welcome .primary:focus-visible{outline-color:white}dialog{width:min(740px,calc(100vw - 30px));max-height:85vh;border:1px solid var(--line);border-radius:18px;padding:0;color:#344d3f}dialog::backdrop{background:#132c2580;backdrop-filter:blur(3px)}.dialog-head{display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;gap:16px}.dialog-head button{border:0;background:#f3f5ef;border-radius:50%;width:33px;height:33px}#detail-body{padding:10px 24px 24px}.reference{padding:17px 0;border-bottom:1px solid var(--line);font-size:13px}.reference:last-child{border-bottom:0}.reference p{line-height:1.7;margin:8px 0}.reference small{color:var(--muted);line-height:1.7}.reference strong{font-size:12px}.key{margin-top:9px;color:#37624c;background:#edf5eb;display:inline-block;padding:5px 10px;border-radius:7px;font-size:12px}.member-row{padding:17px 0;border-bottom:1px solid var(--line);font-size:13px}.member-row strong{display:block;margin-bottom:8px}.member-row small{display:block;color:var(--muted);margin-top:8px}#notice{position:fixed;bottom:25px;left:50%;transform:translateX(-50%);background:#193e35;color:#fff;border-radius:10px;box-shadow:0 5px 20px #193e3530;padding:13px 20px;font-size:13px;max-width:90vw;z-index:5;display:none}#notice.visible{display:block}footer{max-width:1180px;margin:auto;padding:22px 28px 32px;border-top:1px solid var(--line);display:flex;gap:18px;font-size:11px;color:#7a8980;flex-wrap:wrap}footer a{margin-left:auto;text-decoration:none}@media(max-width:640px){.topbar{height:auto;min-height:82px;padding:18px;gap:14px;align-items:flex-start}.brand strong{font-size:12px;letter-spacing:.7px}.brand small{font-size:10px}.brand-mark{width:35px;height:35px;font-size:22px}.account{flex-wrap:wrap;justify-content:flex-end;gap:4px 8px;max-width:145px;font-size:11px}.account-name{max-width:135px}.account .role{display:none}.account button{padding:2px 0}main{padding:23px 17px 35px}.hero{padding:28px 24px;border-radius:18px}.hero h1{font-size:25px}.hero p{font-size:12px}.stats{grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:27px}.stat{padding:15px 16px;gap:9px}.stat strong{font-size:25px}.stat span{font-size:11px}.section-title h2{font-size:18px}.section-title .secondary{white-space:nowrap;font-size:11px;padding:7px 10px}.section-title p{font-size:12px}.tabs{gap:7px;margin:16px 0}.tab{padding:8px 14px;font-size:12px}.search-row{grid-template-columns:1fr 125px;gap:8px}.search-row input,.search-row select{font-size:12px;padding:12px 10px}.chapter summary{padding:16px 15px;gap:9px}.chapter-code{font-size:10px;padding:7px 8px}.chapter-name{font-size:13px}.chapter small{display:none}.topic{padding:15px;gap:10px;grid-template-columns:1fr}.topic-name{font-size:13px}.topic select{justify-self:start;padding:7px;width:145px}.topic-code{font-size:10px}.welcome{margin:0}.welcome .hero{padding:34px 25px}.welcome h1{font-size:29px}.welcome .steps{font-size:13px}.dialog-head{padding:17px}#detail-body{padding:5px 17px 20px}footer{padding:21px 17px 30px;gap:8px 16px}footer span{display:none}}
+</style>
+  <style>.practice-dashboard{background:#fff;border:1px solid var(--line);border-top:4px solid #d7af6d;border-radius:20px;padding:28px 30px;margin:0 0 25px}
+.practice-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.practice-heading .eyebrow{color:#8a6a38}.practice-heading h2{font-size:23px;font-weight:650;margin:7px 0 6px}.practice-heading p{font-size:13px;color:#738078;line-height:1.8;margin:0}
+.practice-toolbar{display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap}.practice-toolbar .secondary{font-size:12px;padding:8px 11px}.practice-set-label{font-size:12px;color:#61736a;display:flex;align-items:center;gap:8px}.practice-set-label select{padding:8px;border:1px solid var(--line);border-radius:9px;background:#f6f8f3;color:var(--green);max-width:160px}
+.practice-overview{display:flex;align-items:center;gap:27px;padding:27px 0}.practice-score-ring{width:165px;height:165px;flex-shrink:0;border-radius:50%;background:conic-gradient(#397352 var(--score),#eef2e9 0);position:relative;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px}
+.practice-score-ring:before{content:"";position:absolute;inset:10px;border-radius:50%;background:#fff}.practice-score-ring strong{position:relative;font:650 38px system-ui,sans-serif;letter-spacing:-1.5px;color:var(--green)}.practice-score-ring span{position:relative;font-size:11px;color:#738078}
+.practice-overview-text h3{font-size:21px;font-weight:600;margin:0 0 12px;color:var(--green)}.practice-overview-text p{font-size:14px;color:#54715a;margin:0 0 10px}.practice-overview-text small{display:block;font-size:11px;color:#829083;line-height:1.9}
+.practice-subjects{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.practice-subject{border:1px solid #e1e8dc;border-radius:12px;text-align:left;padding:16px 14px;background:#f8faf6;min-width:0;color:#4b6653}.practice-subject:hover{border-color:#95b39a;background:#f0f5eb}.practice-subject-name{display:block;font-size:12px;color:#506a58}.practice-subject strong{display:block;font:600 26px system-ui,sans-serif;margin:11px 0;color:var(--green)}.practice-subject span:last-of-type{font-size:10px;display:block;line-height:1.7}.practice-subject.is-graded{background:#eff6eb;border-color:#ccdcbc}
+progress{accent-color:#4a7d58}.practice-subject progress{display:block;width:100%;height:5px;margin-top:12px;border:0;border-radius:3px}.practice-subject progress::-webkit-progress-bar{background:#e5eadd;border-radius:3px}.practice-subject progress::-webkit-progress-value{background:#5e885c;border-radius:3px}
+.practice-topic-results{margin-top:23px;border-top:1px solid var(--line);padding-top:15px}.practice-topic-results>summary{font-size:13px;cursor:pointer;color:#536c59;padding:5px 0}.practice-result-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:15px 0}.practice-result-tabs .tab{padding:7px 12px;font-size:11px}.practice-result-list{max-height:390px;overflow:auto;overscroll-behavior:contain}.practice-result-row{display:grid;grid-template-columns:minmax(0,1fr) 60px 95px 70px;gap:9px;align-items:center;border-bottom:1px solid #edf1e7;padding:11px 0;font-size:12px}.practice-result-row>span{line-height:1.6}.practice-result-row>span small{font:10px system-ui,sans-serif;color:#80917f;display:block}.practice-result-row>b{text-align:right;font:600 15px system-ui,sans-serif}.practice-result-row>small{font-size:10px;color:#80917f;text-align:right}.practice-result-row button{border:0;background:transparent;color:#537663;font-size:11px;text-align:right;padding:5px 0;text-decoration:underline;text-underline-offset:3px}.correct-text{color:#48764b}.review-text{color:#a35f31}
+.practice-set-history{border-top:1px solid var(--line);padding-top:15px;margin-top:20px}.practice-set-history h3{font-size:13px}.practice-set-history span{display:inline-block;margin:4px 16px 4px 0;font-size:12px}.practice-set-history b{margin-left:6px;color:var(--green)}.practice-set-history small{color:var(--muted);margin-left:6px}
+.practice-topic-pending{font-size:10px;color:#829083;display:block;margin-top:8px}.practice-topic-action{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}.topic .practice-topic-button{background:#eff4e9;border:1px solid #d9e3cf;border-radius:7px;text-decoration:none;font-size:11px;padding:6px 10px;margin:0;color:#395e42}.topic .practice-topic-button:hover{background:#e4edda}.practice-badge{font-size:10px;padding:4px 8px;border-radius:30px;white-space:nowrap}.practice-badge.answered,.practice-badge.correct{color:#3c6f3e;background:#eaf4e1}.practice-badge.incorrect{color:#965927;background:#fff0dd}
+#practice-dialog{width:min(880px,calc(100vw - 28px));max-height:90vh}#practice-body{padding:18px 26px 26px}.practice-dialog-progress{display:flex;align-items:center;gap:20px;font-size:12px;color:#6d826e;margin-bottom:23px}.practice-dialog-progress progress{flex:1;max-width:210px;height:6px}.practice-question-heading{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.practice-question-heading>span:first-child{font:11px system-ui,sans-serif;color:#84927e}.practice-question-heading h3{width:100%;font-size:17px;font-weight:600;line-height:1.6;margin:3px 0 11px;color:var(--green)}.practice-prompt{white-space:pre-line;font-size:15px;line-height:1.95;margin:0 0 22px;overflow-wrap:anywhere}
+.practice-choices{padding:0;border:0;margin:0;display:grid;gap:9px;min-width:0}.practice-choice{display:grid;grid-template-columns:17px 27px minmax(0,1fr) auto;align-items:start;gap:10px;border:1px solid #dee6d8;border-radius:11px;padding:13px 15px;font-size:14px;line-height:1.8;cursor:pointer;background:#fff;overflow-wrap:anywhere}.practice-choice input{accent-color:#476e4b;margin:5px 0 0;width:16px;height:16px}.practice-choice-number{font:600 12px system-ui,sans-serif;display:grid;place-items:center;border:1px solid #e0e7d9;border-radius:50%;height:26px;width:26px;color:#6b806b}.practice-choice.selected{border-color:#98b38b;background:#f3f8ee}.practice-choice:has(input:focus-visible){outline:3px solid #ceaa66;outline-offset:3px}.practice-choice.answer-key{border-color:#88ae75;background:#edf6e7}.practice-choice-key{font-size:10px;color:#467143;padding:3px 6px;background:#dcebd3;border-radius:5px}.practice-save-status{font-size:11px;color:#819077;line-height:1.8;margin:13px 0 18px}
+.practice-navigation{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:16px 0 22px}.practice-navigation .practice-primary{margin-left:auto}.practice-primary{border:1px solid var(--green);background:var(--green);color:#fff;border-radius:10px;font-size:13px;padding:11px 16px;line-height:1.5}.practice-primary:hover{background:#285442}.practice-primary:disabled:hover{background:var(--green)}.practice-primary:disabled,.practice-navigation button:disabled{cursor:default}.practice-inline-error{font-size:12px;color:#9a4b27;background:#fff5e8;border-radius:9px;padding:12px 14px;line-height:1.8;margin:12px 0}
+.practice-grid-wrap{border-top:1px solid var(--line);margin-top:21px;padding-top:15px}.practice-grid-wrap summary{font-size:11px;line-height:1.8;color:#718269;cursor:pointer}.practice-question-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:7px;margin-top:14px}.practice-question-grid button{border:1px solid #e0e6d9;min-height:37px;border-radius:7px;background:#fafbf7;color:#748669;font:12px system-ui,sans-serif}.practice-question-grid .answered{background:#e6f1dc;color:#4a7240;border-color:#c5dcb4}.practice-question-grid .incorrect{background:#fff0dd;color:#9d6132;border-color:#ead5b1}.practice-question-grid .current{outline:2px solid #355b3b;outline-offset:1px;font-weight:700}.practice-question-grid button span{font-size:9px;margin-left:3px}
+.practice-explanation{background:#f1f7e9;border:1px solid #d9e7cc;border-radius:13px;padding:20px 22px;margin:20px 0}.practice-explanation .eyebrow{color:#6c844d}.practice-explanation h4{font-size:13px;color:#456939;margin:15px 0 7px}.practice-explanation p{white-space:pre-line;font-size:13px;line-height:1.95;margin:0;overflow-wrap:anywhere}.practice-explanation small{font-size:10px;color:#7c8d6d;display:block;margin-top:15px}.practice-explanation .practice-correct-answer{font-size:14px;font-weight:600;color:#395d2f}
+.practice-complete{text-align:center;padding:20px 12px 25px}.practice-complete .eyebrow{color:#9c7c48}.practice-complete h3{font-size:23px;color:var(--green);margin:12px 0}.practice-complete p{font-size:13px;line-height:1.9;max-width:580px;margin:0 auto 23px;color:#718269}.practice-complete button{margin:5px}.practice-muted{font-size:13px;line-height:1.9;color:#7a8c76}.practice-review-row{display:flex;justify-content:space-between;align-items:center;padding:20px 0;border-bottom:1px solid var(--line);gap:14px}.practice-review-row strong{display:block;font-size:15px;margin-bottom:6px}.practice-review-row span{display:block;font-size:12px;color:#627d61}.practice-review-row small{display:block;font-size:10px;color:#89967f;margin-top:5px}.practice-review-row>div:last-child{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.practice-grade-action{background:#f7f2e5;border-radius:12px;padding:15px;margin-top:23px;text-align:center}.practice-grade-action p{font-size:12px;color:#827450;line-height:1.8}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:850px){.practice-heading{flex-direction:column}.practice-toolbar{justify-content:flex-start}.practice-subjects{grid-template-columns:repeat(3,minmax(0,1fr))}.practice-dashboard{padding:23px}.practice-review-row{align-items:flex-start}}
+@media(max-width:640px){.practice-dashboard{padding:20px 17px;border-radius:16px}.practice-heading h2{font-size:21px}.practice-heading p{font-size:11px}.practice-toolbar{gap:7px}.practice-toolbar .secondary{font-size:11px;padding:8px 9px}.practice-set-label{font-size:11px}.practice-overview{gap:16px;padding:23px 0}.practice-score-ring{width:118px;height:118px}.practice-score-ring:before{inset:8px}.practice-score-ring strong{font-size:28px;letter-spacing:-1px}.practice-score-ring span{font-size:9px}.practice-overview-text h3{font-size:15px;line-height:1.7;margin-bottom:7px}.practice-overview-text p{font-size:11px;margin-bottom:6px}.practice-overview-text small{font-size:9px;line-height:1.9}.practice-subjects{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.practice-subject{padding:14px 12px}.practice-subject:last-child{grid-column:1/-1}.practice-subject strong{font-size:25px;margin:9px 0}.practice-subject:last-child strong{display:inline-block;margin-right:12px}.practice-subject:last-child span:last-of-type{display:inline-block}.practice-subject-name{font-size:12px}.practice-result-row{grid-template-columns:minmax(0,1fr) 48px 60px;gap:7px}.practice-result-row>small{display:none}.practice-result-row>b{font-size:13px}.practice-result-row button{font-size:10px}.practice-result-row>span{font-size:11px}.practice-result-tabs .tab{padding:6px 10px;font-size:10px}#practice-body{padding:16px 17px 22px}#practice-title{font-size:13px;line-height:1.6}.practice-dialog-progress{gap:13px;font-size:11px;margin-bottom:18px}.practice-question-heading h3{font-size:15px}.practice-prompt{font-size:14px;line-height:1.95}.practice-choice{padding:11px;gap:8px;font-size:12px;grid-template-columns:16px 23px minmax(0,1fr) auto}.practice-choice-number{width:23px;height:23px;font-size:11px}.practice-choice-key{font-size:9px;padding:2px 4px}.practice-navigation{gap:7px}.practice-navigation .secondary{font-size:11px;padding:8px 10px}.practice-navigation .practice-primary{font-size:11px;padding:10px 12px;flex-basis:100%;margin:5px 0 0}.practice-explanation{padding:16px}.practice-explanation p{font-size:12px}.practice-review-row{flex-direction:column}.practice-review-row>div:last-child{justify-content:flex-start}.practice-review-row .practice-primary,.practice-review-row .secondary{font-size:11px}.practice-complete h3{font-size:20px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
 </head>
 <body>
-  <header class="topbar">
+  <div style="padding:8px 20px;text-align:center;background:#fff1d9;color:#85602b;font:12px Tahoma">หน้าทดสอบ · ใช้ข้อมูลสมมติ 8 ข้อ · ไม่ใช่บัญชีหรือคะแนนจริง</div><header class="topbar">
     <a class="brand" href="/" aria-label="School หน้าหลัก"><span class="brand-mark" aria-hidden="true">น</span><span><strong>NATHOENG <b>SCHOOL</b></strong><small>วัดพุทธอุทยานนาเทิง</small></span></a>
     <div id="account" class="account"></div>
   </header>
   <main id="main"><section class="loading" role="status">กำลังเปิดพื้นที่เรียนรู้…</section></main>
   <dialog id="detail"><div class="dialog-head"><strong id="detail-title">รายการข้อสอบต้นฉบับ</strong><button type="button" id="close-detail" aria-label="ปิดหน้าต่าง">✕</button></div><div id="detail-body"></div></dialog>
+  <dialog id="practice-dialog" aria-labelledby="practice-title"><div class="dialog-head"><strong id="practice-title">ชุดฝึก</strong><button type="button" id="practice-close" aria-label="ปิดชุดฝึก">✕</button></div><div id="practice-body"></div></dialog>
   <div id="notice" role="status" aria-live="polite"></div>
   <footer>School วัดพุทธอุทยานนาเทิง <span>พื้นที่เรียนรู้ของสมาชิก</span><a href="https://watt.nathoeng.com/">กลับเว็บไซต์วัด ↗</a></footer>
-  <script type="module" src="/app.js"></script>
+  <script type="module">
+const fixtureCatalog = {"subjects": [{"subject_id": "ENG", "subject_name_th": "ภาษาอังกฤษ", "chapter_count": 5, "topic_count": 38, "primary_topic_count": 38, "question_count_2562": 50, "question_count_2563": 50, "question_count_total": 100, "suggested_study_sequence_th": "เริ่มชนิดคำและรูปกริยา แล้วฝึกโครงสร้างประโยคควบคู่คำศัพท์ จากนั้นฝึกบทสนทนา การอ่านจับใจความ รายละเอียด และการอนุมาน"}, {"subject_id": "MATH", "subject_name_th": "คณิตศาสตร์", "chapter_count": 15, "topic_count": 67, "primary_topic_count": 66, "question_count_2562": 55, "question_count_2563": 50, "question_count_total": 105, "suggested_study_sequence_th": "เริ่มจำนวน พีชคณิต และการจัดรูป แล้วฝึกสมการ อสมการ เลขยกกำลัง เซต ตรรกศาสตร์ และฟังก์ชัน ต่อด้วยเรขาคณิต ตรีโกณมิติ สถิติ การนับ และความน่าจะเป็น"}, {"subject_id": "SCI", "subject_name_th": "วิทยาศาสตร์", "chapter_count": 28, "topic_count": 77, "primary_topic_count": 63, "question_count_2562": 55, "question_count_2563": 50, "question_count_total": 105, "suggested_study_sequence_th": "ฝึกหน่วย เวกเตอร์ และการอ่านภาพก่อนโจทย์แรงกับการเคลื่อนที่ เคมีเริ่มอะตอม พันธะ และโมลก่อนสารละลายกับปริมาณสัมพันธ์ ชีววิทยาเริ่มเซลล์ก่อนพันธุศาสตร์ ระบบร่างกาย พืช และระบบนิเวศ"}, {"subject_id": "THAI", "subject_name_th": "ภาษาไทย", "chapter_count": 9, "topic_count": 39, "primary_topic_count": 39, "question_count_2562": 30, "question_count_2563": 30, "question_count_total": 60, "suggested_study_sequence_th": "เริ่มเสียง การสะกด และชนิดคำ แล้วฝึกการใช้คำ ระดับภาษา สำนวน การอ่านจับใจความและตีความ ก่อนฉันทลักษณ์กับวรรณคดี"}, {"subject_id": "SOC", "subject_name_th": "สังคมศึกษา", "chapter_count": 7, "topic_count": 40, "primary_topic_count": 40, "question_count_2562": 25, "question_count_2563": 45, "question_count_total": 70, "suggested_study_sequence_th": "แยกเรียนศาสนา หน้าที่พลเมือง เศรษฐศาสตร์ ประวัติศาสตร์ และภูมิศาสตร์ แล้วฝึกเชื่อมหลักการกับสถานการณ์ในข้อสอบ โดยเก็บเหตุการณ์และเกณฑ์ตามปีของโจทย์"}], "chapters": [{"chapter_id": "ENG-01", "subject_id": "ENG", "chapter_name_th": "ตัวอักษรและการออกเสียง", "discipline_th": "ภาษา", "sort_order": 1, "topic_count": 2, "primary_count_2562": 2, "primary_share_2562": 0.04, "primary_count_2563": 0, "primary_share_2563": 0.0, "primary_count_total": 2}, {"chapter_id": "MATH-01", "subject_id": "MATH", "chapter_name_th": "จำนวนและสมบัติของจำนวน", "discipline_th": "คณิตศาสตร์", "sort_order": 1, "topic_count": 3, "primary_count_2562": 0, "primary_share_2562": 0.0, "primary_count_2563": 3, "primary_share_2563": 0.06, "primary_count_total": 3}, {"chapter_id": "SCI-01", "subject_id": "SCI", "chapter_name_th": "การวัด หน่วย และมาตราส่วน", "discipline_th": "ฟิสิกส์", "sort_order": 1, "topic_count": 1, "primary_count_2562": 0, "primary_share_2562": 0.0, "primary_count_2563": 1, "primary_share_2563": 0.02, "primary_count_total": 1}, {"chapter_id": "THAI-01", "subject_id": "THAI", "chapter_name_th": "เสียง การอ่าน และการสะกด", "discipline_th": "ภาษา", "sort_order": 1, "topic_count": 6, "primary_count_2562": 4, "primary_share_2562": 0.13333333333333333, "primary_count_2563": 5, "primary_share_2563": 0.16666666666666666, "primary_count_total": 9}, {"chapter_id": "SOC-01", "subject_id": "SOC", "chapter_name_th": "ศาสนา ศีลธรรม และจริยธรรม", "discipline_th": "สังคมศึกษา", "sort_order": 1, "topic_count": 7, "primary_count_2562": 4, "primary_share_2562": 0.16, "primary_count_2563": 6, "primary_share_2563": 0.13333333333333333, "primary_count_total": 10}], "topics": [{"topic_id": "ENG-01.01", "chapter_id": "ENG-01", "subject_id": "ENG", "topic_slug": "ENG.foundation.alphabet", "topic_name_th": "การเรียงคำตามลำดับอักษร", "sort_order": 1, "primary_count_2562": 1, "primary_count_2563": 0, "primary_count_total": 1, "related_count_2562": 0, "related_count_2563": 0, "related_count_total": 0, "observed_status": "primary_observed", "observed_contexts_th": ["เรียงคำตามลำดับอักษร"], "evidence": [{"question_id": "EX2562-ENG-001", "year_be": 2562, "exam_question_no": 1, "pdf_pages": [2], "printed_pages": [1], "role": "primary"}], "primary_share_2562": 0.02, "primary_share_2563": 0.0, "counts": {"total": 1, "year_2562": 1, "year_2563": 0}}, {"topic_id": "ENG-01.02", "chapter_id": "ENG-01", "subject_id": "ENG", "topic_slug": "ENG.foundation.stress", "topic_name_th": "การเน้นเสียงในคำ", "sort_order": 2, "primary_count_2562": 1, "primary_count_2563": 0, "primary_count_total": 1, "related_count_2562": 0, "related_count_2563": 0, "related_count_total": 0, "observed_status": "primary_observed", "observed_contexts_th": ["ตำแหน่งพยางค์เน้นเสียง"], "evidence": [{"question_id": "EX2562-ENG-002", "year_be": 2562, "exam_question_no": 2, "pdf_pages": [2], "printed_pages": [1], "role": "primary"}], "primary_share_2562": 0.02, "primary_share_2563": 0.0, "counts": {"total": 1, "year_2562": 1, "year_2563": 0}}, {"topic_id": "MATH-01.01", "chapter_id": "MATH-01", "subject_id": "MATH", "topic_slug": "MATH.number.divisibility", "topic_name_th": "การหารลงตัวและเศษเหลือจำนวนเต็ม", "sort_order": 1, "primary_count_2562": 0, "primary_count_2563": 1, "primary_count_total": 1, "related_count_2562": 0, "related_count_2563": 0, "related_count_total": 0, "observed_status": "primary_observed", "observed_contexts_th": ["การหารลงตัวและเศษเหลือของจำนวนเต็ม"], "evidence": [{"question_id": "EX2563-MATH-056", "year_be": 2563, "exam_question_no": 56, "pdf_pages": [43], "printed_pages": [7], "role": "primary"}], "primary_share_2562": 0.0, "primary_share_2563": 0.02, "counts": {"total": 1, "year_2562": 1, "year_2563": 0}}, {"topic_id": "MATH-01.02", "chapter_id": "MATH-01", "subject_id": "MATH", "topic_slug": "MATH.number.decimal", "topic_name_th": "ทศนิยมซ้ำและตำแหน่งเลขโดด", "sort_order": 2, "primary_count_2562": 0, "primary_count_2563": 1, "primary_count_total": 1, "related_count_2562": 0, "related_count_2563": 0, "related_count_total": 0, "observed_status": "primary_observed", "observed_contexts_th": ["ทศนิยมซ้ำและตำแหน่งเลขโดด"], "evidence": [{"question_id": "EX2563-MATH-061", "year_be": 2563, "exam_question_no": 61, "pdf_pages": [44], "printed_pages": [8], "role": "primary"}], "primary_share_2562": 0.0, "primary_share_2563": 0.02, "counts": {"total": 1, "year_2562": 1, "year_2563": 0}}, {"topic_id": "MATH-01.03", "chapter_id": "MATH-01", "subject_id": "MATH", "topic_slug": "MATH.number.unit_digit", "topic_name_th": "หลักหน่วยของจำนวนยกกำลัง", "sort_order": 3, "primary_count_2562": 0, "primary_count_2563": 1, "primary_count_total": 1, "related_count_2562": 0, "related_count_2563": 0, "related_count_total": 0, "observed_status": "primary_observed", "observed_contexts_th": ["เลขหลักหน่วยของจำนวนยกกำลัง"], "evidence": [{"question_id": "EX2563-MATH-092", "year_be": 2563, "exam_question_no": 92, "pdf_pages": [48], "printed_pages": [12], "role": "primary"}], "primary_share_2562": 0.0, "primary_share_2563": 0.02, "counts": {"total": 1, "year_2562": 1, "year_2563": 0}}, {"topic_id": "SCI-01.01", "chapter_id": "SCI-01", "subject_id": "SCI", "topic_slug": "SCI.measure.unit", "topic_name_th": "หน่วย การแปลงหน่วย และมาตราส่วน", "sort_order": 1, "primary_count_2562": 0, "primary_count_2563": 1, "primary_count_total": 1, "related_count_2562": 0, "related_count_2563": 0, "related_count_total": 0, "observed_status": "primary_observed", "observed_contexts_th": ["มาตราส่วนแผนที่และการแปลงหน่วยระยะทาง"], "evidence": [{"question_id": "EX2563-SCI-118", "year_be": 2563, "exam_question_no": 118, "pdf_pages": [52], "printed_pages": [16], "role": "primary"}], "primary_share_2562": 0.0, "primary_share_2563": 0.02, "counts": {"total": 1, "year_2562": 1, "year_2563": 0}}, {"topic_id": "THAI-01.01", "chapter_id": "THAI-01", "subject_id": "THAI", "topic_slug": "THAI.sound.cluster", "topic_name_th": "พยัญชนะต้นประสมและคำควบกล้ำ", "sort_order": 1, "primary_count_2562": 1, "primary_count_2563": 1, "primary_count_total": 2, "related_count_2562": 0, "related_count_2563": 0, "related_count_total": 0, "observed_status": "primary_observed", "observed_contexts_th": ["นับเสียงควบกล้ำ", "พยัญชนะต้นประสม"], "evidence": [{"question_id": "EX2562-THAI-163", "year_be": 2562, "exam_question_no": 163, "pdf_pages": [28], "printed_pages": [27], "role": "primary"}, {"question_id": "EX2563-THAI-160", "year_be": 2563, "exam_question_no": 160, "pdf_pages": [63], "printed_pages": [27], "role": "primary"}], "primary_share_2562": 0.03333333333333333, "primary_share_2563": 0.03333333333333333, "counts": {"total": 1, "year_2562": 1, "year_2563": 0}}, {"topic_id": "SOC-01.01", "chapter_id": "SOC-01", "subject_id": "SOC", "topic_slug": "SOC.religion.buddha", "topic_name_th": "พุทธประวัติและปฐมเทศนา", "sort_order": 1, "primary_count_2562": 2, "primary_count_2563": 0, "primary_count_total": 2, "related_count_2562": 0, "related_count_2563": 0, "related_count_total": 0, "observed_status": "primary_observed", "observed_contexts_th": ["ลำดับการบำเพ็ญก่อนตรัสรู้", "ความสำคัญของธัมมจักกัปปวัตตนสูตร"], "evidence": [{"question_id": "EX2562-SOC-213", "year_be": 2562, "exam_question_no": 213, "pdf_pages": [35], "printed_pages": [34], "role": "primary"}, {"question_id": "EX2562-SOC-214", "year_be": 2562, "exam_question_no": 214, "pdf_pages": [35], "printed_pages": [34], "role": "primary"}], "primary_share_2562": 0.08, "primary_share_2563": 0.0, "counts": {"total": 1, "year_2562": 1, "year_2563": 0}}], "progress": [], "question_count": 440};
+const fixtureQuestions = [{"question_id": "P01-ENG-01.01", "set_no": 1, "topic_id": "ENG-01.01", "subject_id": "ENG", "sort_order": 1, "prompt": "โจทย์สมมติสำหรับตรวจการทำงานของหน้าจอ\nเลือกตัวเลือกที่ 1 แล้วกดยืนยันเพื่อไปหัวข้อถัดไป", "choices": ["ตัวเลือกสมมติ 1", "ตัวเลือกสมมติ 2", "ตัวเลือกสมมติ 3", "ตัวเลือกสมมติ 4", "ตัวเลือกสมมติ 5"], "answer_key": 1, "explanation": "คำอธิบายสมมติสำหรับทดสอบการเปิดเฉลยหลังตรวจ", "reasoning": "เหตุผลสมมติสำหรับทดสอบมุมมองนักเรียนและครู", "source_question_ids": []}, {"question_id": "P01-ENG-01.02", "set_no": 1, "topic_id": "ENG-01.02", "subject_id": "ENG", "sort_order": 2, "prompt": "โจทย์สมมติสำหรับตรวจการทำงานของหน้าจอ\nเลือกตัวเลือกที่ 2 แล้วกดยืนยันเพื่อไปหัวข้อถัดไป", "choices": ["ตัวเลือกสมมติ 1", "ตัวเลือกสมมติ 2", "ตัวเลือกสมมติ 3", "ตัวเลือกสมมติ 4", "ตัวเลือกสมมติ 5"], "answer_key": 2, "explanation": "คำอธิบายสมมติสำหรับทดสอบการเปิดเฉลยหลังตรวจ", "reasoning": "เหตุผลสมมติสำหรับทดสอบมุมมองนักเรียนและครู", "source_question_ids": []}, {"question_id": "P01-MATH-01.01", "set_no": 1, "topic_id": "MATH-01.01", "subject_id": "MATH", "sort_order": 1, "prompt": "โจทย์สมมติสำหรับตรวจการทำงานของหน้าจอ\nเลือกตัวเลือกที่ 3 แล้วกดยืนยันเพื่อไปหัวข้อถัดไป", "choices": ["ตัวเลือกสมมติ 1", "ตัวเลือกสมมติ 2", "ตัวเลือกสมมติ 3", "ตัวเลือกสมมติ 4", "ตัวเลือกสมมติ 5"], "answer_key": 3, "explanation": "คำอธิบายสมมติสำหรับทดสอบการเปิดเฉลยหลังตรวจ", "reasoning": "เหตุผลสมมติสำหรับทดสอบมุมมองนักเรียนและครู", "source_question_ids": []}, {"question_id": "P01-MATH-01.02", "set_no": 1, "topic_id": "MATH-01.02", "subject_id": "MATH", "sort_order": 2, "prompt": "โจทย์สมมติสำหรับตรวจการทำงานของหน้าจอ\nเลือกตัวเลือกที่ 4 แล้วกดยืนยันเพื่อไปหัวข้อถัดไป", "choices": ["ตัวเลือกสมมติ 1", "ตัวเลือกสมมติ 2", "ตัวเลือกสมมติ 3", "ตัวเลือกสมมติ 4", "ตัวเลือกสมมติ 5"], "answer_key": 4, "explanation": "คำอธิบายสมมติสำหรับทดสอบการเปิดเฉลยหลังตรวจ", "reasoning": "เหตุผลสมมติสำหรับทดสอบมุมมองนักเรียนและครู", "source_question_ids": []}, {"question_id": "P01-MATH-01.03", "set_no": 1, "topic_id": "MATH-01.03", "subject_id": "MATH", "sort_order": 3, "prompt": "โจทย์สมมติสำหรับตรวจการทำงานของหน้าจอ\nเลือกตัวเลือกที่ 5 แล้วกดยืนยันเพื่อไปหัวข้อถัดไป", "choices": ["ตัวเลือกสมมติ 1", "ตัวเลือกสมมติ 2", "ตัวเลือกสมมติ 3", "ตัวเลือกสมมติ 4", "ตัวเลือกสมมติ 5"], "answer_key": 5, "explanation": "คำอธิบายสมมติสำหรับทดสอบการเปิดเฉลยหลังตรวจ", "reasoning": "เหตุผลสมมติสำหรับทดสอบมุมมองนักเรียนและครู", "source_question_ids": []}, {"question_id": "P01-SCI-01.01", "set_no": 1, "topic_id": "SCI-01.01", "subject_id": "SCI", "sort_order": 1, "prompt": "โจทย์สมมติสำหรับตรวจการทำงานของหน้าจอ\nเลือกตัวเลือกที่ 1 แล้วกดยืนยันเพื่อไปหัวข้อถัดไป", "choices": ["ตัวเลือกสมมติ 1", "ตัวเลือกสมมติ 2", "ตัวเลือกสมมติ 3", "ตัวเลือกสมมติ 4", "ตัวเลือกสมมติ 5"], "answer_key": 1, "explanation": "คำอธิบายสมมติสำหรับทดสอบการเปิดเฉลยหลังตรวจ", "reasoning": "เหตุผลสมมติสำหรับทดสอบมุมมองนักเรียนและครู", "source_question_ids": []}, {"question_id": "P01-THAI-01.01", "set_no": 1, "topic_id": "THAI-01.01", "subject_id": "THAI", "sort_order": 1, "prompt": "โจทย์สมมติสำหรับตรวจการทำงานของหน้าจอ\nเลือกตัวเลือกที่ 2 แล้วกดยืนยันเพื่อไปหัวข้อถัดไป", "choices": ["ตัวเลือกสมมติ 1", "ตัวเลือกสมมติ 2", "ตัวเลือกสมมติ 3", "ตัวเลือกสมมติ 4", "ตัวเลือกสมมติ 5"], "answer_key": 2, "explanation": "คำอธิบายสมมติสำหรับทดสอบการเปิดเฉลยหลังตรวจ", "reasoning": "เหตุผลสมมติสำหรับทดสอบมุมมองนักเรียนและครู", "source_question_ids": []}, {"question_id": "P01-SOC-01.01", "set_no": 1, "topic_id": "SOC-01.01", "subject_id": "SOC", "sort_order": 1, "prompt": "โจทย์สมมติสำหรับตรวจการทำงานของหน้าจอ\nเลือกตัวเลือกที่ 3 แล้วกดยืนยันเพื่อไปหัวข้อถัดไป", "choices": ["ตัวเลือกสมมติ 1", "ตัวเลือกสมมติ 2", "ตัวเลือกสมมติ 3", "ตัวเลือกสมมติ 4", "ตัวเลือกสมมติ 5"], "answer_key": 3, "explanation": "คำอธิบายสมมติสำหรับทดสอบการเปิดเฉลยหลังตรวจ", "reasoning": "เหตุผลสมมติสำหรับทดสอบมุมมองนักเรียนและครู", "source_question_ids": []}];
+const fixtureActor = new URLSearchParams(location.search).get('actor') || 'student';
+const fixtureMember = {member_id:fixtureActor,member_name:fixtureActor==='manager'?'ผู้ดูแลสมมติ':fixtureActor==='teacher'?'ครูสมมติ':'นักเรียนสมมติ',can_study:fixtureActor==='student',can_teach:fixtureActor==='teacher',can_manage:fixtureActor==='manager',is_active:true};
+const fixtureKey='school-practice-ui-fixture-v3';
+const readFixture=()=>JSON.parse(localStorage.getItem(fixtureKey)||'{"attempts":[],"answers":[]}');
+const saveFixture=value=>localStorage.setItem(fixtureKey,JSON.stringify(value));
+window.fetch=async(input,options={})=>{
+ const u=new URL(input,location.href),route=u.searchParams.get('route'),f=readFixture();
+ let result={success:true};
+ if(u.pathname==='/api/school'){
+  if(route==='catalog')result={...fixtureCatalog,member:fixtureMember,success:true};
+  else if(route==='questions')result={success:true,questions:[{year_be:2562,exam_question_no:1,content_focus_th:'อ้างอิงสมมติสำหรับตรวจหน้าจอเดิม',pdf_pages:[2],printed_pages:[1]}]};
+  else if(route==='members')result={success:true,members:[fixtureMember]};
+ }else if(u.pathname==='/api/practice'){
+  if(options.method==='POST'){
+   const p=JSON.parse(options.body);let a=f.attempts.find(a=>a.attempt_id===p.attempt_id);
+   if(route==='start'){
+    a=f.attempts.find(a=>a.member_id===fixtureActor&&a.set_no===p.set_no&&a.subject_id===p.subject_id);
+    if(!a){a={attempt_id:crypto.randomUUID(),member_id:fixtureActor,set_no:p.set_no,subject_id:p.subject_id,status:'draft',total_count:fixtureQuestions.filter(q=>q.subject_id===p.subject_id).length,correct_count:null};f.attempts.push(a);}
+   }else if(route==='save'){
+    if(!a||a.status!=='draft')return new Response(JSON.stringify({success:false,message:'คำตอบถูกล็อก'}),{status:409});
+    let answer=f.answers.find(x=>x.attempt_id===a.attempt_id&&x.question_id===p.question_id);
+    if(!answer){answer={attempt_id:a.attempt_id,question_id:p.question_id};f.answers.push(answer);}answer.selected_answer=p.selected_answer;
+    result.item=answer;
+   }else if(route==='submit'){
+    if(f.answers.filter(x=>x.attempt_id===a.attempt_id).length!==a.total_count)return new Response(JSON.stringify({success:false,message:'ยังทำไม่ครบ'}),{status:422});
+    a.status='submitted';a.submitted_at=new Date().toISOString();
+   }else if(route==='grade'){
+    if(fixtureActor!=='manager')return new Response('{}',{status:403});
+    a.status='graded';a.graded_at=new Date().toISOString();a.correct_count=0;
+    for(const x of f.answers.filter(x=>x.attempt_id===a.attempt_id)){x.is_correct=x.selected_answer===fixtureQuestions.find(q=>q.question_id===x.question_id).answer_key;if(x.is_correct)a.correct_count++;}
+   }
+   if(route!=='save')result.item=a;saveFixture(f);
+  }else if(route==='summary'){
+   const attempts=f.attempts.filter(a=>a.member_id===fixtureActor),ids=new Set(attempts.map(a=>a.attempt_id));
+   result={success:true,ready:true,sets:[{set_no:1,label:'ชุดฝึกที่ 1'}],topics:fixtureQuestions.map(({question_id,set_no,topic_id,subject_id})=>({question_id,set_no,topic_id,subject_id})),counts:fixtureCatalog.subjects.map(s=>({set_no:1,subject_id:s.subject_id,total_count:fixtureQuestions.filter(q=>q.subject_id===s.subject_id).length})),attempts,answers:f.answers.filter(x=>ids.has(x.attempt_id)).map(x=>{const a=attempts.find(a=>a.attempt_id===x.attempt_id);return a.status==='graded'?x:{attempt_id:x.attempt_id,question_id:x.question_id,selected_answer:x.selected_answer};})};
+  }else if(route==='subject'){
+   const sid=u.searchParams.get('subject_id'),id=u.searchParams.get('attempt_id');
+   const attempt=id?f.attempts.find(a=>a.attempt_id===id):f.attempts.find(a=>a.member_id===fixtureActor&&a.subject_id===sid);
+   const canReview=fixtureActor!=='student'||attempt?.status==='graded';
+   result={success:true,set_no:1,subject_id:sid,attempt:attempt||null,can_review:canReview,questions:fixtureQuestions.filter(q=>q.subject_id===sid).map(q=>canReview?q:(({answer_key,explanation,reasoning,source_question_ids,...safe})=>safe)(q)),answers:f.answers.filter(x=>x.attempt_id===attempt?.attempt_id).map(x=>attempt.status==='graded'?x:{question_id:x.question_id,selected_answer:x.selected_answer})};
+  }else if(route==='review')result={success:true,attempts:f.attempts.filter(a=>a.status==='submitted').map(a=>({...a,member_name:'นักเรียนสมมติ'}))};
+ }else if(u.pathname==='/api/session')result={success:true};
+ return new Response(JSON.stringify(result),{status:200,headers:{'Content-Type':'application/json'}});
+};
+
+const createPractice = (()=>{
+const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const pct = (correct, total) => total ? `${Number((100 * correct / total).toFixed(1)).toLocaleString('th-TH')}%` : '—';
+const stateLabel = { draft:'กำลังทำ', submitted:'รอตรวจ', graded:'ตรวจแล้ว' };
+
+function createPractice({ main, data, api, notice, rerender, getSubject }) {
+  const panel = document.querySelector('#practice-dashboard');
+  const modal = document.querySelector('#practice-dialog');
+  const modalBody = document.querySelector('#practice-body');
+  let bank = null, selectedSet = 1, resultSubject = getSubject(), session = null, index = 0;
+  let busy = false, viewingOther = false, loading = false, requestNo = 0, openTopics = false, openGrid = false;
+  let choices = new Map(), saved = new Map(), modalError = '';
+  const subjectName = id => data.subjects.find(s => s.subject_id === id)?.subject_name_th || id;
+  const topicName = id => data.topics.find(t => t.topic_id === id)?.topic_name_th || id;
+  const post = (route, value) => api(`/api/practice?route=${route}`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(value) });
+  const ownAttempt = sid => bank?.attempts?.find(a => a.set_no === selectedSet && a.subject_id === sid);
+  const ownAnswers = sid => {
+    const a = ownAttempt(sid);
+    return a ? bank.answers.filter(x => x.attempt_id === a.attempt_id) : [];
+  };
+
+  function topicResult(topicId) {
+    const questions = new Map((bank?.topics || []).map(q => [q.question_id, q]));
+    const attempts = new Map((bank?.attempts || []).map(a => [a.attempt_id, a]));
+    const answers = (bank?.answers || []).filter(x => questions.get(x.question_id)?.topic_id === topicId && attempts.get(x.attempt_id)?.status === 'graded');
+    return { correct: answers.filter(x => x.is_correct).length, total: answers.length };
+  }
+
+  function topicAction(topic) {
+    if (!bank?.ready) return '<span class="practice-topic-pending">ชุดฝึกที่ 1 · กำลังเตรียม</span>';
+    const question = bank.topics.find(q => q.set_no === selectedSet && q.topic_id === topic.topic_id);
+    if (!question) return '';
+    const a = ownAttempt(topic.subject_id), answer = ownAnswers(topic.subject_id).find(x => x.question_id === question.question_id);
+    let badge = '';
+    if (a?.status === 'graded' && answer) badge = `<span class="practice-badge ${answer.is_correct ? 'correct' : 'incorrect'}">${answer.is_correct ? 'ถูก' : 'ควรทบทวน'} · ${answer.is_correct ? '100%' : '0%'}</span>`;
+    else if (answer) badge = '<span class="practice-badge answered">✓ ตอบแล้ว</span>';
+    return `<div class="practice-topic-action"><button type="button" class="practice-topic-button" data-practice="${esc(topic.topic_id)}">${a?.status === 'graded' ? 'ดูผล / เฉลย' : data.member.can_study ? 'ทำ' : 'ดู'}ชุดที่ ${selectedSet}</button>${badge}</div>`;
+  }
+
+  function renderPanel() {
+    if (!bank) { panel.innerHTML = '<p class="practice-muted" role="status">กำลังเปิดผลการฝึก…</p>'; return; }
+    if (!bank.ready) {
+      panel.innerHTML = `<div class="practice-heading"><div><span class="eyebrow">PRACTICE</span><h2>ชุดฝึกใหม่ · ชุดที่ 1</h2><p>กำลังเตรียมโจทย์และเฉลยสำหรับแต่ละหัวข้อ</p></div><button type="button" class="secondary" data-practice-refresh>ตรวจอีกครั้ง</button></div>`;
+      return;
+    }
+    const graded = bank.attempts.filter(a => a.set_no === selectedSet && a.status === 'graded');
+    const total = graded.reduce((n, a) => n + a.total_count, 0), correct = graded.reduce((n, a) => n + a.correct_count, 0);
+    const availableSubjects = data.subjects.filter(s => bank.counts.some(c => c.set_no === selectedSet && c.subject_id === s.subject_id));
+    const percent = total ? 100 * correct / total : 0;
+    panel.innerHTML = `<div class="practice-heading"><div><span class="eyebrow">MY PRACTICE</span><h2>ผลการฝึกของฉัน</h2><p>เห็นพัฒนาการทีละหัวข้อ · คะแนนเปิดเมื่อผู้ดูแลตรวจแล้ว</p></div><div class="practice-toolbar"><label class="practice-set-label">ชุดฝึก <select id="practice-set">${bank.sets.map(s => `<option value="${s.set_no}" ${s.set_no === selectedSet ? 'selected' : ''}>${esc(s.label)}</option>`).join('')}</select></label><button type="button" class="secondary" data-practice-refresh ${loading ? 'disabled' : ''}>อัปเดตผล</button>${data.member.can_manage ? '<button type="button" class="secondary" data-review>ตรวจคำตอบนักเรียน</button>' : ''}</div></div>
+      <div class="practice-overview"><div class="practice-score-ring" style="--score:${percent}%"><strong>${pct(correct, total)}</strong><span>ความถูกต้องรวม</span></div><div class="practice-overview-text"><h3>${total ? `ทำถูก ${correct} จาก ${total} ข้อที่ตรวจแล้ว` : 'เริ่มจากหนึ่งหัวข้อ แล้วค่อย ๆ ก้าวหน้า'}</h3><p>ตรวจแล้ว <b>${graded.length} / ${availableSubjects.length}</b> วิชา${bank.attempts.some(a => a.set_no === selectedSet && a.status === 'submitted') ? ' · มีคำตอบรอตรวจ' : ''}</p><small>คำนวณจากจำนวนข้อที่ถูก ÷ จำนวนข้อที่ตรวจแล้วทั้งหมด</small><small>วิชาที่ยังไม่ตรวจจะแสดงสถานะและยังไม่รวมในเปอร์เซ็นต์</small></div></div>
+      <div class="practice-subjects">${availableSubjects.map(s => {
+        const a = ownAttempt(s.subject_id), n = ownAnswers(s.subject_id).length;
+        const count = bank.counts.find(c => c.set_no === selectedSet && c.subject_id === s.subject_id).total_count;
+        return `<button type="button" class="practice-subject ${a?.status === 'graded' ? 'is-graded' : ''}" data-practice-subject="${s.subject_id}"><span class="practice-subject-name">${esc(s.subject_name_th)}</span><strong>${a?.status === 'graded' ? pct(a.correct_count, a.total_count) : a?.status === 'submitted' ? 'รอตรวจ' : `${n} / ${count}`}</strong><span>${a?.status === 'graded' ? `ถูก ${a.correct_count} / ${a.total_count} ข้อ · ดูเฉลย ↗` : a?.status === 'submitted' ? 'ส่งคำตอบครบแล้ว' : n ? 'ตอบแล้ว · ทำต่อ ↗' : data.member.can_study ? 'เริ่มทำชุดนี้ ↗' : 'เปิดดูโจทย์ ↗'}</span><progress value="${n}" max="${count}" aria-label="ตอบแล้ว ${n} จาก ${count} ข้อ"></progress></button>`;
+      }).join('')}</div>
+      <details class="practice-topic-results" ${openTopics ? 'open' : ''}><summary>ผลรายหัวข้อ · รวมชุดที่ตรวจแล้ว</summary><div class="practice-result-tabs">${data.subjects.map(s => `<button type="button" class="tab ${s.subject_id === resultSubject ? 'active' : ''}" data-result-subject="${s.subject_id}" aria-pressed="${s.subject_id === resultSubject}">${esc(s.subject_name_th)}</button>`).join('')}</div><div class="practice-result-list">${data.topics.filter(t => t.subject_id === resultSubject).map(t => {
+        const r = topicResult(t.topic_id);
+        const hasQuestion = bank.topics.some(q => q.set_no === selectedSet && q.topic_id === t.topic_id);
+        return `<div class="practice-result-row"><span><small>${esc(t.topic_id)}</small>${esc(t.topic_name_th)}</span><b class="${r.total ? r.correct === r.total ? 'correct-text' : 'review-text' : ''}">${pct(r.correct, r.total)}</b><small>${r.total ? `ถูก ${r.correct}/${r.total} ชุด` : 'ยังไม่มีผลตรวจ'}</small>${hasQuestion ? `<button type="button" data-practice="${esc(t.topic_id)}">${ownAttempt(t.subject_id)?.status === 'graded' ? 'ดูเฉลย' : 'เปิดโจทย์'} ↗</button>` : ''}</div>`;
+      }).join('')}</div></details>
+      ${bank.sets.length > 1 ? `<div class="practice-set-history"><h3>ความถูกต้องรวมแต่ละชุด</h3>${bank.sets.map(s => { const a = bank.attempts.filter(x => x.set_no === s.set_no && x.status === 'graded'); return `<span>${esc(s.label)} <b>${pct(a.reduce((n, x) => n + x.correct_count, 0), a.reduce((n, x) => n + x.total_count, 0))}</b> <small>ตรวจแล้ว ${a.length} วิชา</small></span>`; }).join('')}</div>` : ''}`;
+    panel.querySelector('.practice-topic-results').addEventListener('toggle', event => { openTopics = event.target.open; });
+  }
+
+  async function refresh() {
+    if (loading) return;
+    loading = true;
+    try {
+      bank = await api('/api/practice?route=summary');
+      if (bank.ready && !bank.sets.some(s => s.set_no === selectedSet)) selectedSet = bank.sets[0].set_no;
+      renderPanel(); rerender();
+    } catch (error) {
+      panel.innerHTML = `<div class="practice-heading"><div><h2>ผลการฝึกของฉัน</h2><p role="alert">${esc(error.message)}</p></div><button type="button" class="secondary" data-practice-refresh>ลองอีกครั้ง</button></div>`;
+    } finally { loading = false; panel.querySelector('[data-practice-refresh]')?.removeAttribute('disabled'); }
+  }
+
+  async function openSubject(sid, topicId, otherAttempt) {
+    if (busy) return;
+    const ticket = ++requestNo;
+    busy = true; viewingOther = Boolean(otherAttempt); session = null; modalError = ''; openGrid = false;
+    document.querySelector('#practice-close').disabled = true;
+    modalBody.innerHTML = '<p class="practice-muted" role="status">กำลังเปิดโจทย์…</p>';
+    document.querySelector('#practice-title').textContent = `${subjectName(sid)} · ชุดที่ ${selectedSet}`;
+    if (!modal.open) modal.showModal();
+    try {
+      if (data.member.can_study && !otherAttempt) await post('start', { set_no:selectedSet, subject_id:sid });
+      const result = await api(`/api/practice?route=subject&set_no=${selectedSet}&subject_id=${sid}${otherAttempt ? `&attempt_id=${encodeURIComponent(otherAttempt)}` : ''}`);
+      if (!modal.open || ticket !== requestNo) return;
+      session = result; saved = new Map(result.answers.map(a => [a.question_id, a]));
+      choices = new Map(result.answers.map(a => [a.question_id, a.selected_answer]));
+      index = topicId ? result.questions.findIndex(q => q.topic_id === topicId) : result.questions.findIndex(q => !saved.has(q.question_id));
+      if (index < 0) index = 0;
+      await refresh();
+    } catch (error) { modalBody.innerHTML = `<p class="practice-inline-error" role="alert">${esc(error.message)}</p>`; }
+    finally { busy = false; document.querySelector('#practice-close').disabled = false; if (session && modal.open && ticket === requestNo) renderQuestion(); }
+  }
+
+  const editable = () => session?.attempt?.status === 'draft' && data.member.can_study && !viewingOther;
+  function questionGrid() {
+    return `<details class="practice-grid-wrap" ${openGrid ? 'open' : ''}><summary>ไปยังหัวข้อ · เขียวหมายถึงบันทึกคำตอบแล้ว${session.attempt?.status === 'graded' ? ' · สีส้มควรทบทวน' : ''}</summary><div class="practice-question-grid">${session.questions.map((q, i) => {
+      const a = saved.get(q.question_id), state = a ? session.attempt?.status === 'graded' && !a.is_correct ? 'incorrect' : 'answered' : '';
+      return `<button type="button" class="${state} ${i === index ? 'current' : ''}" data-question-index="${i}" aria-label="ข้อ ${i + 1} ${esc(topicName(q.topic_id))}${a ? ', ตอบแล้ว' : ', ยังไม่ตอบ'}" ${busy ? 'disabled' : ''}>${i + 1}${a ? '<span aria-hidden="true">✓</span>' : ''}</button>`;
+    }).join('')}</div></details>`;
+  }
+
+  function renderQuestion(focusChoice) {
+    if (!session) return;
+    const n = session.questions.length, a = session.attempt, status = a?.status;
+    document.querySelector('#practice-title').textContent = `${subjectName(session.subject_id)} · ชุดที่ ${session.set_no}${status ? ` · ${stateLabel[status]}` : ' · สำหรับครู'}`;
+    document.querySelector('#practice-close').disabled = busy;
+    const header = `<div class="practice-dialog-progress"><span>${status === 'graded' ? `ผลตรวจ ${pct(a.correct_count, a.total_count)} · ถูก ${a.correct_count}/${a.total_count}` : `บันทึกแล้ว ${saved.size} / ${n} ข้อ`}</span><progress value="${saved.size}" max="${n}" aria-label="บันทึกแล้ว ${saved.size} จาก ${n} ข้อ"></progress></div>`;
+    const error = modalError ? `<p class="practice-inline-error" role="alert">${esc(modalError)}</p>` : '';
+    if (index === n) {
+      modalBody.innerHTML = `${header}<div class="practice-complete"><span class="eyebrow">SUBJECT SUMMARY</span><h3>${status === 'submitted' ? 'ส่งคำตอบครบแล้ว · รอตรวจ' : status === 'graded' ? 'ตรวจและเปิดผลแล้ว' : saved.size === n ? 'ตอบครบวิชานี้แล้ว' : `ยังเหลือ ${n - saved.size} หัวข้อ`}</h3><p>${status === 'submitted' ? 'เมื่อผู้ดูแลกดตรวจ จะเห็นคะแนนและเปิดเฉลยรายข้อได้' : status === 'graded' ? 'เลือกหัวข้อด้านล่างเพื่อทบทวนวิธีทำและเหตุผล' : 'ส่งคำตอบทั้งวิชาเมื่อทำครบ หลังส่งคำตอบจะถูกล็อกจนผู้ดูแลตรวจและเปิดผล'}</p>${error}${editable() ? saved.size === n ? `<button type="button" class="practice-primary" data-submit ${busy ? 'disabled' : ''}>${busy ? 'กำลังส่ง…' : 'ส่งคำตอบครบทั้งวิชา'}</button>` : '<button type="button" class="practice-primary" data-unanswered>ไปหัวข้อที่ยังไม่ตอบ</button>' : ''}<button type="button" class="secondary" data-question-index="0" ${busy ? 'disabled' : ''}>กลับไปดูข้อแรก</button>${status === 'submitted' && !viewingOther ? '<button type="button" class="secondary" data-update-subject>อัปเดตผลตรวจ</button>' : ''}</div>${questionGrid()}`;
+      bindGrid();
+      return;
+    }
+    const q = session.questions[index], answer = saved.get(q.question_id), selected = choices.get(q.question_id);
+    const explanation = session.can_review && q.answer_key ? `<section class="practice-explanation"><span class="eyebrow">${status === 'graded' ? 'REVIEW & LEARN' : 'TEACHER NOTES'}</span><h4>เฉลย · ตัวเลือก ${q.answer_key}</h4><p class="practice-correct-answer">${esc(q.choices[q.answer_key - 1])}</p><h4>วิธีทำ / การพิจารณา</h4><p>${esc(q.explanation)}</p><h4>เหตุผลและจุดที่ควรระวัง</h4><p>${esc(q.reasoning)}</p><small>โจทย์แต่งใหม่ตามหัวข้อต้นฉบับ พ.ศ. 2562–2563</small></section>` : '';
+    modalBody.innerHTML = `${header}<div class="practice-question-heading"><span>${index + 1} / ${n} · ${esc(q.topic_id)}</span>${answer ? `<span class="practice-badge ${status === 'graded' ? answer.is_correct ? 'correct' : 'incorrect' : 'answered'}">${status === 'graded' ? answer.is_correct ? '✓ ตอบถูก' : 'ควรทบทวน' : '✓ บันทึกแล้ว'}</span>` : ''}<h3>${esc(topicName(q.topic_id))}</h3></div><p class="practice-prompt">${esc(q.prompt)}</p><fieldset class="practice-choices"><legend class="sr-only">เลือกคำตอบหนึ่งตัวเลือก</legend>${q.choices.map((text, i) => `<label class="practice-choice ${selected === i + 1 ? 'selected' : ''} ${session.can_review && q.answer_key === i + 1 ? 'answer-key' : ''}"><input type="radio" name="practice-choice" id="practice-choice-${i + 1}" value="${i + 1}" ${selected === i + 1 ? 'checked' : ''} ${!editable() || busy ? 'disabled' : ''}><span class="practice-choice-number">${i + 1}</span><span>${esc(text)}</span>${session.can_review && q.answer_key === i + 1 ? '<b class="practice-choice-key">เฉลย</b>' : ''}</label>`).join('')}</fieldset><p class="practice-save-status" role="status">${busy ? 'กำลังบันทึกคำตอบ…' : editable() ? 'เลือกคำตอบแล้วระบบบันทึกให้ · กดยืนยันเพื่อไปหัวข้อถัดไป' : status === 'submitted' ? 'ส่งแล้ว · คำตอบถูกล็อกระหว่างรอตรวจ' : status === 'graded' ? `คุณเลือกตัวเลือก ${answer?.selected_answer || '—'} · ดูวิธีทำด้านล่าง` : 'มุมมองครู · ดูโจทย์และเฉลยได้'}</p>${error}<div class="practice-navigation"><button type="button" class="secondary" data-back ${busy || index === 0 ? 'disabled' : ''}>← ย้อน</button>${editable() ? `<button type="button" class="secondary" data-skip ${busy ? 'disabled' : ''}>ข้าม →</button><button type="button" class="practice-primary" data-next ${busy || !selected ? 'disabled' : ''}>${index === n - 1 ? 'ยืนยันคำตอบและสรุปวิชา' : 'ยืนยันคำตอบและไปข้อต่อไป →'}</button>` : `<button type="button" class="practice-primary" data-next ${busy ? 'disabled' : ''}>${index === n - 1 ? 'สรุปวิชา' : 'ข้อถัดไป →'}</button>`}</div>${explanation}${questionGrid()}${viewingOther && status === 'submitted' ? `<div class="practice-grade-action"><p>ตรวจอัตโนมัติตามเฉลยและเปิดผลให้นักเรียนพร้อมกัน</p><button type="button" class="practice-primary" data-grade="${esc(a.attempt_id)}" ${busy ? 'disabled' : ''}>ตรวจและเปิดผล</button></div>` : ''}`;
+    if (focusChoice) modalBody.querySelector(`#practice-choice-${focusChoice}`)?.focus();
+    else modalBody.querySelector('.practice-question-heading h3')?.setAttribute('tabindex', '-1');
+    bindGrid();
+  }
+
+  function bindGrid() {
+    modalBody.querySelector('.practice-grid-wrap')?.addEventListener('toggle', event => { openGrid = event.target.open; });
+  }
+
+  async function saveChoice(question, value) {
+    if (!editable() || busy) return false;
+    if (saved.get(question.question_id)?.selected_answer === value) return true;
+    busy = true; modalError = ''; renderQuestion();
+    try {
+      await post('save', { attempt_id:session.attempt.attempt_id, question_id:question.question_id, selected_answer:value });
+      saved.set(question.question_id, { question_id:question.question_id, selected_answer:value });
+      const a = bank.attempts.find(x => x.attempt_id === session.attempt.attempt_id);
+      if (a) {
+        const old = bank.answers.find(x => x.attempt_id === a.attempt_id && x.question_id === question.question_id);
+        if (old) old.selected_answer = value; else bank.answers.push({ attempt_id:a.attempt_id, question_id:question.question_id, selected_answer:value });
+      }
+      renderPanel(); rerender();
+      return true;
+    } catch (error) { modalError = `${error.message} · กรุณากดยืนยันคำตอบเพื่อลองบันทึกอีกครั้ง`; return false; }
+    finally { busy = false; if (modal.open) renderQuestion(value); }
+  }
+
+  async function move(to) {
+    if (busy || !session) return;
+    if (editable() && index < session.questions.length) {
+      const q = session.questions[index], value = choices.get(q.question_id);
+      if (value && !await saveChoice(q, value)) return;
+    }
+    index = Math.max(0, Math.min(to, session.questions.length)); modalError = ''; renderQuestion();
+    modalBody.querySelector('.practice-question-heading h3')?.focus(); modal.scrollTop = 0;
+  }
+
+  async function closeModal() {
+    if (busy) return;
+    if (session && editable()) {
+      const q = session.questions[index], value = q && choices.get(q.question_id);
+      if (value && !await saveChoice(q, value)) return;
+    }
+    requestNo++; modal.close(); session = null;
+  }
+
+  async function updateSubject() {
+    if (!session || busy) return;
+    busy = true; const previousIndex = index;
+    try {
+      session = await api(`/api/practice?route=subject&set_no=${session.set_no}&subject_id=${session.subject_id}${viewingOther ? `&attempt_id=${session.attempt.attempt_id}` : ''}`);
+      saved = new Map(session.answers.map(a => [a.question_id, a])); choices = new Map(session.answers.map(a => [a.question_id, a.selected_answer]));
+      index = previousIndex; await refresh(); modalError = '';
+    } catch (error) { modalError = error.message; }
+    finally { busy = false; renderQuestion(); }
+  }
+
+  async function submitSubject() {
+    if (!editable() || busy || saved.size !== session.questions.length) return;
+    busy = true; modalError = ''; renderQuestion();
+    try {
+      session.attempt = (await post('submit', { attempt_id:session.attempt.attempt_id })).item;
+      if (session.attempt.status === 'graded') {
+        session = await api(`/api/practice?route=subject&set_no=${session.set_no}&subject_id=${session.subject_id}`);
+        saved = new Map(session.answers.map(a => [a.question_id, a]));
+      }
+      notice(session.attempt.status === 'graded' ? 'ผู้ดูแลตรวจและเปิดผลแล้ว' : 'ส่งคำตอบครบทั้งวิชาแล้ว · รอผู้ดูแลตรวจ');
+      await refresh();
+    }
+    catch (error) { modalError = error.message; }
+    finally { busy = false; renderQuestion(); }
+  }
+
+  async function openReview() {
+    if (busy || !data.member.can_manage) return;
+    requestNo++; busy = true; session = null;
+    document.querySelector('#practice-title').textContent = 'คำตอบนักเรียน · รอตรวจ';
+    modalBody.innerHTML = '<p class="practice-muted" role="status">กำลังเปิดรายการ…</p>'; if (!modal.open) modal.showModal();
+    try {
+      const result = await api('/api/practice?route=review');
+      modalBody.innerHTML = `<p class="practice-muted">กดตรวจเพื่อให้ระบบเทียบเฉลย คำนวณคะแนน และเปิดผลให้นักเรียน</p>${result.attempts.length ? result.attempts.map(a => `<article class="practice-review-row"><div><strong>${esc(a.member_name)}</strong><span>${esc(subjectName(a.subject_id))} · ชุดที่ ${a.set_no} · ${a.total_count} ข้อ</span><small>ส่ง ${esc(new Date(a.submitted_at).toLocaleString('th-TH'))}</small></div><div><button type="button" class="secondary" data-review-open="${a.attempt_id}" data-review-set="${a.set_no}" data-review-subject="${a.subject_id}">ดูคำตอบ</button><button type="button" class="practice-primary" data-grade="${a.attempt_id}">ตรวจและเปิดผล</button></div></article>`).join('') : '<div class="empty">ไม่มีคำตอบรอตรวจในขณะนี้</div>'}`;
+    } catch (error) { modalBody.innerHTML = `<p class="practice-inline-error" role="alert">${esc(error.message)}</p>`; }
+    finally { busy = false; document.querySelector('#practice-close').disabled = false; }
+  }
+
+  async function grade(id, button) {
+    if (busy || !data.member.can_manage) return;
+    busy = true; button.disabled = true; button.textContent = 'กำลังตรวจ…';
+    try {
+      await post('grade', { attempt_id:id }); notice('ตรวจและเปิดคะแนนกับเฉลยให้นักเรียนแล้ว');
+      busy = false;
+      if (session) await updateSubject(); else await openReview();
+      await refresh();
+    } catch (error) { busy = false; notice(error.message); button.disabled = false; button.textContent = 'ตรวจและเปิดผล'; }
+  }
+
+  const mainClick = event => {
+    const target = event.target.closest('button'); if (!target) return;
+    if (target.dataset.practice) {
+      const topic = data.topics.find(t => t.topic_id === target.dataset.practice); if (topic) openSubject(topic.subject_id, topic.topic_id);
+    } else if (target.dataset.practiceSubject) openSubject(target.dataset.practiceSubject);
+    else if (target.hasAttribute('data-practice-refresh')) refresh();
+    else if (target.hasAttribute('data-review')) openReview();
+    else if (target.dataset.resultSubject) { resultSubject = target.dataset.resultSubject; renderPanel(); }
+  };
+  const setChange = event => { if (event.target.id === 'practice-set') { selectedSet = Number(event.target.value); renderPanel(); rerender(); } };
+  const modalClick = event => {
+    const t = event.target.closest('button'); if (!t || busy) return;
+    if (t.dataset.questionIndex !== undefined) move(Number(t.dataset.questionIndex));
+    else if (t.hasAttribute('data-back')) move(index - 1);
+    else if (t.hasAttribute('data-next') || t.hasAttribute('data-skip')) move(index + 1);
+    else if (t.hasAttribute('data-unanswered')) move(session.questions.findIndex(q => !saved.has(q.question_id)));
+    else if (t.hasAttribute('data-submit')) submitSubject();
+    else if (t.hasAttribute('data-update-subject')) updateSubject();
+    else if (t.dataset.reviewOpen) { selectedSet = Number(t.dataset.reviewSet); openSubject(t.dataset.reviewSubject, null, t.dataset.reviewOpen); }
+    else if (t.dataset.grade) grade(t.dataset.grade, t);
+  };
+  const choiceChange = event => {
+    if (event.target.name !== 'practice-choice' || !editable() || busy) return;
+    const q = session.questions[index], value = Number(event.target.value); choices.set(q.question_id, value); saveChoice(q, value);
+  };
+  const cancel = event => { event.preventDefault(); closeModal(); };
+  main.addEventListener('click', mainClick); main.addEventListener('change', setChange);
+  modalBody.addEventListener('click', modalClick); modalBody.addEventListener('change', choiceChange);
+  modal.addEventListener('cancel', cancel); document.querySelector('#practice-close').addEventListener('click', closeModal);
+  renderPanel();
+  return { refresh, topicAction, subjectChanged() { resultSubject = getSubject(); if (bank?.ready) renderPanel(); }, destroy() {
+    requestNo++; main.removeEventListener('click', mainClick); main.removeEventListener('change', setChange);
+    modalBody.removeEventListener('click', modalClick); modalBody.removeEventListener('change', choiceChange);
+    modal.removeEventListener('cancel', cancel); document.querySelector('#practice-close').removeEventListener('click', closeModal);
+    modal.close(); session = null;
+  } };
+}
+
+return createPractice;})();
+
+
+const main = document.querySelector('#main');
+const account = document.querySelector('#account');
+const dialog = document.querySelector('#detail');
+const labels = { not_started:'ยังไม่เริ่ม', in_progress:'กำลังเรียน', review:'ทบทวน', completed:'เรียนแล้ว' };
+let data, subject = 'ENG', query = '', filter = 'all', noticeTimer, practice;
+const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const roles = member => [member.can_study?'นักเรียน':'',member.can_teach?'ครู / ผู้สอน':'',member.can_manage?'ผู้ดูแล':''].filter(Boolean).map(x=>`<span class="role">${x}</span>`).join('');
+
+async function api(url, options) {
+  const response = await fetch(url, { credentials:'include', cache:'no-store', ...options });
+  let result; try { result = await response.json(); } catch { throw new Error('อ่านข้อมูลไม่สำเร็จ กรุณาลองใหม่'); }
+  if (!response.ok || !result.success) { const error = new Error(result.message || 'ทำรายการไม่สำเร็จ'); error.status = response.status; throw error; }
+  return result;
+}
+
+function notice(text) {
+  const box = document.querySelector('#notice');
+  box.textContent = text; box.classList.add('visible');
+  clearTimeout(noticeTimer); noticeTimer = setTimeout(()=>box.classList.remove('visible'),4500);
+}
+
+function welcome(message = '') {
+  account.innerHTML = '';
+  main.innerHTML = `<section class="welcome"><div class="hero"><span class="eyebrow">NATHOENG SCHOOL</span><h1>เรียนรู้ไปด้วยกัน<br>เติบโตไปทีละเรื่อง</h1><p>พื้นที่เรียนรู้ของสมาชิกวัดพุทธอุทยานนาเทิง<br>รวมรายการหัวข้อเรียน และบันทึกการเรียนของตนเอง</p><a class="primary" href="https://watt.nathoeng.com/">เข้าสู่บัญชีสมาชิกวัด ↗</a></div>${message?`<p class="error" role="alert">${esc(message)}</p>`:''}<div class="steps"><strong>เข้า School ด้วยบัญชีสมาชิกเดิม</strong><br>1. ให้ผู้ดูแลวัดมอบสิทธิ์ School จากรายการสมาชิก<br>2. เปิด “บัญชีของฉัน” บนเว็บไซต์วัด<br>3. เลือก “การศึกษา School วัดนาเทิง”</div><p class="hint">เมื่อได้รับสิทธิ์แล้ว สามารถเข้า School จากเว็บไซต์วัดได้โดยไม่ต้องลงทะเบียนหรือล็อกอินอีกครั้ง</p></section>`;
+}
+
+function renderShell() {
+  account.innerHTML = `<span class="account-name">${esc(data.member.member_name)}</span><span>${roles(data.member)}</span><button type="button" id="logout">ออกจาก School</button>`;
+  main.innerHTML = `<section id="practice-dashboard" class="practice-dashboard" aria-label="ผลการฝึกของฉัน"></section><section class="hero"><span class="eyebrow">YOUR LEARNING SPACE</span><h1>วันนี้ เรียนรู้เพิ่มอีกหนึ่งเรื่อง</h1><p>เลือกวิชา สำรวจหัวข้อ แล้วค่อย ๆ บันทึกการเรียนของตนเอง<br>รายการเนื้อหาจากข้อสอบเตรียมทหารในส่วนของกองทัพบก พ.ศ. 2562–2563</p></section><section class="stats" aria-label="ภาพรวมรายการเนื้อหา"><div class="stat"><strong>${data.subjects.length}</strong><span>วิชา</span></div><div class="stat"><strong>${data.chapters.length}</strong><span>หมวด</span></div><div class="stat"><strong>${data.topics.length}</strong><span>หัวข้อ</span></div><div class="stat"><strong>${data.question_count}</strong><span>ข้อในต้นฉบับ</span></div></section><section><div class="section-title"><div><h2>รายการหัวข้อเรียน</h2><p>เริ่มจากวิชาที่สนใจ แล้วเลือกหมวดหรือค้นหาหัวข้อ</p></div>${data.member.can_manage?'<button type="button" class="secondary" id="members">สมาชิก School</button>':''}</div><nav class="tabs" aria-label="เลือกวิชา" id="subjects"></nav><div class="search-row"><input type="search" id="search" aria-label="ค้นหาหัวข้อเรียน" placeholder="ค้นหาชื่อหัวข้อ หรือรหัสหัวข้อ…"><select id="status-filter" aria-label="กรองสถานะการเรียน"><option value="all">ทุกสถานะ</option>${Object.entries(labels).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div><p class="progress-note" id="progress-note"></p><div id="chapters"></div></section>`;
+  document.querySelector('#search').addEventListener('input',event=>{query=event.target.value;renderCatalog();});
+  document.querySelector('#status-filter').addEventListener('change',event=>{filter=event.target.value;renderCatalog();});
+  document.querySelector('#logout').addEventListener('click',async()=>{try{await api('/api/session?route=logout',{method:'POST'});practice?.destroy();practice=null;data=null;welcome();}catch(error){notice(error.message);}});
+  document.querySelector('#members')?.addEventListener('click',showMembers);
+  practice = createPractice({main,data,api,notice,rerender:renderCatalog,getSubject:()=>subject});
+  renderCatalog();
+  practice.refresh();
+}
+
+function renderCatalog() {
+  const existingChapters = [...document.querySelectorAll("#chapters [data-chapter]")];
+  const openChapters = new Set(existingChapters.filter(c=>c.open).map(c=>c.dataset.chapter));
+  const hadSubject = existingChapters.some(c=>c.dataset.chapter.startsWith(subject+"-"));
+  document.querySelector('#subjects').innerHTML = data.subjects.map(s=>`<button type="button" class="tab ${s.subject_id===subject?'active':''}" aria-pressed="${s.subject_id===subject}" data-subject="${esc(s.subject_id)}">${esc(s.subject_name_th)}</button>`).join('');
+  const progress = new Map(data.progress.map(p=>[p.topic_id,p.status]));
+  const completed = data.progress.filter(p=>p.status==='completed').length;
+  document.querySelector('#progress-note').innerHTML = `บันทึกว่าเรียนแล้ว <strong>${completed} / ${data.topics.length}</strong> หัวข้อ · สถานะนี้เป็นบันทึกของตนเอง`;
+  const search = query.trim().toLocaleLowerCase('th');
+  const chapters = data.chapters.filter(c=>c.subject_id===subject).map(c=>{
+    const topics = data.topics.filter(t=>t.chapter_id===c.chapter_id && (!search || `${t.topic_id} ${t.topic_name_th} ${c.chapter_name_th}`.toLocaleLowerCase('th').includes(search)) && (filter==='all'||(progress.get(t.topic_id)||'not_started')===filter));
+    return { ...c, topics };
+  }).filter(c=>c.topics.length);
+  document.querySelector('#chapters').innerHTML = chapters.length ? chapters.map((c,index)=>`<details class="chapter" data-chapter="${esc(c.chapter_id)}" ${search||openChapters.has(c.chapter_id)||(!hadSubject&&index===0)?'open':''}><summary><span class="chapter-code">${esc(c.chapter_id)}</span><span class="chapter-name">${esc(c.chapter_name_th)}</span><small>${c.topics.length} หัวข้อ</small></summary>${c.topics.map(t=>{
+    const status = progress.get(t.topic_id)||'not_started';
+    return `<article class="topic"><div><div class="topic-head"><span class="topic-code">${esc(t.topic_id)}</span><span class="topic-name">${esc(t.topic_name_th)}</span></div><div class="topic-meta">${t.counts.total?`พบเป็นหัวข้อหลัก ${t.counts.total} ข้อ · 2562: ${t.counts.year_2562} · 2563: ${t.counts.year_2563}<button type="button" data-topic="${esc(t.topic_id)}">ดูหน้าอ้างอิง</button>`:'ไม่พบเป็นหัวข้อหลักในสองชุดนี้'}</div>${practice?.topicAction(t)||''}</div>${data.member.can_study?`<select aria-label="สถานะ ${esc(t.topic_name_th)}" data-progress="${esc(t.topic_id)}">${Object.entries(labels).map(([k,v])=>`<option value="${k}" ${k===status?'selected':''}>${v}</option>`).join('')}</select>`:`<span class="status">${labels[status]}</span>`}</article>`;
+  }).join('')}</details>`).join('') : '<div class="empty">ไม่พบหัวข้อที่ตรงกับคำค้นหรือสถานะที่เลือก</div>';
+}
+
+main.addEventListener('click',event=>{
+  const tab=event.target.closest('[data-subject]'); if(tab){subject=tab.dataset.subject;renderCatalog();practice?.subjectChanged();}
+  const topic=event.target.closest('[data-topic]'); if(topic)showQuestions(topic.dataset.topic);
+});
+main.addEventListener('change',async event=>{
+  const select=event.target.closest('[data-progress]'); if(!select)return;
+  const id=select.dataset.progress, status=select.value;
+  select.disabled=true;
+  try {
+    await api('/api/school?route=progress',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic_id:id,status})});
+    const existing=data.progress.find(p=>p.topic_id===id); if(existing)existing.status=status;else data.progress.push({topic_id:id,status});
+    notice('บันทึกการเรียนแล้ว');
+  } catch(error){notice(error.message);}
+  renderCatalog();
+});
+
+async function showQuestions(id) {
+  const topic=data.topics.find(t=>t.topic_id===id);
+  document.querySelector('#detail-title').textContent=topic.topic_name_th;
+  document.querySelector('#detail-body').textContent='กำลังเปิดรายการ…';
+  dialog.showModal();
+  try {
+    const result=await api('/api/school?route=questions&topic_id='+encodeURIComponent(id));
+    if(!dialog.open)return;
+    document.querySelector('#detail-body').innerHTML=result.questions.map(q=>`<article class="reference"><strong>พ.ศ. ${q.year_be} · ข้อ ${q.exam_question_no}</strong><p>${esc(q.content_focus_th)}</p><small>EX62_63.pdf · หน้า PDF ${esc(q.pdf_pages.join(', '))} · หน้าพิมพ์ ${esc(q.printed_pages.join(', '))}</small>${q.answer_key?`<br><span class="key">เฉลยตามต้นฉบับ: ตัวเลือก ${q.answer_key}</span>`:''}</article>`).join('') || '<p>ยังไม่มีรายการข้อสอบหลักสำหรับหัวข้อนี้</p>';
+  } catch(error){document.querySelector('#detail-body').textContent=error.message;}
+}
+
+async function showMembers() {
+  document.querySelector('#detail-title').textContent='สมาชิก School';
+  document.querySelector('#detail-body').textContent='กำลังเปิดรายชื่อ…';dialog.showModal();
+  try {
+    const result=await api('/api/school?route=members');
+    document.querySelector('#detail-body').innerHTML=`<p class="progress-note">มอบหมายหรือถอนสิทธิ์ได้จากรายการสมาชิกบนเว็บไซต์วัด</p>${result.members.map(m=>`<div class="member-row"><strong>${esc(m.member_name)}</strong>${roles(m)}<small>${m.is_active?'ใช้งานอยู่':'ถอนสิทธิ์แล้ว'} · มอบหมาย ${esc(new Date(m.assigned_at).toLocaleDateString('th-TH'))}</small></div>`).join('')||'<p>ยังไม่มีสมาชิก</p>'}<p><a class="secondary" href="https://watt.nathoeng.com/">เปิดเว็บไซต์สมาชิกวัด ↗</a></p>`;
+  } catch(error){document.querySelector('#detail-body').textContent=error.message;}
+}
+document.querySelector('#close-detail').addEventListener('click',()=>dialog.close());
+try { data=await api('/api/school?route=catalog');const order=['ENG','MATH','SCI','THAI','SOC'];data.subjects.sort((a,b)=>order.indexOf(a.subject_id)-order.indexOf(b.subject_id));renderShell(); }
+catch(error){welcome(error.status===401?'':error.message);}
+</script>
 </body>
 </html>
