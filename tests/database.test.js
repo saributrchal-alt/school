@@ -60,6 +60,8 @@ test('database credentials and safe bridge readiness diagnostics', async t => {
       assert.equal(result.status, 503);
       assert.equal(result.body.code, 'school_schema_missing');
       assert.equal(result.body.table, 'school_member_bridge_events');
+      assert.equal(result.body.db_status, 404);
+      assert.equal(result.body.db_code, 'PGRST205');
       assert.equal(JSON.stringify(result).includes('sb_secret_fixture_only'), false);
       assert.equal(logs.join('\n').includes('private fixture name'), false);
       assert.equal(logs.join('\n').includes('sb_secret_fixture_only'), false);
@@ -80,6 +82,14 @@ test('database credentials and safe bridge readiness diagnostics', async t => {
     await t.test('database conflicts retain 409 for existing import race handling', async () => {
       reply = () => new Response(JSON.stringify({ code: '23505' }), { status: 409 });
       await assert.rejects(db('school_members', 'POST', { member_id: 'fixture' }), error => error.status === 409);
+    });
+    await t.test('gateway endpoints and malformed API keys have actionable errors', async () => {
+      reply = () => new Response('{"error":"Invalid API key"}', { status: 400 });
+      assert.equal((await health()).body.code, 'school_db_key_invalid');
+      reply = () => new Response('{"error":"Requested path is invalid"}', { status: 404 });
+      const result = await health();
+      assert.equal(result.body.code, 'school_db_endpoint_missing');
+      assert.equal(result.body.db_status, 404);
     });
   } finally {
     globalThis.fetch = originalFetch;
