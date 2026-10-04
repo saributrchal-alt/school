@@ -1,4 +1,4 @@
-import { body, db, verifyBridge, memberId, findMember, requireMember, sameOrigin, fail, sendError, MEMBER_FIELDS } from '../lib/school.js';
+import { body, db, verifyBridge, memberId, findMember, requireMember, sameOrigin, fail, sendError, bridgeHealth, MEMBER_FIELDS } from '../lib/school.js';
 
 async function importMember(req, res) {
   const p = body(req);
@@ -43,6 +43,12 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   const route = req.query?.route || 'catalog';
   try {
+    if (route === 'health') {
+      if (req.method !== 'GET') fail('Method not allowed', 405);
+      // A readiness check only: limit=0 verifies access/schema without reading member rows.
+      await bridgeHealth();
+      return res.status(200).json({ success: true, status: 'ready' });
+    }
     if (route === 'member-status') {
       if (req.method !== 'POST') fail('Method not allowed', 405);
       const p = body(req);
