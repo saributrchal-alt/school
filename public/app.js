@@ -1,8 +1,10 @@
+import { createPractice } from './practice.js';
+
 const main = document.querySelector('#main');
 const account = document.querySelector('#account');
 const dialog = document.querySelector('#detail');
 const labels = { not_started:'ยังไม่เริ่ม', in_progress:'กำลังเรียน', review:'ทบทวน', completed:'เรียนแล้ว' };
-let data, subject = 'ENG', query = '', filter = 'all', noticeTimer;
+let data, subject = 'ENG', query = '', filter = 'all', noticeTimer, practice;
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const roles = member => [member.can_study?'นักเรียน':'',member.can_teach?'ครู / ผู้สอน':'',member.can_manage?'ผู้ดูแล':''].filter(Boolean).map(x=>`<span class="role">${x}</span>`).join('');
 
@@ -26,15 +28,20 @@ function welcome(message = '') {
 
 function renderShell() {
   account.innerHTML = `<span class="account-name">${esc(data.member.member_name)}</span><span>${roles(data.member)}</span><button type="button" id="logout">ออกจาก School</button>`;
-  main.innerHTML = `<section class="hero"><span class="eyebrow">YOUR LEARNING SPACE</span><h1>วันนี้ เรียนรู้เพิ่มอีกหนึ่งเรื่อง</h1><p>เลือกวิชา สำรวจหัวข้อ แล้วค่อย ๆ บันทึกการเรียนของตนเอง<br>รายการเนื้อหาจากข้อสอบเตรียมทหารในส่วนของกองทัพบก พ.ศ. 2562–2563</p></section><section class="stats" aria-label="ภาพรวมรายการเนื้อหา"><div class="stat"><strong>${data.subjects.length}</strong><span>วิชา</span></div><div class="stat"><strong>${data.chapters.length}</strong><span>หมวด</span></div><div class="stat"><strong>${data.topics.length}</strong><span>หัวข้อ</span></div><div class="stat"><strong>${data.question_count}</strong><span>ข้อในต้นฉบับ</span></div></section><section><div class="section-title"><div><h2>รายการหัวข้อเรียน</h2><p>เริ่มจากวิชาที่สนใจ แล้วเลือกหมวดหรือค้นหาหัวข้อ</p></div>${data.member.can_manage?'<button type="button" class="secondary" id="members">สมาชิก School</button>':''}</div><nav class="tabs" aria-label="เลือกวิชา" id="subjects"></nav><div class="search-row"><input type="search" id="search" aria-label="ค้นหาหัวข้อเรียน" placeholder="ค้นหาชื่อหัวข้อ หรือรหัสหัวข้อ…"><select id="status-filter" aria-label="กรองสถานะการเรียน"><option value="all">ทุกสถานะ</option>${Object.entries(labels).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div><p class="progress-note" id="progress-note"></p><div id="chapters"></div></section>`;
+  main.innerHTML = `<section id="practice-dashboard" class="practice-dashboard" aria-label="ผลการฝึกของฉัน"></section><section class="hero"><span class="eyebrow">YOUR LEARNING SPACE</span><h1>วันนี้ เรียนรู้เพิ่มอีกหนึ่งเรื่อง</h1><p>เลือกวิชา สำรวจหัวข้อ แล้วค่อย ๆ บันทึกการเรียนของตนเอง<br>รายการเนื้อหาจากข้อสอบเตรียมทหารในส่วนของกองทัพบก พ.ศ. 2562–2563</p></section><section class="stats" aria-label="ภาพรวมรายการเนื้อหา"><div class="stat"><strong>${data.subjects.length}</strong><span>วิชา</span></div><div class="stat"><strong>${data.chapters.length}</strong><span>หมวด</span></div><div class="stat"><strong>${data.topics.length}</strong><span>หัวข้อ</span></div><div class="stat"><strong>${data.question_count}</strong><span>ข้อในต้นฉบับ</span></div></section><section><div class="section-title"><div><h2>รายการหัวข้อเรียน</h2><p>เริ่มจากวิชาที่สนใจ แล้วเลือกหมวดหรือค้นหาหัวข้อ</p></div>${data.member.can_manage?'<button type="button" class="secondary" id="members">สมาชิก School</button>':''}</div><nav class="tabs" aria-label="เลือกวิชา" id="subjects"></nav><div class="search-row"><input type="search" id="search" aria-label="ค้นหาหัวข้อเรียน" placeholder="ค้นหาชื่อหัวข้อ หรือรหัสหัวข้อ…"><select id="status-filter" aria-label="กรองสถานะการเรียน"><option value="all">ทุกสถานะ</option>${Object.entries(labels).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div><p class="progress-note" id="progress-note"></p><div id="chapters"></div></section>`;
   document.querySelector('#search').addEventListener('input',event=>{query=event.target.value;renderCatalog();});
   document.querySelector('#status-filter').addEventListener('change',event=>{filter=event.target.value;renderCatalog();});
-  document.querySelector('#logout').addEventListener('click',async()=>{try{await api('/api/session?route=logout',{method:'POST'});data=null;welcome();}catch(error){notice(error.message);}});
+  document.querySelector('#logout').addEventListener('click',async()=>{try{await api('/api/session?route=logout',{method:'POST'});practice?.destroy();practice=null;data=null;welcome();}catch(error){notice(error.message);}});
   document.querySelector('#members')?.addEventListener('click',showMembers);
+  practice = createPractice({main,data,api,notice,rerender:renderCatalog,getSubject:()=>subject});
   renderCatalog();
+  practice.refresh();
 }
 
 function renderCatalog() {
+  const existingChapters = [...document.querySelectorAll("#chapters [data-chapter]")];
+  const openChapters = new Set(existingChapters.filter(c=>c.open).map(c=>c.dataset.chapter));
+  const hadSubject = existingChapters.some(c=>c.dataset.chapter.startsWith(subject+"-"));
   document.querySelector('#subjects').innerHTML = data.subjects.map(s=>`<button type="button" class="tab ${s.subject_id===subject?'active':''}" aria-pressed="${s.subject_id===subject}" data-subject="${esc(s.subject_id)}">${esc(s.subject_name_th)}</button>`).join('');
   const progress = new Map(data.progress.map(p=>[p.topic_id,p.status]));
   const completed = data.progress.filter(p=>p.status==='completed').length;
@@ -44,14 +51,14 @@ function renderCatalog() {
     const topics = data.topics.filter(t=>t.chapter_id===c.chapter_id && (!search || `${t.topic_id} ${t.topic_name_th} ${c.chapter_name_th}`.toLocaleLowerCase('th').includes(search)) && (filter==='all'||(progress.get(t.topic_id)||'not_started')===filter));
     return { ...c, topics };
   }).filter(c=>c.topics.length);
-  document.querySelector('#chapters').innerHTML = chapters.length ? chapters.map((c,index)=>`<details class="chapter" ${search||index===0?'open':''}><summary><span class="chapter-code">${esc(c.chapter_id)}</span><span class="chapter-name">${esc(c.chapter_name_th)}</span><small>${c.topics.length} หัวข้อ</small></summary>${c.topics.map(t=>{
+  document.querySelector('#chapters').innerHTML = chapters.length ? chapters.map((c,index)=>`<details class="chapter" data-chapter="${esc(c.chapter_id)}" ${search||openChapters.has(c.chapter_id)||(!hadSubject&&index===0)?'open':''}><summary><span class="chapter-code">${esc(c.chapter_id)}</span><span class="chapter-name">${esc(c.chapter_name_th)}</span><small>${c.topics.length} หัวข้อ</small></summary>${c.topics.map(t=>{
     const status = progress.get(t.topic_id)||'not_started';
-    return `<article class="topic"><div><div class="topic-head"><span class="topic-code">${esc(t.topic_id)}</span><span class="topic-name">${esc(t.topic_name_th)}</span></div><div class="topic-meta">${t.counts.total?`พบเป็นหัวข้อหลัก ${t.counts.total} ข้อ · 2562: ${t.counts.year_2562} · 2563: ${t.counts.year_2563}<button type="button" data-topic="${esc(t.topic_id)}">ดูหน้าอ้างอิง</button>`:'ไม่พบเป็นหัวข้อหลักในสองชุดนี้'}</div></div>${data.member.can_study?`<select aria-label="สถานะ ${esc(t.topic_name_th)}" data-progress="${esc(t.topic_id)}">${Object.entries(labels).map(([k,v])=>`<option value="${k}" ${k===status?'selected':''}>${v}</option>`).join('')}</select>`:`<span class="status">${labels[status]}</span>`}</article>`;
+    return `<article class="topic"><div><div class="topic-head"><span class="topic-code">${esc(t.topic_id)}</span><span class="topic-name">${esc(t.topic_name_th)}</span></div><div class="topic-meta">${t.counts.total?`พบเป็นหัวข้อหลัก ${t.counts.total} ข้อ · 2562: ${t.counts.year_2562} · 2563: ${t.counts.year_2563}<button type="button" data-topic="${esc(t.topic_id)}">ดูหน้าอ้างอิง</button>`:'ไม่พบเป็นหัวข้อหลักในสองชุดนี้'}</div>${practice?.topicAction(t)||''}</div>${data.member.can_study?`<select aria-label="สถานะ ${esc(t.topic_name_th)}" data-progress="${esc(t.topic_id)}">${Object.entries(labels).map(([k,v])=>`<option value="${k}" ${k===status?'selected':''}>${v}</option>`).join('')}</select>`:`<span class="status">${labels[status]}</span>`}</article>`;
   }).join('')}</details>`).join('') : '<div class="empty">ไม่พบหัวข้อที่ตรงกับคำค้นหรือสถานะที่เลือก</div>';
 }
 
 main.addEventListener('click',event=>{
-  const tab=event.target.closest('[data-subject]'); if(tab){subject=tab.dataset.subject;renderCatalog();}
+  const tab=event.target.closest('[data-subject]'); if(tab){subject=tab.dataset.subject;renderCatalog();practice?.subjectChanged();}
   const topic=event.target.closest('[data-topic]'); if(topic)showQuestions(topic.dataset.topic);
 });
 main.addEventListener('change',async event=>{

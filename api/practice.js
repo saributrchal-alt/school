@@ -1,0 +1,31 @@
+import { body, requireMember, sameOrigin, fail, sendError } from '../lib/school.js';
+import { summary, subject, reviewQueue, transaction } from '../lib/practice.js';
+
+export default async function handler(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const member = await requireMember(req);
+    const route = req.query?.route || 'summary';
+    if (req.method === 'GET') {
+      if (route === 'summary') {
+        try { return res.status(200).json({ success: true, ...await summary(member) }); }
+        catch (error) {
+          if (error.code === 'school_schema_missing' && error.table?.startsWith('school_practice_')) {
+            return res.status(200).json({ success: true, ready: false, setup_required: true });
+          }
+          throw error;
+        }
+      }
+      if (route === 'subject') return res.status(200).json({ success: true, ...await subject(member, req.query) });
+      if (route === 'review') {
+        if (!member.can_manage) fail('เฉพาะผู้ดูแล School', 403);
+        return res.status(200).json({ success: true, attempts: await reviewQueue() });
+      }
+      fail('ไม่พบรายการ', 404);
+    }
+    if (req.method !== 'POST') fail('Method not allowed', 405);
+    sameOrigin(req);
+    if (!['start', 'save', 'submit', 'grade'].includes(route)) fail('ไม่พบรายการ', 404);
+    return res.status(200).json({ success: true, item: await transaction(route, member, body(req)) });
+  } catch (error) { return sendError(res, error); }
+}

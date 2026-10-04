@@ -29,7 +29,21 @@ The seeded content is a topic catalog and question references from the scanned s
 
 `npm test` exercises the sender, receiver, handoff, current permissions, stale/forged requests, revocation, source membership cancellation and student answer-key access using an in-memory REST fixture. No real member records are created by tests.
 
-There are two Vercel Node functions (`api/session.js`, `api/school.js`), below the 12-function project limit.
+There are three Vercel Node functions (`api/session.js`, `api/school.js`, `api/practice.js`). The project has ten JavaScript files in total, including libraries, browser modules and tests.
+
+## Practice sets
+
+The new practice bank is independent of the 2562–2563 source references and self-recorded study status. Set 1 has one newly authored five-choice question per topic: ENG 38, MATH 67, SCI 77, THAI 39, SOC 40 (261 total). The schema supports sets 1–10; only set 1 is supplied initially.
+
+Run the separately delivered **private** `School_Practice_Set1.sql` in School's Supabase SQL Editor after the original catalog SQL. Its five verification rows must have `passed = true`. It installs the schema and the full question bank in one transaction. Rerunning retains existing questions, answers and grading history. `supabase/School_Practice_schema.sql` contains only the schema and cannot install questions by itself. Before installation, the original catalog stays usable and the practice panel shows preparation pending.
+
+**Keep the full seed SQL and teacher JSON out of this public repository and out of `public/`.** They contain the real answer keys, explanations and reasoning. No new environment variable is needed. The browser uses only the authenticated School API; Supabase anon/authenticated roles have no practice table or RPC access. The backend service role can read the new tables; writes use restricted database transactions.
+
+Students choose an answer in the popup; the server saves it before showing a green answered state. They can go back, skip, close and resume a draft. Confirming advances within the same subject. A subject can be submitted only after every topic is answered; submission locks its answers. A manager presses **ตรวจและเปิดผล**, which checks all answers and publishes scores and solutions atomically. Teachers can preview the answer key and worked explanation from the start; teachers without manage permission cannot grade. Current School and Temple membership are rechecked on every protected request.
+
+The dashboard shows the member's overall accuracy for the selected set, five subject results, topic accuracy across graded sets, and (when more sets are active) a per-set comparison. Overall accuracy is total correct divided by total graded questions. Ungraded subjects contribute neither a score nor a zero. Set 1 gives a topic result of 0% or 100%; additional graded sets accumulate that topic's percentage. The first release keeps one attempt per member, subject and set; it does not implement retakes.
+
+The API tests cover cookie ownership, teacher/student/manager boundaries, result privacy before release, grading identity, CSRF, revocation, schema setup and future-set pagination with synthetic content. The actual seed was separately checked in PostgreSQL through PGlite: all 261 keys, five subject submissions, locks, incomplete submission, database privileges, role changes, repeated install and preservation of 440 source records. No real member or production database data is used in those tests. Practice questions use text; no new media upload or Supabase Storage bucket is created.
 
 ## Bridge diagnostics
 
