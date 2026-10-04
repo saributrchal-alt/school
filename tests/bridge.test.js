@@ -32,7 +32,7 @@ function fixture() {
   const setEnv=kind=>{process.env.SUPABASE_URL=kind==='temple'?'https://temple-db.invalid':'https://school-db.invalid';process.env.SUPABASE_SECRET_KEY='fixture-only';process.env.SCHOOL_BRIDGE_KEY=key;process.env.SESSION_SECRET=sourceSecret;};
   async function invoke(handler,url,options={}) {
     const u=new URL(url),oldUrl=process.env.SUPABASE_URL;
-    setEnv(u.hostname==='nathoeng.com'?'temple':'school');
+    setEnv(u.hostname==='watt.nathoeng.com'?'temple':'school');
     const headers=Object.fromEntries(Object.entries(options.headers||{}).map(([k,v])=>[k.toLowerCase(),v]));
     const req={method:options.method||'GET',url:u.pathname+u.search,query:Object.fromEntries(u.searchParams),headers:{host:u.host,...headers},body:typeof options.body==='string'?JSON.parse(options.body):options.body};
     const result={status:200,headers:{},body:null};
@@ -44,7 +44,7 @@ function fixture() {
   globalThis.fetch=async(input,options={})=>{
     const u=new URL(input),method=options.method||'GET';
     if(u.hostname==='school.nathoeng.com')return response(await invoke(u.pathname==='/api/session'?session:school,u.href,options));
-    if(u.hostname==='nathoeng.com') {
+    if(u.hostname==='watt.nathoeng.com') {
       if(templeMember)return response(await invoke(templeMember,u.href,options));
       const p=JSON.parse(options.body),signature=crypto.createHmac('sha256',key).update(JSON.stringify(p)).digest('hex');
       if(options.headers['X-School-Signature']!==signature)return new Response('{"success":false}',{status:403});
@@ -77,7 +77,7 @@ function fixture() {
   setEnv('school');
   const payload=extra=>({member_id:'student-1',member_name:'นักเรียนทดสอบ',assigned_by:'admin-1',can_study:true,can_teach:false,can_manage:false,is_active:true,issued_at:new Date().toISOString(),event_id:crypto.randomUUID(),...extra});
   const importRequest=async(p,signature)=>invoke(school,'https://school.nathoeng.com/api/school?route=member-import',{method:'POST',body:p,headers:{'x-school-signature':signature??crypto.createHmac('sha256',key).update(JSON.stringify(p)).digest('hex')}});
-  const exchange=token=>invoke(session,'https://school.nathoeng.com/api/session',{method:'POST',body:{token},headers:{origin:'https://nathoeng.com'}});
+  const exchange=token=>invoke(session,'https://school.nathoeng.com/api/session',{method:'POST',body:{token},headers:{origin:'https://watt.nathoeng.com'}});
   const schoolGet=(route,cookie,query='')=>invoke(school,`https://school.nathoeng.com/api/school?route=${route}${query}`,{headers:{cookie}});
   return {rows,audit,invoke,payload,importRequest,exchange,schoolGet,restore(){globalThis.fetch=originalFetch;}};
 }
@@ -150,18 +150,18 @@ test('actual Temple sender → School receiver → member handoff',{skip:!hasTem
   const f=fixture();
   try {
     const request={method:'POST',body:{memberId:'student-1',department:'school',active:true,canStudy:true,canTeach:false,canManage:false,assigned_by:'forged-admin'},headers:{cookie:sourceCookie('admin-1','admin')}};
-    const assigned=await f.invoke(templeAdmin,'https://nathoeng.com/api/admin-bookings?route=assign-department',request);
+    const assigned=await f.invoke(templeAdmin,'https://watt.nathoeng.com/api/admin-bookings?route=assign-department',request);
     assert.equal(assigned.status,200);assert.equal(f.rows.school_members[0].assigned_by,'admin-1');
-    const transferred=await f.invoke(templeMember,'https://nathoeng.com/api/my-bookings?route=school-handoff',{headers:{cookie:sourceCookie('student-1')}});
+    const transferred=await f.invoke(templeMember,'https://watt.nathoeng.com/api/my-bookings?route=school-handoff',{headers:{cookie:sourceCookie('student-1')}});
     assert.equal(transferred.status,200);
     const accepted=await f.exchange(transferred.body.token);assert.equal(accepted.status,303);
     const cookie=accepted.headers['set-cookie'].split(';')[0];assert.equal((await f.schoolGet('catalog',cookie)).status,200);
     f.rows.members[0].role='member';
-    assert.equal((await f.invoke(templeAdmin,'https://nathoeng.com/api/admin-bookings?route=assign-department',request)).status,403);
+    assert.equal((await f.invoke(templeAdmin,'https://watt.nathoeng.com/api/admin-bookings?route=assign-department',request)).status,403);
     f.rows.members[0].role='admin';
-    const acting=await f.invoke(templeMember,'https://nathoeng.com/api/my-bookings?route=school-handoff',{headers:{cookie:sourceCookie('student-1','member',{actingAdminId:'admin-1'})}});
+    const acting=await f.invoke(templeMember,'https://watt.nathoeng.com/api/my-bookings?route=school-handoff',{headers:{cookie:sourceCookie('student-1','member',{actingAdminId:'admin-1'})}});
     assert.equal(acting.status,403);
-    const revoked=await f.invoke(templeAdmin,'https://nathoeng.com/api/admin-bookings?route=assign-department',{...request,body:{...request.body,active:false}});
+    const revoked=await f.invoke(templeAdmin,'https://watt.nathoeng.com/api/admin-bookings?route=assign-department',{...request,body:{...request.body,active:false}});
     assert.equal(revoked.status,200);assert.equal((await f.schoolGet('catalog',cookie)).status,403);
   } finally {f.restore();}
 });

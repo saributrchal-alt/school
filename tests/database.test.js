@@ -22,7 +22,12 @@ test('database credentials and safe bridge readiness diagnostics', async t => {
   process.env.SUPABASE_SECRET_KEY = ' sb_secret_fixture_only\n';
   process.env.SCHOOL_BRIDGE_KEY = 'fixture_bridge_only';
   let reply = () => new Response('[]');
-  globalThis.fetch = async (url, options) => { requests.push({ url, options }); return reply(url); };
+  let templeReply = () => new Response('{"success":true,"is_active":false}');
+  globalThis.fetch = async (url, options) => {
+    requests.push({ url, options });
+    if (new URL(url).hostname === 'watt.nathoeng.com') return templeReply(url);
+    return reply(url);
+  };
   try {
     await t.test('opaque secret key uses apikey without an invalid Bearer token', async () => {
       await db('school_members?select=member_id&limit=0');
@@ -50,15 +55,28 @@ test('database credentials and safe bridge readiness diagnostics', async t => {
       const result = await health();
       assert.equal(result.status, 200);
       assert.deepEqual(result.body, { success: true, status: 'ready' });
-      assert.equal(requests.length, 2);
-      for (const request of requests) {
+      assert.equal(requests.length, 3);
+      for (const request of requests.filter(request => new URL(request.url).hostname === 'school-db.invalid')) {
         assert.equal(request.options.method, 'GET');
         assert.equal(new URL(request.url).searchParams.get('limit'), '0');
       }
+      const source = requests.find(request => new URL(request.url).hostname === 'watt.nathoeng.com');
+      assert.equal(source.url, 'https://watt.nathoeng.com/api/my-bookings?route=school-member-status');
+      assert.equal(source.options.method, 'POST');
+      assert.match(source.options.headers['X-School-Signature'], /^[a-f0-9]{64}$/);
+      assert.equal(JSON.parse(source.options.body).member_id, '00000000-0000-4000-8000-000000000000');
       assert.equal(JSON.stringify(result).includes('private fixture name'), false);
       const before = requests.length;
       assert.equal((await health('POST')).status, 405);
       assert.equal(requests.length, before);
+    });
+    await t.test('readiness fails when the signed Temple callback cannot verify membership', async () => {
+      reply = () => new Response('[]');
+      templeReply = () => new Response('{"success":false}', { status: 403 });
+      assert.equal((await health()).status, 503);
+      templeReply = () => new Response('{"success":true,"is_active":"false"}');
+      assert.equal((await health()).status, 503);
+      templeReply = () => new Response('{"success":true,"is_active":false}');
     });
     await t.test('missing bridge table is distinguished without revealing raw error text', async () => {
       reply = url => url.includes('school_member_bridge_events')
