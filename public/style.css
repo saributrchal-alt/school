@@ -31,3 +31,28 @@
 @media(max-width:640px){.learning-home-hero{padding-top:31px;padding-bottom:31px}.learning-grid,.level-grid{grid-template-columns:1fr}.learning-card{min-height:150px;padding:20px}.learning-card strong{font-size:16px}.page-head{padding:23px 20px;border-radius:17px}.page-head h1{font-size:22px}.level-card{min-height:78px}.empty-state{padding:27px 22px}}
 
 .level-card>span{display:flex;flex-direction:column;align-items:flex-start;gap:6px}.level-card>span>strong{font-size:15px;font-weight:600;line-height:1.45}.level-status{display:block;font-size:10px;font-weight:500;line-height:1.35;color:#8a968f}.level-status.pending{color:#9a8662}.level-status.ready{color:#39644c}
+
+/* Wikimedia Commons image backgrounds for learning categories */
+.learning-card.has-bg{
+  overflow:hidden;
+  color:#fff;
+  border-color:rgba(255,255,255,.16);
+  background-color:#183a31;
+  background-image:
+    linear-gradient(180deg,rgba(10,28,23,.34) 0%,rgba(10,28,23,.74) 100%),
+    var(--card-bg);
+  background-size:cover;
+  background-position:center;
+  background-repeat:no-repeat;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);
+}
+.learning-card.has-bg:hover{
+  border-color:rgba(255,255,255,.26);
+  box-shadow:0 12px 28px rgba(25,62,53,.18),inset 0 0 0 1px rgba(255,255,255,.05);
+}
+.learning-card.has-bg .learning-card-kicker{color:#f2d8a7}
+.learning-card.has-bg strong{color:#fff;text-shadow:0 1px 9px rgba(0,0,0,.34)}
+.learning-card.has-bg small{color:rgba(255,255,255,.88)}
+.learning-card.has-bg .learning-muted{color:rgba(255,255,255,.82)}
+.learning-card.has-bg .learning-ready{color:#e4f7df}
+.learning-card.has-bg .learning-arrow{color:rgba(255,255,255,.78)}
