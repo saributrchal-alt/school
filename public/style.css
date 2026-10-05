@@ -29,3 +29,5 @@
 .empty-state p{font-size:13px;color:var(--muted);line-height:1.8;margin:9px 0 22px;max-width:620px}
 @media(max-width:880px){.learning-grid,.level-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.learning-home-hero{padding-top:31px;padding-bottom:31px}.learning-grid,.level-grid{grid-template-columns:1fr}.learning-card{min-height:150px;padding:20px}.learning-card strong{font-size:16px}.page-head{padding:23px 20px;border-radius:17px}.page-head h1{font-size:22px}.level-card{min-height:78px}.empty-state{padding:27px 22px}}
+
+.level-card>span{display:flex;flex-direction:column;align-items:flex-start;gap:6px}.level-card>span>strong{font-size:15px;font-weight:600;line-height:1.45}.level-status{display:block;font-size:10px;font-weight:500;line-height:1.35;color:#8a968f}.level-status.pending{color:#9a8662}.level-status.ready{color:#39644c}
