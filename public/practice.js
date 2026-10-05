@@ -1,7 +1,7 @@
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 const pct = (correct, total) => total ? `${Number((100 * correct / total).toFixed(1)).toLocaleString('th-TH')}%` : '—';
 const stateLabel = { draft:'กำลังทำ', submitted:'รอตรวจ', graded:'ตรวจแล้ว' };
-const setLabel = set => set?.display_label ?? (set?.set_no === 1 ? '' : set?.label || `ชุดที่ ${set?.set_no}`);
+const setLabel = set => Number.isInteger(Number(set?.set_no)) ? `ชุด ${Number(set.set_no)}` : (set?.display_label || set?.label || '');
 const setText = (sets, no) => setLabel((sets || []).find(s => s.set_no === no));
 
 export function createPractice({ main, data, api, notice, rerender, getSubject }) {
