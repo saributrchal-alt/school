@@ -15,7 +15,9 @@ async function migratePracticeMedia(setNo = 2) {
     const form = new FormData();
     form.append('folder', 'school');
     form.append('file', new Blob([bytes], { type: match[1] }), `set${setNo}-q${String(row.question_no).padStart(3, '0')}.${ext}`);
-    const response = await fetch('https://media.nathoeng.com/upload.php', {
+    const uploadUrl = process.env.MEDIA_UPLOAD_URL?.trim();
+    if (!uploadUrl || uploadUrl !== 'https://media.nathoeng.com/upload.php') fail('MEDIA_UPLOAD_URL ไม่ถูกต้อง', 503);
+    const response = await fetch(uploadUrl, {
       method: 'POST', headers: { 'X-Upload-Key': uploadKey }, body: form,
       cache: 'no-store', signal: AbortSignal.timeout(20000)
     });
