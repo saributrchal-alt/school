@@ -4,12 +4,7 @@ import { summary, subject, reviewQueue, studentResults, transaction } from '../l
 async function migratePracticeMedia(setNo = 2) {
   const uploadKey = process.env.MEDIA_UPLOAD_KEY?.trim();
   if (!uploadKey) fail('ยังไม่ได้ตั้งค่า MEDIA_UPLOAD_KEY', 503);
-  const production = await db(`school_practice_questions?set_no=eq.${setNo}&select=question_id,question_no,question_image_url&order=question_no.asc`);
-  const staged = setNo === 2 ? await db('school_practice_import_2564?question_image_url=like.data:image/*&select=question_no,question_image_url&order=question_no.asc') : [];
-  const stagedByNo = new Map(staged.map(row => [Number(row.question_no), row.question_image_url]));
-  const rows = production
-    .map(row => ({ ...row, question_image_url: (/^data:image\//.test(row.question_image_url || '') ? row.question_image_url : stagedByNo.get(Number(row.question_no))) }))
-    .filter(row => /^data:image\//.test(row.question_image_url || ''));
+  const rows = await db(`school_practice_questions?set_no=eq.${setNo}&question_image_url=like.data:image/*&select=question_id,question_no,question_image_url&order=question_no.asc`);
   const migrated = [];
   for (const row of rows) {
     const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(row.question_image_url || '');
@@ -30,10 +25,6 @@ async function migratePracticeMedia(setNo = 2) {
     }
     await db(`school_practice_questions?question_id=eq.${encodeURIComponent(row.question_id)}`, 'PATCH',
       { question_image_url: result.url }, 'return=minimal');
-    if (setNo === 2) {
-      await db(`school_practice_import_2564?question_no=eq.${Number(row.question_no)}`, 'PATCH',
-        { question_image_url: result.url }, 'return=minimal');
-    }
     migrated.push({ question_no: row.question_no, url: result.url });
   }
   return migrated;
