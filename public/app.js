@@ -4,7 +4,75 @@ const main = document.querySelector('#main');
 const account = document.querySelector('#account');
 const dialog = document.querySelector('#detail');
 const labels = { not_started:'ยังไม่เริ่ม', in_progress:'กำลังเรียน', review:'ทบทวน', completed:'เรียนแล้ว' };
-let data, subject = 'ENG', query = '', filter = 'all', noticeTimer, practice;
+const learningAreas = [
+  {
+    id:'primary',
+    title:'เรียน ชั้นประถม',
+    description:'เลือกชั้นเรียนระดับประถมศึกษา',
+    levels:[
+      ['p1','ประถมศึกษาปีที่ 1'],['p2','ประถมศึกษาปีที่ 2'],['p3','ประถมศึกษาปีที่ 3'],
+      ['p4','ประถมศึกษาปีที่ 4'],['p5','ประถมศึกษาปีที่ 5'],['p6','ประถมศึกษาปีที่ 6']
+    ]
+  },
+  {
+    id:'secondary',
+    title:'เรียน ชั้นมัธยม',
+    description:'เลือกชั้นเรียนระดับมัธยมศึกษา',
+    levels:[
+      ['m1','มัธยมศึกษาปีที่ 1'],['m2','มัธยมศึกษาปีที่ 2'],['m3','มัธยมศึกษาปีที่ 3'],
+      ['m4','มัธยมศึกษาปีที่ 4'],['m5','มัธยมศึกษาปีที่ 5'],['m6','มัธยมศึกษาปีที่ 6']
+    ]
+  },
+  {
+    id:'vocational-certificate',
+    title:'เรียน ปวช.',
+    description:'ประกาศนียบัตรวิชาชีพ',
+    levels:[['vc1','ปวช. 1'],['vc2','ปวช. 2'],['vc3','ปวช. 3']]
+  },
+  {
+    id:'higher-vocational',
+    title:'เรียน ปวส.',
+    description:'ประกาศนียบัตรวิชาชีพชั้นสูง',
+    levels:[['hvc1','ปวส. 1'],['hvc2','ปวส. 2']]
+  },
+  {
+    id:'career',
+    title:'เรียน วิชาชีพบุคคลทั่วไป',
+    description:'ทักษะอาชีพและการเรียนรู้สำหรับบุคคลทั่วไป'
+  },
+  {
+    id:'higher-education',
+    title:'เรียน อุดมศึกษา',
+    description:'การเรียนรู้และการทดสอบระดับอุดมศึกษา'
+  },
+  {
+    id:'military-prep',
+    title:'เรียน เตรียมทหาร',
+    description:'เลือกสายการสอบเตรียมทหาร',
+    levels:[
+      ['police','ตำรวจ'],
+      ['army','ทหารบก (จปร.)'],
+      ['airforce','ทหารอากาศ'],
+      ['navy','ทหารเรือ']
+    ]
+  },
+  {
+    id:'nco',
+    title:'เรียน ชั้นประทวนทหาร-ตำรวจ',
+    description:'การฝึกฝนและเตรียมสอบชั้นประทวน'
+  },
+  {
+    id:'recruitment',
+    title:'เรียน เตรียมสอบบรรจุ',
+    description:'เลือกกลุ่มการสอบบรรจุ',
+    levels:[
+      ['teacher','บรรจุครู'],
+      ['government','บรรจุข้าราชการทั่วไป']
+    ]
+  }
+];
+
+let data, subject = 'ENG', query = '', filter = 'all', noticeTimer, practice, currentArea = null;
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const roles = member => [member.can_study?'นักเรียน':'',member.can_teach?'ครู / ผู้สอน':'',member.can_manage?'ผู้ดูแล':''].filter(Boolean).map(x=>`<span class="role">${x}</span>`).join('');
 
@@ -22,16 +90,78 @@ function notice(text) {
 }
 
 function welcome(message = '') {
+  practice?.destroy(); practice=null; currentArea=null;
   account.innerHTML = '';
   main.innerHTML = `<section class="welcome"><div class="hero"><span class="eyebrow">NATHOENG SCHOOL</span><h1>เรียนรู้ไปด้วยกัน<br>เติบโตไปทีละเรื่อง</h1><p>พื้นที่เรียนรู้ของสมาชิกวัดพุทธอุทยานนาเทิง<br>รวมรายการหัวข้อเรียน และบันทึกการเรียนของตนเอง</p><a class="primary" href="https://watt.nathoeng.com/">เข้าสู่บัญชีสมาชิกวัด ↗</a></div>${message?`<p class="error" role="alert">${esc(message)}</p>`:''}<div class="steps"><strong>เข้า School ด้วยบัญชีสมาชิกเดิม</strong><br>1. ให้ผู้ดูแลวัดมอบสิทธิ์ School จากรายการสมาชิก<br>2. เปิด “บัญชีของฉัน” บนเว็บไซต์วัด<br>3. เลือก “การศึกษา School วัดนาเทิง”</div><p class="hint">เมื่อได้รับสิทธิ์แล้ว สามารถเข้า School จากเว็บไซต์วัดได้โดยไม่ต้องลงทะเบียนหรือล็อกอินอีกครั้ง</p></section>`;
 }
 
-function renderShell() {
+function renderAccount() {
   account.innerHTML = `<span class="account-name">${esc(data.member.member_name)}</span><span>${roles(data.member)}</span><button type="button" id="logout">ออกจาก School</button>`;
-  main.innerHTML = `<section id="practice-dashboard" class="practice-dashboard" aria-label="ผลการฝึกของฉัน"></section><section class="hero"><span class="eyebrow">YOUR LEARNING SPACE</span><h1>วันนี้ เรียนรู้เพิ่มอีกหนึ่งเรื่อง</h1><p>เลือกวิชา สำรวจหัวข้อ แล้วค่อย ๆ บันทึกการเรียนของตนเอง<br>รายการเนื้อหาจากข้อสอบเตรียมทหารในส่วนของกองทัพบก พ.ศ. 2562–2563</p></section><section class="stats" aria-label="ภาพรวมรายการเนื้อหา"><div class="stat"><strong>${data.subjects.length}</strong><span>วิชา</span></div><div class="stat"><strong>${data.chapters.length}</strong><span>หมวด</span></div><div class="stat"><strong>${data.topics.length}</strong><span>หัวข้อ</span></div><div class="stat"><strong>${data.question_count}</strong><span>ข้อในต้นฉบับ</span></div></section><section><div class="section-title"><div><h2>รายการหัวข้อเรียน</h2><p>เริ่มจากวิชาที่สนใจ แล้วเลือกหมวดหรือค้นหาหัวข้อ</p></div>${data.member.can_manage?'<button type="button" class="secondary" id="members">สมาชิก School</button>':''}</div><nav class="tabs" aria-label="เลือกวิชา" id="subjects"></nav><div class="search-row"><input type="search" id="search" aria-label="ค้นหาหัวข้อเรียน" placeholder="ค้นหาชื่อหัวข้อ หรือรหัสหัวข้อ…"><select id="status-filter" aria-label="กรองสถานะการเรียน"><option value="all">ทุกสถานะ</option>${Object.entries(labels).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div><p class="progress-note" id="progress-note"></p><div id="chapters"></div></section>`;
+  document.querySelector('#logout').addEventListener('click',async()=>{
+    try{
+      await api('/api/session?route=logout',{method:'POST'});
+      practice?.destroy(); practice=null; data=null; welcome();
+    }catch(error){notice(error.message);}
+  });
+}
+
+function areaCard(area) {
+  const ready = area.id === 'military-prep'
+    ? '<span class="learning-ready">มีคลังข้อสอบแล้ว: ทหารบก (จปร.)</span>'
+    : '<span class="learning-muted">เตรียมหมวดไว้สำหรับเพิ่มเนื้อหา</span>';
+  return `<button type="button" class="learning-card" data-area="${esc(area.id)}"><span class="learning-card-kicker">หมวดการเรียน</span><strong>${esc(area.title)}</strong><small>${esc(area.description)}</small>${ready}<span class="learning-arrow" aria-hidden="true">→</span></button>`;
+}
+
+function renderLearningHome() {
+  practice?.destroy(); practice=null; currentArea=null;
+  main.innerHTML = `<section class="hero learning-home-hero"><span class="eyebrow">NATHOENG SCHOOL</span><h1>เลือกประเภทการเรียน ฝึกฝน และทดสอบ</h1><p>เริ่มจากระดับหรือเส้นทางที่ต้องการ ระบบจะแยกเนื้อหาและแบบฝึกให้เป็นหมวดชัดเจน เพื่อให้ค้นหาและติดตามผลการเรียนได้ง่าย</p></section>
+  <section>
+    <div class="section-title"><div><h2>ประเภทการเรียน</h2><p>เลือกหมวดที่ต้องการ แล้วจึงเลือกระดับหรือสายการสอบในขั้นถัดไป</p></div>${data.member.can_manage?'<button type="button" class="secondary" id="members">สมาชิก School</button>':''}</div>
+    <div class="learning-grid">${learningAreas.map(areaCard).join('')}</div>
+  </section>`;
+  document.querySelector('#members')?.addEventListener('click',showMembers);
+}
+
+function renderArea(areaId) {
+  const area = learningAreas.find(item=>item.id===areaId);
+  if (!area) return renderLearningHome();
+  currentArea = area;
+  practice?.destroy(); practice=null;
+  if (!area.levels) return renderUnavailable(area.title, null);
+  main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-home>← กลับประเภทการเรียน</button><span class="eyebrow">NATHOENG SCHOOL</span><h1>${esc(area.title)}</h1><p>${esc(area.description)} — เลือกระดับหรือสายการเรียนที่ต้องการ</p></section>
+  <section class="level-grid">${area.levels.map(([id,label])=>`<button type="button" class="level-card" data-level="${esc(id)}"><span>${esc(label)}</span><b aria-hidden="true">→</b></button>`).join('')}</section>`;
+}
+
+function renderUnavailable(areaTitle, levelLabel) {
+  practice?.destroy(); practice=null;
+  const title = levelLabel || areaTitle;
+  const path = levelLabel ? `${areaTitle} / ${levelLabel}` : areaTitle;
+  const back = levelLabel ? 'data-back-area' : 'data-home';
+  main.innerHTML = `<section class="page-head"><button type="button" class="back-link" ${back}>← กลับ</button><span class="eyebrow">NATHOENG SCHOOL</span><h1>${esc(title)}</h1><p>${esc(path)}</p></section>
+  <section class="empty-state"><strong>เตรียมพื้นที่หมวดนี้ไว้แล้ว</strong><p>ขณะนี้ยังไม่ได้เพิ่มคลังบทเรียนหรือชุดทดสอบในหมวดนี้ เมื่อมีเนื้อหาใหม่จะสามารถเปิดใช้งานจากโครงสร้างนี้ได้ทันที</p><button type="button" class="secondary" data-home>กลับหน้าประเภทการเรียน</button></section>`;
+}
+
+function openLevel(levelId) {
+  if (!currentArea) return renderLearningHome();
+  const level = currentArea.levels?.find(([id])=>id===levelId);
+  if (!level) return;
+  const [, label] = level;
+  if (currentArea.id === 'military-prep' && levelId === 'army') {
+    renderCatalogShell(currentArea.title, label);
+    return;
+  }
+  renderUnavailable(currentArea.title, label);
+}
+
+function renderCatalogShell(areaTitle, levelLabel) {
+  practice?.destroy(); practice=null;
+  subject='ENG'; query=''; filter='all';
+  main.innerHTML = `<section id="practice-dashboard" class="practice-dashboard" aria-label="ผลการฝึกของฉัน"></section>
+  <section class="hero"><button type="button" class="hero-back" data-back-area>← ${esc(areaTitle)}</button><span class="eyebrow">YOUR LEARNING SPACE</span><h1>${esc(levelLabel)}</h1><p>เลือกวิชา สำรวจหัวข้อ แล้วค่อย ๆ บันทึกการเรียนของตนเอง<br>รายการเนื้อหาจากข้อสอบเตรียมทหารในส่วนของกองทัพบก พ.ศ. 2562–2563</p></section>
+  <section class="stats" aria-label="ภาพรวมรายการเนื้อหา"><div class="stat"><strong>${data.subjects.length}</strong><span>วิชา</span></div><div class="stat"><strong>${data.chapters.length}</strong><span>หมวด</span></div><div class="stat"><strong>${data.topics.length}</strong><span>หัวข้อ</span></div><div class="stat"><strong>${data.question_count}</strong><span>ข้อในต้นฉบับ</span></div></section>
+  <section><div class="section-title"><div><h2>รายการหัวข้อเรียน</h2><p>เริ่มจากวิชาที่สนใจ แล้วเลือกหมวดหรือค้นหาหัวข้อ</p></div>${data.member.can_manage?'<button type="button" class="secondary" id="members">สมาชิก School</button>':''}</div><nav class="tabs" aria-label="เลือกวิชา" id="subjects"></nav><div class="search-row"><input type="search" id="search" aria-label="ค้นหาหัวข้อเรียน" placeholder="ค้นหาชื่อหัวข้อ หรือรหัสหัวข้อ…"><select id="status-filter" aria-label="กรองสถานะการเรียน"><option value="all">ทุกสถานะ</option>${Object.entries(labels).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div><p class="progress-note" id="progress-note"></p><div id="chapters"></div></section>`;
   document.querySelector('#search').addEventListener('input',event=>{query=event.target.value;renderCatalog();});
   document.querySelector('#status-filter').addEventListener('change',event=>{filter=event.target.value;renderCatalog();});
-  document.querySelector('#logout').addEventListener('click',async()=>{try{await api('/api/session?route=logout',{method:'POST'});practice?.destroy();practice=null;data=null;welcome();}catch(error){notice(error.message);}});
   document.querySelector('#members')?.addEventListener('click',showMembers);
   practice = createPractice({main,data,api,notice,rerender:renderCatalog,getSubject:()=>subject});
   renderCatalog();
@@ -39,6 +169,8 @@ function renderShell() {
 }
 
 function renderCatalog() {
+  const chaptersRoot = document.querySelector('#chapters');
+  if (!chaptersRoot) return;
   const existingChapters = [...document.querySelectorAll("#chapters [data-chapter]")];
   const openChapters = new Set(existingChapters.filter(c=>c.open).map(c=>c.dataset.chapter));
   const hadSubject = existingChapters.some(c=>c.dataset.chapter.startsWith(subject+"-"));
@@ -51,14 +183,18 @@ function renderCatalog() {
     const topics = data.topics.filter(t=>t.chapter_id===c.chapter_id && (!search || `${t.topic_id} ${t.topic_name_th} ${c.chapter_name_th}`.toLocaleLowerCase('th').includes(search)) && (filter==='all'||(progress.get(t.topic_id)||'not_started')===filter));
     return { ...c, topics };
   }).filter(c=>c.topics.length);
-  document.querySelector('#chapters').innerHTML = chapters.length ? chapters.map((c,index)=>`<details class="chapter" data-chapter="${esc(c.chapter_id)}" ${search||openChapters.has(c.chapter_id)||(!hadSubject&&index===0)?'open':''}><summary><span class="chapter-code">${esc(c.chapter_id)}</span><span class="chapter-name">${esc(c.chapter_name_th)}</span><small>${c.topics.length} หัวข้อ</small></summary>${c.topics.map(t=>{
+  chaptersRoot.innerHTML = chapters.length ? chapters.map((c,index)=>`<details class="chapter" data-chapter="${esc(c.chapter_id)}" ${search||openChapters.has(c.chapter_id)||(!hadSubject&&index===0)?'open':''}><summary><span class="chapter-code">${esc(c.chapter_id)}</span><span class="chapter-name">${esc(c.chapter_name_th)}</span><small>${c.topics.length} หัวข้อ</small></summary>${c.topics.map(t=>{
     const status = progress.get(t.topic_id)||'not_started';
     return `<article class="topic"><div><div class="topic-head"><span class="topic-code">${esc(t.topic_id)}</span><span class="topic-name">${esc(t.topic_name_th)}</span></div><div class="topic-meta">${t.counts.total?`พบเป็นหัวข้อหลัก ${t.counts.total} ข้อ · 2562: ${t.counts.year_2562} · 2563: ${t.counts.year_2563}<button type="button" data-topic="${esc(t.topic_id)}">ดูหน้าอ้างอิง</button>`:'ไม่พบเป็นหัวข้อหลักในสองชุดนี้'}</div>${practice?.topicAction(t)||''}</div>${data.member.can_study?`<select aria-label="สถานะ ${esc(t.topic_name_th)}" data-progress="${esc(t.topic_id)}">${Object.entries(labels).map(([k,v])=>`<option value="${k}" ${k===status?'selected':''}>${v}</option>`).join('')}</select>`:`<span class="status">${labels[status]}</span>`}</article>`;
   }).join('')}</details>`).join('') : '<div class="empty">ไม่พบหัวข้อที่ตรงกับคำค้นหรือสถานะที่เลือก</div>';
 }
 
 main.addEventListener('click',event=>{
-  const tab=event.target.closest('[data-subject]'); if(tab){subject=tab.dataset.subject;renderCatalog();practice?.subjectChanged();}
+  const home=event.target.closest('[data-home]'); if(home){renderLearningHome();return;}
+  const backArea=event.target.closest('[data-back-area]'); if(backArea){currentArea?renderArea(currentArea.id):renderLearningHome();return;}
+  const area=event.target.closest('[data-area]'); if(area){renderArea(area.dataset.area);return;}
+  const level=event.target.closest('[data-level]'); if(level){openLevel(level.dataset.level);return;}
+  const tab=event.target.closest('[data-subject]'); if(tab){subject=tab.dataset.subject;renderCatalog();practice?.subjectChanged();return;}
   const topic=event.target.closest('[data-topic]'); if(topic)showQuestions(topic.dataset.topic);
 });
 main.addEventListener('change',async event=>{
@@ -94,5 +230,13 @@ async function showMembers() {
   } catch(error){document.querySelector('#detail-body').textContent=error.message;}
 }
 document.querySelector('#close-detail').addEventListener('click',()=>dialog.close());
-try { data=await api('/api/school?route=catalog');const order=['ENG','MATH','SCI','THAI','SOC'];data.subjects.sort((a,b)=>order.indexOf(a.subject_id)-order.indexOf(b.subject_id));renderShell(); }
-catch(error){welcome(error.status===401?'':error.message);}
+
+try {
+  data=await api('/api/school?route=catalog');
+  const order=['ENG','MATH','SCI','THAI','SOC'];
+  data.subjects.sort((a,b)=>order.indexOf(a.subject_id)-order.indexOf(b.subject_id));
+  renderAccount();
+  renderLearningHome();
+} catch(error){
+  welcome(error.status===401?'':error.message);
+}
