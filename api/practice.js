@@ -55,6 +55,14 @@ export default async function handler(req, res) {
     }
     if (req.method !== 'POST') fail('Method not allowed', 405);
     sameOrigin(req);
+    if (route === 'test-db-write') {
+      if (!member.can_manage) fail('เฉพาะผู้ดูแล School', 403);
+      const row = (await db('school_practice_questions?set_no=eq.2&select=question_id,question_image_url&order=question_no.asc&limit=1'))[0];
+      if (!row) fail('ไม่พบข้อสอบชุดที่ 2', 404);
+      await db(`school_practice_questions?question_id=eq.${encodeURIComponent(row.question_id)}`, 'PATCH',
+        { question_image_url: row.question_image_url }, 'return=minimal');
+      return res.status(200).json({ success: true, writable: true });
+    }
     if (route === 'migrate-media') {
       if (!member.can_manage) fail('เฉพาะผู้ดูแล School', 403);
       const payload = body(req);
