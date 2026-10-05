@@ -4,7 +4,7 @@ import { summary, subject, reviewQueue, studentResults, transaction } from '../l
 async function migratePracticeMedia(setNo = 2) {
   const uploadKey = process.env.MEDIA_UPLOAD_KEY?.trim();
   if (!uploadKey) fail('ยังไม่ได้ตั้งค่า MEDIA_UPLOAD_KEY', 503);
-  const rows = await db(`school_practice_questions?set_no=eq.${setNo}&question_image_url=like.data:image/%&select=question_id,question_no,question_image_url&order=question_no.asc`);
+  const rows = await db(`school_practice_questions?set_no=eq.${setNo}&question_image_url=like.data:image/*&select=question_id,question_no,question_image_url&order=question_no.asc`);
   const migrated = [];
   for (const row of rows) {
     const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(row.question_image_url || '');
