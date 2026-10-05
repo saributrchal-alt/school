@@ -9,8 +9,12 @@ export function createPractice({ main, data, api, notice, rerender, getSubject }
   let bank = null, selectedSet = 1, resultSubject = getSubject(), session = null, index = 0;
   let busy = false, viewingOther = false, loading = false, requestNo = 0, openTopics = false, openGrid = false;
   let choices = new Map(), saved = new Map(), modalError = '';
+  let staffResults = null, staffStudentId = null, resultsQuery = '', resultsFilter = 'all', returnView = null;
   const subjectName = id => data.subjects.find(s => s.subject_id === id)?.subject_name_th || id;
   const topicName = id => data.topics.find(t => t.topic_id === id)?.topic_name_th || id;
+  const canSeeResults = () => data.member.can_teach || data.member.can_manage;
+  const date = value => value ? new Date(value).toLocaleString('th-TH') : '—';
+  const resultButton = () => canSeeResults() ? '<button type="button" class="secondary" data-student-results>ผลตรวจรายคน</button>' : '';
   const post = (route, value) => api(`/api/practice?route=${route}`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(value) });
   const ownAttempt = sid => bank?.attempts?.find(a => a.set_no === selectedSet && a.subject_id === sid);
   const ownAnswers = sid => {
@@ -39,14 +43,14 @@ export function createPractice({ main, data, api, notice, rerender, getSubject }
   function renderPanel() {
     if (!bank) { panel.innerHTML = '<p class="practice-muted" role="status">กำลังเปิดผลการฝึก…</p>'; return; }
     if (!bank.ready) {
-      panel.innerHTML = `<div class="practice-heading"><div><span class="eyebrow">PRACTICE</span><h2>ชุดฝึกใหม่ · ชุดที่ 1</h2><p>กำลังเตรียมโจทย์และเฉลยสำหรับแต่ละหัวข้อ</p></div><button type="button" class="secondary" data-practice-refresh>ตรวจอีกครั้ง</button></div>`;
+      panel.innerHTML = `<div class="practice-heading"><div><span class="eyebrow">PRACTICE</span><h2>ชุดฝึกใหม่ · ชุดที่ 1</h2><p>กำลังเตรียมโจทย์และเฉลยสำหรับแต่ละหัวข้อ</p></div><div class="practice-toolbar"><button type="button" class="secondary" data-practice-refresh>ตรวจอีกครั้ง</button>${resultButton()}</div></div>`;
       return;
     }
     const graded = bank.attempts.filter(a => a.set_no === selectedSet && a.status === 'graded');
     const total = graded.reduce((n, a) => n + a.total_count, 0), correct = graded.reduce((n, a) => n + a.correct_count, 0);
     const availableSubjects = data.subjects.filter(s => bank.counts.some(c => c.set_no === selectedSet && c.subject_id === s.subject_id));
     const percent = total ? 100 * correct / total : 0;
-    panel.innerHTML = `<div class="practice-heading"><div><span class="eyebrow">MY PRACTICE</span><h2>ผลการฝึกของฉัน</h2><p>เห็นพัฒนาการทีละหัวข้อ · คะแนนเปิดเมื่อผู้ดูแลตรวจแล้ว</p></div><div class="practice-toolbar"><label class="practice-set-label">ชุดฝึก <select id="practice-set">${bank.sets.map(s => `<option value="${s.set_no}" ${s.set_no === selectedSet ? 'selected' : ''}>${esc(s.label)}</option>`).join('')}</select></label><button type="button" class="secondary" data-practice-refresh ${loading ? 'disabled' : ''}>อัปเดตผล</button>${data.member.can_manage ? '<button type="button" class="secondary" data-review>ตรวจคำตอบนักเรียน</button>' : ''}</div></div>
+    panel.innerHTML = `<div class="practice-heading"><div><span class="eyebrow">MY PRACTICE</span><h2>ผลการฝึกของฉัน</h2><p>เห็นพัฒนาการทีละหัวข้อ · คะแนนเปิดเมื่อผู้ดูแลตรวจแล้ว</p></div><div class="practice-toolbar"><label class="practice-set-label">ชุดฝึก <select id="practice-set">${bank.sets.map(s => `<option value="${s.set_no}" ${s.set_no === selectedSet ? 'selected' : ''}>${esc(s.label)}</option>`).join('')}</select></label><button type="button" class="secondary" data-practice-refresh ${loading ? 'disabled' : ''}>อัปเดตผล</button>${resultButton()}${data.member.can_manage ? '<button type="button" class="secondary" data-review>ตรวจคำตอบนักเรียน</button>' : ''}</div></div>
       <div class="practice-overview"><div class="practice-score-ring" style="--score:${percent}%"><strong>${pct(correct, total)}</strong><span>ความถูกต้องรวม</span></div><div class="practice-overview-text"><h3>${total ? `ทำถูก ${correct} จาก ${total} ข้อที่ตรวจแล้ว` : 'เริ่มจากหนึ่งหัวข้อ แล้วค่อย ๆ ก้าวหน้า'}</h3><p>ตรวจแล้ว <b>${graded.length} / ${availableSubjects.length}</b> วิชา${bank.attempts.some(a => a.set_no === selectedSet && a.status === 'submitted') ? ' · มีคำตอบรอตรวจ' : ''}</p><small>คำนวณจากจำนวนข้อที่ถูก ÷ จำนวนข้อที่ตรวจแล้วทั้งหมด</small><small>วิชาที่ยังไม่ตรวจจะแสดงสถานะและยังไม่รวมในเปอร์เซ็นต์</small></div></div>
       <div class="practice-subjects">${availableSubjects.map(s => {
         const a = ownAttempt(s.subject_id), n = ownAnswers(s.subject_id).length;
@@ -74,17 +78,17 @@ export function createPractice({ main, data, api, notice, rerender, getSubject }
     } finally { loading = false; panel.querySelector('[data-practice-refresh]')?.removeAttribute('disabled'); }
   }
 
-  async function openSubject(sid, topicId, otherAttempt) {
+  async function openSubject(sid, topicId, otherAttempt, set = selectedSet) {
     if (busy) return;
     const ticket = ++requestNo;
     busy = true; viewingOther = Boolean(otherAttempt); session = null; modalError = ''; openGrid = false;
     document.querySelector('#practice-close').disabled = true;
     modalBody.innerHTML = '<p class="practice-muted" role="status">กำลังเปิดโจทย์…</p>';
-    document.querySelector('#practice-title').textContent = `${subjectName(sid)} · ชุดที่ ${selectedSet}`;
+    document.querySelector('#practice-title').textContent = `${subjectName(sid)} · ชุดที่ ${set}`;
     if (!modal.open) modal.showModal();
     try {
-      if (data.member.can_study && !otherAttempt) await post('start', { set_no:selectedSet, subject_id:sid });
-      const result = await api(`/api/practice?route=subject&set_no=${selectedSet}&subject_id=${sid}${otherAttempt ? `&attempt_id=${encodeURIComponent(otherAttempt)}` : ''}`);
+      if (data.member.can_study && !otherAttempt) await post('start', { set_no:set, subject_id:sid });
+      const result = await api(`/api/practice?route=subject&set_no=${set}&subject_id=${sid}${otherAttempt ? `&attempt_id=${encodeURIComponent(otherAttempt)}` : ''}`);
       if (!modal.open || ticket !== requestNo) return;
       session = result; saved = new Map(result.answers.map(a => [a.question_id, a]));
       choices = new Map(result.answers.map(a => [a.question_id, a.selected_answer]));
@@ -108,7 +112,8 @@ export function createPractice({ main, data, api, notice, rerender, getSubject }
     const n = session.questions.length, a = session.attempt, status = a?.status;
     document.querySelector('#practice-title').textContent = `${subjectName(session.subject_id)} · ชุดที่ ${session.set_no}${status ? ` · ${stateLabel[status]}` : ' · สำหรับครู'}`;
     document.querySelector('#practice-close').disabled = busy;
-    const header = `<div class="practice-dialog-progress"><span>${status === 'graded' ? `ผลตรวจ ${pct(a.correct_count, a.total_count)} · ถูก ${a.correct_count}/${a.total_count}` : `บันทึกแล้ว ${saved.size} / ${n} ข้อ`}</span><progress value="${saved.size}" max="${n}" aria-label="บันทึกแล้ว ${saved.size} จาก ${n} ข้อ"></progress></div>`;
+    const context = viewingOther ? `<div class="practice-student-context">${returnView ? '<button type="button" class="secondary" data-results-back>← กลับผลของนักเรียน</button>' : ''}<strong>${esc(session.student?.member_name || 'สมาชิก School')}</strong>${status === 'graded' ? `<small>ตรวจโดย ${esc(session.graded_by_name || '—')} · ${esc(date(a.graded_at))}</small>` : ''}</div>` : '';
+    const header = `${context}<div class="practice-dialog-progress"><span>${status === 'graded' ? `ผลตรวจ ${pct(a.correct_count, a.total_count)} · ถูก ${a.correct_count}/${a.total_count}` : `บันทึกแล้ว ${saved.size} / ${n} ข้อ`}</span><progress value="${saved.size}" max="${n}" aria-label="บันทึกแล้ว ${saved.size} จาก ${n} ข้อ"></progress></div>`;
     const error = modalError ? `<p class="practice-inline-error" role="alert">${esc(modalError)}</p>` : '';
     if (index === n) {
       modalBody.innerHTML = `${header}<div class="practice-complete"><span class="eyebrow">SUBJECT SUMMARY</span><h3>${status === 'submitted' ? 'ส่งคำตอบครบแล้ว · รอตรวจ' : status === 'graded' ? 'ตรวจและเปิดผลแล้ว' : saved.size === n ? 'ตอบครบวิชานี้แล้ว' : `ยังเหลือ ${n - saved.size} หัวข้อ`}</h3><p>${status === 'submitted' ? 'เมื่อผู้ดูแลกดตรวจ จะเห็นคะแนนและเปิดเฉลยรายข้อได้' : status === 'graded' ? 'เลือกหัวข้อด้านล่างเพื่อทบทวนวิธีทำและเหตุผล' : 'ส่งคำตอบทั้งวิชาเมื่อทำครบ หลังส่งคำตอบจะถูกล็อกจนผู้ดูแลตรวจและเปิดผล'}</p>${error}${editable() ? saved.size === n ? `<button type="button" class="practice-primary" data-submit ${busy ? 'disabled' : ''}>${busy ? 'กำลังส่ง…' : 'ส่งคำตอบครบทั้งวิชา'}</button>` : '<button type="button" class="practice-primary" data-unanswered>ไปหัวข้อที่ยังไม่ตอบ</button>' : ''}<button type="button" class="secondary" data-question-index="0" ${busy ? 'disabled' : ''}>กลับไปดูข้อแรก</button>${status === 'submitted' && !viewingOther ? '<button type="button" class="secondary" data-update-subject>อัปเดตผลตรวจ</button>' : ''}</div>${questionGrid()}`;
@@ -117,7 +122,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject }
     }
     const q = session.questions[index], answer = saved.get(q.question_id), selected = choices.get(q.question_id);
     const explanation = session.can_review && q.answer_key ? `<section class="practice-explanation"><span class="eyebrow">${status === 'graded' ? 'REVIEW & LEARN' : 'TEACHER NOTES'}</span><h4>เฉลย · ตัวเลือก ${q.answer_key}</h4><p class="practice-correct-answer">${esc(q.choices[q.answer_key - 1])}</p><h4>วิธีทำ / การพิจารณา</h4><p>${esc(q.explanation)}</p><h4>เหตุผลและจุดที่ควรระวัง</h4><p>${esc(q.reasoning)}</p><small>โจทย์แต่งใหม่ตามหัวข้อต้นฉบับ พ.ศ. 2562–2563</small></section>` : '';
-    modalBody.innerHTML = `${header}<div class="practice-question-heading"><span>${index + 1} / ${n} · ${esc(q.topic_id)}</span>${answer ? `<span class="practice-badge ${status === 'graded' ? answer.is_correct ? 'correct' : 'incorrect' : 'answered'}">${status === 'graded' ? answer.is_correct ? '✓ ตอบถูก' : 'ควรทบทวน' : '✓ บันทึกแล้ว'}</span>` : ''}<h3>${esc(topicName(q.topic_id))}</h3></div><p class="practice-prompt">${esc(q.prompt)}</p><fieldset class="practice-choices"><legend class="sr-only">เลือกคำตอบหนึ่งตัวเลือก</legend>${q.choices.map((text, i) => `<label class="practice-choice ${selected === i + 1 ? 'selected' : ''} ${session.can_review && q.answer_key === i + 1 ? 'answer-key' : ''}"><input type="radio" name="practice-choice" id="practice-choice-${i + 1}" value="${i + 1}" ${selected === i + 1 ? 'checked' : ''} ${!editable() || busy ? 'disabled' : ''}><span class="practice-choice-number">${i + 1}</span><span>${esc(text)}</span>${session.can_review && q.answer_key === i + 1 ? '<b class="practice-choice-key">เฉลย</b>' : ''}</label>`).join('')}</fieldset><p class="practice-save-status" role="status">${busy ? 'กำลังบันทึกคำตอบ…' : editable() ? 'เลือกคำตอบแล้วระบบบันทึกให้ · กดยืนยันเพื่อไปหัวข้อถัดไป' : status === 'submitted' ? 'ส่งแล้ว · คำตอบถูกล็อกระหว่างรอตรวจ' : status === 'graded' ? `คุณเลือกตัวเลือก ${answer?.selected_answer || '—'} · ดูวิธีทำด้านล่าง` : 'มุมมองครู · ดูโจทย์และเฉลยได้'}</p>${error}<div class="practice-navigation"><button type="button" class="secondary" data-back ${busy || index === 0 ? 'disabled' : ''}>← ย้อน</button>${editable() ? `<button type="button" class="secondary" data-skip ${busy ? 'disabled' : ''}>ข้าม →</button><button type="button" class="practice-primary" data-next ${busy || !selected ? 'disabled' : ''}>${index === n - 1 ? 'ยืนยันคำตอบและสรุปวิชา' : 'ยืนยันคำตอบและไปข้อต่อไป →'}</button>` : `<button type="button" class="practice-primary" data-next ${busy ? 'disabled' : ''}>${index === n - 1 ? 'สรุปวิชา' : 'ข้อถัดไป →'}</button>`}</div>${explanation}${questionGrid()}${viewingOther && status === 'submitted' ? `<div class="practice-grade-action"><p>ตรวจอัตโนมัติตามเฉลยและเปิดผลให้นักเรียนพร้อมกัน</p><button type="button" class="practice-primary" data-grade="${esc(a.attempt_id)}" ${busy ? 'disabled' : ''}>ตรวจและเปิดผล</button></div>` : ''}`;
+    modalBody.innerHTML = `${header}<div class="practice-question-heading"><span>${index + 1} / ${n} · ${esc(q.topic_id)}</span>${answer ? `<span class="practice-badge ${status === 'graded' ? answer.is_correct ? 'correct' : 'incorrect' : 'answered'}">${status === 'graded' ? answer.is_correct ? '✓ ตอบถูก' : 'ควรทบทวน' : '✓ บันทึกแล้ว'}</span>` : ''}<h3>${esc(topicName(q.topic_id))}</h3></div><p class="practice-prompt">${esc(q.prompt)}</p><fieldset class="practice-choices"><legend class="sr-only">เลือกคำตอบหนึ่งตัวเลือก</legend>${q.choices.map((text, i) => `<label class="practice-choice ${selected === i + 1 ? 'selected' : ''} ${session.can_review && q.answer_key === i + 1 ? 'answer-key' : ''}"><input type="radio" name="practice-choice" id="practice-choice-${i + 1}" value="${i + 1}" ${selected === i + 1 ? 'checked' : ''} ${!editable() || busy ? 'disabled' : ''}><span class="practice-choice-number">${i + 1}</span><span>${esc(text)}</span>${session.can_review && q.answer_key === i + 1 ? '<b class="practice-choice-key">เฉลย</b>' : ''}</label>`).join('')}</fieldset><p class="practice-save-status" role="status">${busy ? 'กำลังบันทึกคำตอบ…' : editable() ? 'เลือกคำตอบแล้วระบบบันทึกให้ · กดยืนยันเพื่อไปหัวข้อถัดไป' : status === 'submitted' ? 'ส่งแล้ว · คำตอบถูกล็อกระหว่างรอตรวจ' : status === 'graded' ? `${viewingOther ? 'นักเรียน' : 'คุณ'}เลือกตัวเลือก ${answer?.selected_answer || '—'} · ดูวิธีทำด้านล่าง` : 'มุมมองครู · ดูโจทย์และเฉลยได้'}</p>${error}<div class="practice-navigation"><button type="button" class="secondary" data-back ${busy || index === 0 ? 'disabled' : ''}>← ย้อน</button>${editable() ? `<button type="button" class="secondary" data-skip ${busy ? 'disabled' : ''}>ข้าม →</button><button type="button" class="practice-primary" data-next ${busy || !selected ? 'disabled' : ''}>${index === n - 1 ? 'ยืนยันคำตอบและสรุปวิชา' : 'ยืนยันคำตอบและไปข้อต่อไป →'}</button>` : `<button type="button" class="practice-primary" data-next ${busy ? 'disabled' : ''}>${index === n - 1 ? 'สรุปวิชา' : 'ข้อถัดไป →'}</button>`}</div>${explanation}${questionGrid()}${viewingOther && data.member.can_manage && status === 'submitted' ? `<div class="practice-grade-action"><p>ตรวจอัตโนมัติตามเฉลยและเปิดผลให้นักเรียนพร้อมกัน</p><button type="button" class="practice-primary" data-grade="${esc(a.attempt_id)}" ${busy ? 'disabled' : ''}>ตรวจและเปิดผล</button></div>` : ''}`;
     if (focusChoice) modalBody.querySelector(`#practice-choice-${focusChoice}`)?.focus();
     else modalBody.querySelector('.practice-question-heading h3')?.setAttribute('tabindex', '-1');
     bindGrid();
@@ -161,7 +166,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject }
       const q = session.questions[index], value = q && choices.get(q.question_id);
       if (value && !await saveChoice(q, value)) return;
     }
-    requestNo++; modal.close(); session = null;
+    requestNo++; modal.close(); session = null; returnView = null;
   }
 
   async function updateSubject() {
@@ -191,9 +196,74 @@ export function createPractice({ main, data, api, notice, rerender, getSubject }
     finally { busy = false; renderQuestion(); }
   }
 
+  function scores(attempts) {
+    const graded = attempts.filter(a => a.status === 'graded');
+    return { correct: graded.reduce((n, a) => n + a.correct_count, 0), total: graded.reduce((n, a) => n + a.total_count, 0),
+      graded: graded.length, pending: attempts.filter(a => a.status === 'submitted').length,
+      drafts: attempts.filter(a => a.status === 'draft').length };
+  }
+
+  function resultsToolbar() {
+    return `<div class="practice-report-toolbar"><label class="practice-set-label">ชุดฝึก <select id="practice-results-set">${staffResults.sets.map(s => `<option value="${s.set_no}" ${s.set_no === staffResults.set_no ? 'selected' : ''}>${esc(s.label)}${s.is_active ? '' : ' · ปิดแล้ว'}</option>`).join('')}</select></label><button type="button" class="secondary" data-results-refresh>อัปเดตผลรายคน</button></div>`;
+  }
+
+  function renderResultsList() {
+    const query = resultsQuery.trim().toLocaleLowerCase('th');
+    const students = staffResults.students.filter(s => {
+      if (query && !`${s.member_name} ${s.member_id}`.toLocaleLowerCase('th').includes(query)) return false;
+      return resultsFilter === 'all' || (resultsFilter === 'not_started' ? !s.attempts.length : s.attempts.some(a => a.status === resultsFilter));
+    }).sort((a, b) => a.member_name.localeCompare(b.member_name, 'th'));
+    modalBody.querySelector('#practice-results-count').textContent = `พบ ${students.length} จาก ${staffResults.students.length} คน`;
+    modalBody.querySelector('#practice-results-list').innerHTML = students.length ? students.map(s => {
+      const r = scores(s.attempts);
+      return `<article class="practice-student-row"><div class="practice-student-name"><strong>${esc(s.member_name)}</strong><small>รหัสสมาชิก ${esc(s.member_id)}</small>${!s.is_active ? '<span class="practice-badge incorrect">ถอนสิทธิ์แล้ว · เก็บประวัติผลตรวจ</span>' : !s.can_study ? '<span class="practice-badge">ไม่มีสิทธิ์นักเรียนปัจจุบัน</span>' : ''}<span>${s.attempts.length ? `ตรวจแล้ว ${r.graded} วิชา · รอตรวจ ${r.pending} · กำลังทำ ${r.drafts}` : 'ยังไม่เริ่มชุดนี้'}</span></div><div class="practice-student-score"><strong>${pct(r.correct, r.total)}</strong><small>${r.total ? `ถูก ${r.correct} / ${r.total} ข้อ` : 'ยังไม่มีผลตรวจ'}</small></div><button type="button" class="secondary" data-student-id="${esc(s.member_id)}" aria-label="ดูผลของ ${esc(s.member_name)}">ดูผลรายคน ↗</button></article>`;
+    }).join('') : '<div class="empty">ไม่พบนักเรียนที่ตรงกับคำค้นหรือสถานะที่เลือก</div>';
+  }
+
+  function renderResults() {
+    session = null; viewingOther = false; returnView = null; staffStudentId = null;
+    document.querySelector('#practice-title').textContent = 'ผลตรวจนักเรียนรายคน';
+    const all = scores(staffResults.students.flatMap(s => s.attempts));
+    modalBody.innerHTML = `${resultsToolbar()}<p class="practice-muted">เลือกนักเรียนเพื่อดูคะแนนแต่ละวิชาและคำตอบรายข้อ · เปอร์เซ็นต์รวมใช้เฉพาะข้อที่ตรวจแล้ว</p><div class="practice-report-stats"><span><b>${staffResults.students.length}</b> นักเรียน</span><span><b>${all.graded}</b> วิชาตรวจแล้ว</span><span><b>${all.pending}</b> วิชารอตรวจ</span></div><div class="practice-report-filters"><input type="search" id="practice-results-search" aria-label="ค้นหานักเรียน" placeholder="ค้นหาชื่อนักเรียนหรือรหัสสมาชิก…" value="${esc(resultsQuery)}"><select id="practice-results-status" aria-label="กรองผลตรวจนักเรียน">${[['all','ทุกสถานะ'],['graded','มีผลตรวจแล้ว'],['submitted','มีคำตอบรอตรวจ'],['draft','กำลังทำ'],['not_started','ยังไม่เริ่ม']].map(([value,label]) => `<option value="${value}" ${value === resultsFilter ? 'selected' : ''}>${label}</option>`).join('')}</select></div><p id="practice-results-count" class="practice-muted" role="status" aria-live="polite"></p><div id="practice-results-list"></div>`;
+    renderResultsList(); modal.scrollTop = 0;
+  }
+
+  function renderStudentResult(id) {
+    const student = staffResults.students.find(s => s.member_id === id);
+    if (!student) { renderResults(); return; }
+    session = null; viewingOther = false; returnView = null; staffStudentId = id;
+    document.querySelector('#practice-title').textContent = `${student.member_name} · ผลตรวจ`;
+    const r = scores(student.attempts);
+    const subjects = data.subjects.filter(s => staffResults.counts.some(c => c.subject_id === s.subject_id));
+    modalBody.innerHTML = `<button type="button" class="secondary" data-results-list>← รายชื่อนักเรียน</button>${resultsToolbar()}<div class="practice-student-overview"><div><span class="eyebrow">STUDENT RESULTS</span><h3>${esc(student.member_name)}</h3><small>รหัสสมาชิก ${esc(student.member_id)}${student.is_active ? '' : ' · ถอนสิทธิ์แล้ว'}</small><p>ตรวจแล้ว ${r.graded} / ${subjects.length} วิชา · รอตรวจ ${r.pending} · กำลังทำ ${r.drafts}</p></div><div class="practice-student-score"><strong>${pct(r.correct, r.total)}</strong><small>${r.total ? `ถูก ${r.correct} / ${r.total} ข้อที่ตรวจแล้ว` : 'ยังไม่มีผลตรวจ'}</small></div></div><p class="practice-muted">ความถูกต้องรวม = ข้อที่ถูก ÷ ข้อที่ตรวจแล้วทั้งหมด · วิชาที่ยังไม่ตรวจยังไม่รวมในคะแนน</p><div class="practice-student-subjects">${subjects.map(s => {
+      const a = student.attempts.find(x => x.subject_id === s.subject_id);
+      const count = staffResults.counts.find(c => c.subject_id === s.subject_id).total_count;
+      return `<article class="practice-student-subject"><div><h4>${esc(s.subject_name_th)}</h4><span class="practice-badge ${a?.status === 'graded' ? 'correct' : a?.status === 'submitted' ? 'incorrect' : ''}">${a ? stateLabel[a.status] : 'ยังไม่เริ่ม'}</span><p>${a?.status === 'graded' ? `<b>${pct(a.correct_count, a.total_count)}</b> · ถูก ${a.correct_count} / ${a.total_count} ข้อ` : `${a?.total_count || count} ข้อ · ยังไม่มีคะแนน`}</p>${a?.submitted_at ? `<small>ส่ง ${esc(date(a.submitted_at))}</small>` : ''}${a?.status === 'graded' ? `<small>ตรวจโดย ${esc(a.graded_by_name || '—')}</small><small>ตรวจ ${esc(date(a.graded_at))}</small>` : ''}</div><div class="practice-report-actions">${a && (a.status === 'graded' || a.status === 'submitted' && data.member.can_manage) ? `<button type="button" class="secondary" data-result-attempt="${esc(a.attempt_id)}" data-result-subject="${esc(s.subject_id)}">${a.status === 'graded' ? 'ดูคำตอบ / เฉลยรายข้อ' : 'ดูคำตอบ'}</button>` : ''}${a?.status === 'submitted' && data.member.can_manage ? `<button type="button" class="practice-primary" data-grade="${esc(a.attempt_id)}">ตรวจและเปิดผล</button>` : ''}</div></article>`;
+    }).join('') || '<div class="empty">กำลังเตรียมโจทย์สำหรับชุดนี้</div>'}</div>`;
+    modal.scrollTop = 0;
+  }
+
+  async function openResults(set = selectedSet, studentId = null) {
+    if (busy || !canSeeResults()) return;
+    const ticket = ++requestNo;
+    busy = true; session = null; returnView = null;
+    document.querySelector('#practice-title').textContent = 'ผลตรวจนักเรียนรายคน';
+    document.querySelector('#practice-close').disabled = true;
+    modalBody.innerHTML = '<p class="practice-muted" role="status">กำลังเปิดผลตรวจรายคน…</p>';
+    if (!modal.open) modal.showModal();
+    try {
+      const result = await api(`/api/practice?route=results&set_no=${set}`);
+      if (!modal.open || ticket !== requestNo) return;
+      staffResults = result;
+      if (studentId) renderStudentResult(studentId); else renderResults();
+    } catch (error) {
+      if (modal.open && ticket === requestNo) modalBody.innerHTML = `<p class="practice-inline-error" role="alert">${esc(error.message)}</p><button type="button" class="secondary" data-results-retry="${set}">ลองอีกครั้ง</button>`;
+    } finally { busy = false; document.querySelector('#practice-close').disabled = false; }
+  }
+
   async function openReview() {
     if (busy || !data.member.can_manage) return;
-    requestNo++; busy = true; session = null;
+    requestNo++; busy = true; session = null; returnView = null; staffStudentId = null;
     document.querySelector('#practice-title').textContent = 'คำตอบนักเรียน · รอตรวจ';
     modalBody.innerHTML = '<p class="practice-muted" role="status">กำลังเปิดรายการ…</p>'; if (!modal.open) modal.showModal();
     try {
@@ -209,7 +279,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject }
     try {
       await post('grade', { attempt_id:id }); notice('ตรวจและเปิดคะแนนกับเฉลยให้นักเรียนแล้ว');
       busy = false;
-      if (session) await updateSubject(); else await openReview();
+      if (session) await updateSubject(); else if (staffStudentId && staffResults) await openResults(staffResults.set_no, staffStudentId); else await openReview();
       await refresh();
     } catch (error) { busy = false; notice(error.message); button.disabled = false; button.textContent = 'ตรวจและเปิดผล'; }
   }
@@ -220,6 +290,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject }
       const topic = data.topics.find(t => t.topic_id === target.dataset.practice); if (topic) openSubject(topic.subject_id, topic.topic_id);
     } else if (target.dataset.practiceSubject) openSubject(target.dataset.practiceSubject);
     else if (target.hasAttribute('data-practice-refresh')) refresh();
+    else if (target.hasAttribute('data-student-results')) { resultsQuery = ''; resultsFilter = 'all'; openResults(); }
     else if (target.hasAttribute('data-review')) openReview();
     else if (target.dataset.resultSubject) { resultSubject = target.dataset.resultSubject; renderPanel(); }
   };
@@ -232,21 +303,32 @@ export function createPractice({ main, data, api, notice, rerender, getSubject }
     else if (t.hasAttribute('data-unanswered')) move(session.questions.findIndex(q => !saved.has(q.question_id)));
     else if (t.hasAttribute('data-submit')) submitSubject();
     else if (t.hasAttribute('data-update-subject')) updateSubject();
-    else if (t.dataset.reviewOpen) { selectedSet = Number(t.dataset.reviewSet); openSubject(t.dataset.reviewSubject, null, t.dataset.reviewOpen); }
+    else if (t.dataset.studentId) renderStudentResult(t.dataset.studentId);
+    else if (t.hasAttribute('data-results-list')) renderResults();
+    else if (t.hasAttribute('data-results-refresh')) openResults(staffResults.set_no, staffStudentId);
+    else if (t.dataset.resultsRetry) openResults(Number(t.dataset.resultsRetry));
+    else if (t.hasAttribute('data-results-back') && returnView) openResults(returnView.set_no, returnView.member_id);
+    else if (t.dataset.resultAttempt) { returnView = { set_no:staffResults.set_no, member_id:staffStudentId }; openSubject(t.dataset.resultSubject, null, t.dataset.resultAttempt, staffResults.set_no); }
+    else if (t.dataset.reviewOpen) openSubject(t.dataset.reviewSubject, null, t.dataset.reviewOpen, Number(t.dataset.reviewSet));
     else if (t.dataset.grade) grade(t.dataset.grade, t);
   };
   const choiceChange = event => {
+    if (event.target.id === 'practice-results-set') { openResults(Number(event.target.value), staffStudentId); return; }
+    if (event.target.id === 'practice-results-status') { resultsFilter = event.target.value; renderResultsList(); return; }
     if (event.target.name !== 'practice-choice' || !editable() || busy) return;
     const q = session.questions[index], value = Number(event.target.value); choices.set(q.question_id, value); saveChoice(q, value);
   };
+  const resultsSearch = event => { if (event.target.id === 'practice-results-search') { resultsQuery = event.target.value; renderResultsList(); } };
   const cancel = event => { event.preventDefault(); closeModal(); };
   main.addEventListener('click', mainClick); main.addEventListener('change', setChange);
   modalBody.addEventListener('click', modalClick); modalBody.addEventListener('change', choiceChange);
+  modalBody.addEventListener('input', resultsSearch);
   modal.addEventListener('cancel', cancel); document.querySelector('#practice-close').addEventListener('click', closeModal);
   renderPanel();
   return { refresh, topicAction, subjectChanged() { resultSubject = getSubject(); if (bank?.ready) renderPanel(); }, destroy() {
     requestNo++; main.removeEventListener('click', mainClick); main.removeEventListener('change', setChange);
     modalBody.removeEventListener('click', modalClick); modalBody.removeEventListener('change', choiceChange);
+    modalBody.removeEventListener('input', resultsSearch);
     modal.removeEventListener('cancel', cancel); document.querySelector('#practice-close').removeEventListener('click', closeModal);
     modal.close(); session = null;
   } };

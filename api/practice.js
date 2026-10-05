@@ -1,5 +1,5 @@
 import { body, requireMember, sameOrigin, fail, sendError } from '../lib/school.js';
-import { summary, subject, reviewQueue, transaction } from '../lib/practice.js';
+import { summary, subject, reviewQueue, studentResults, transaction } from '../lib/practice.js';
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -17,6 +17,7 @@ export default async function handler(req, res) {
         }
       }
       if (route === 'subject') return res.status(200).json({ success: true, ...await subject(member, req.query) });
+      if (route === 'results') return res.status(200).json({ success: true, ...await studentResults(member, req.query) });
       if (route === 'review') {
         if (!member.can_manage) fail('เฉพาะผู้ดูแล School', 403);
         return res.status(200).json({ success: true, attempts: await reviewQueue() });

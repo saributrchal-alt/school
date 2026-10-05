@@ -108,7 +108,7 @@ test('practice API keeps results private until a manager publishes them',async t
         assert.deepEqual(r.body.questions.map(q=>q.topic_id),['ENG-01.01','ENG-01.02','ENG-02.01']);
       }finally{f.rows.school_practice_questions.pop();}
     });
-    await t.test('teacher can preview explanations but cannot grade or see other students answers',async()=>{
+    await t.test('teacher can preview explanations but cannot grade or see unpublished student answers',async()=>{
       const r=await f.call('subject','teacher',undefined,{set_no:1,subject_id:'ENG'});
       assert.equal(r.body.questions[0].answer_key,2);assert.equal(r.body.questions[0].explanation,'teacher-only explanation');
       assert.equal(r.body.attempt,null);
@@ -174,6 +174,88 @@ test('practice API keeps results private until a manager publishes them',async t
       f.rows.school_practice_sets[0].is_active=false;
       assert.equal((await f.call('subject','student',undefined,{set_no:1,subject_id:'ENG'})).status,404);
       assert.equal((await f.call('summary','student',undefined,{method:'PUT'})).status,405);
+    });
+  } finally { f.restore(); }
+});
+
+test('staff results retain individual history and protect unpublished answers', async t => {
+  const f = fixture(), id = crypto.randomUUID(), draftId = crypto.randomUUID();
+  const now = new Date().toISOString();
+  const released = { attempt_id:id, member_id:'student', set_no:1, subject_id:'ENG', status:'graded', total_count:2,
+    correct_count:1, submitted_at:now, graded_at:now, graded_by:'manager', updated_at:now };
+  f.members.push(
+    { member_id:'unstarted', member_name:'ยังไม่เริ่มสมมติ', is_active:true, can_study:true },
+    { member_id:'former', member_name:'นักเรียนเดิมสมมติ', is_active:false, can_study:false }
+  );
+  f.rows.school_practice_attempts.push(released,
+    { attempt_id:draftId, member_id:'student', set_no:1, subject_id:'MATH', status:'draft', total_count:4, correct_count:999, updated_at:now },
+    { ...released, attempt_id:crypto.randomUUID(), member_id:'former', correct_count:0 }
+  );
+  f.rows.school_practice_answers.push(
+    { attempt_id:id, question_id:'P01-ENG-01.01', selected_answer:1, is_correct:false },
+    { attempt_id:id, question_id:'P01-ENG-01.02', selected_answer:2, is_correct:true }
+  );
+  try {
+    await t.test('only current teachers and managers can read the student report', async () => {
+      assert.equal((await f.call('results', null, undefined, {set_no:1})).status, 401);
+      assert.equal((await f.call('results', 'student', undefined, {set_no:1, can_manage:true})).status, 403);
+      const r = await f.call('results', 'teacher', undefined, {set_no:1});
+      assert.equal(r.status, 200); assert.equal(r.headers['Cache-Control'], 'no-store');
+      assert.equal((await f.call('results', 'manager', undefined, {set_no:1})).status, 200);
+      assert.deepEqual(r.body.students.map(s => s.member_id), ['former','student','unstarted']);
+      assert.equal(r.body.students.find(s => s.member_id === 'former').is_active, false);
+      assert.deepEqual(r.body.students.find(s => s.member_id === 'unstarted').attempts, []);
+      assert.deepEqual(r.body.counts, [{subject_id:'ENG',total_count:2}]);
+      const attempts = r.body.students.find(s => s.member_id === 'student').attempts;
+      assert.equal(attempts.find(a => a.status === 'graded').correct_count, 1);
+      assert.equal(attempts.find(a => a.status === 'graded').graded_by_name, 'ผู้ดูแลสมมติ');
+      assert.equal(attempts.find(a => a.status === 'graded').graded_at, now);
+      assert.equal('correct_count' in attempts.find(a => a.status === 'draft'), false);
+      assert.equal('graded_by' in attempts.find(a => a.status === 'draft'), false);
+      for (const field of ['answer_key','selected_answer','is_correct','teacher-only','assigned_by']) assert.equal(JSON.stringify(r.body).includes(field), false);
+      assert.equal(f.requests.some(r => r.method !== 'GET'), false);
+    });
+    await t.test('graded answers carry the student and grader identity, and remain read only for teachers', async () => {
+      const r = await f.call('subject', 'teacher', undefined, {set_no:1,subject_id:'ENG',attempt_id:id});
+      assert.equal(r.status, 200);
+      assert.deepEqual(r.body.student, {member_id:'student',member_name:'นักเรียนสมมติ'});
+      assert.equal(r.body.graded_by_name, 'ผู้ดูแลสมมติ');
+      assert.equal(r.body.answers[0].is_correct, false); assert.equal(r.body.questions[0].answer_key, 2);
+      assert.equal((await f.call('subject', 'student', undefined, {set_no:1,subject_id:'ENG',attempt_id:id})).status, 403);
+      assert.equal((await f.call('subject', 'teacher', undefined, {set_no:1,subject_id:'MATH',attempt_id:draftId})).status, 403);
+      assert.equal((await f.call('subject', 'teacher', undefined, {set_no:2,subject_id:'ENG',attempt_id:id})).status, 404);
+      assert.equal((await f.call('grade', 'teacher', {attempt_id:id})).status, 403);
+    });
+    await t.test('set selection includes closed history and validates filters', async () => {
+      f.rows.school_practice_sets.push({set_no:2,label:'ชุดปิดสมมติ',is_active:false});
+      f.rows.school_practice_attempts.push({...released,attempt_id:crypto.randomUUID(),set_no:2,correct_count:2});
+      const r = await f.call('results', 'teacher', undefined, {set_no:2});
+      assert.equal(r.status, 200); assert.equal(r.body.sets[1].is_active, false);
+      const student = r.body.students.find(s => s.member_id === 'student');
+      assert.equal(student.attempts.length, 1); assert.equal(student.attempts[0].set_no, 2);
+      assert.equal(student.attempts[0].correct_count, 2);
+      assert.equal((await f.call('results', 'teacher', undefined, {set_no:'1&select=*'})).status, 400);
+      assert.equal((await f.call('results', 'teacher', undefined, {set_no:11})).status, 400);
+      assert.equal((await f.call('results', 'teacher', undefined, {set_no:3})).status, 404);
+    });
+    await t.test('report reads paginate students and attempts instead of silently truncating', async () => {
+      for (let i = 0; i < 1001; i++) {
+        const member_id = `synthetic-${String(i).padStart(4,'0')}`;
+        f.members.push({member_id,member_name:member_id,is_active:true,can_study:true});
+        f.rows.school_practice_attempts.push({...released,member_id,attempt_id:crypto.randomUUID()});
+      }
+      const r = await f.call('results', 'manager', undefined, {set_no:1});
+      assert.equal(r.status, 200); assert.equal(r.body.students.length, 1004);
+      assert.equal(r.body.students.reduce((n,s) => n + s.attempts.length, 0), 1004);
+      for (const table of ['school_members','school_practice_attempts']) assert.ok(f.requests.some(r => r.url.pathname.endsWith(table) && r.url.searchParams.get('offset') === '1000'));
+    });
+    await t.test('revoked teacher or source membership cannot reuse an existing session to read results', async () => {
+      const teacher = f.members.find(m => m.member_id === 'teacher');
+      teacher.can_teach = false;
+      assert.equal((await f.call('results', 'teacher', undefined, {set_no:1})).status, 403);
+      teacher.can_teach = true; f.setSource(false);
+      assert.equal((await f.call('results', 'teacher', undefined, {set_no:1})).status, 403);
+      f.setSource(true);
     });
   } finally { f.restore(); }
 });
