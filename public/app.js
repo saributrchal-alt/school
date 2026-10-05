@@ -108,7 +108,7 @@ function renderAccount() {
 function areaCard(area) {
   const ready = area.id === 'military-prep'
     ? '<span class="learning-ready">มีคลังข้อสอบแล้ว: ทหารบก (จปร.)</span>'
-    : '<span class="learning-muted">เตรียมหมวดไว้สำหรับเพิ่มเนื้อหา</span>';
+    : '<span class="learning-muted">อยู่ระหว่างการดำเนินงาน</span>';
   return `<button type="button" class="learning-card" data-area="${esc(area.id)}"><span class="learning-card-kicker">หมวดการเรียน</span><strong>${esc(area.title)}</strong><small>${esc(area.description)}</small>${ready}<span class="learning-arrow" aria-hidden="true">→</span></button>`;
 }
 
@@ -129,7 +129,12 @@ function renderArea(areaId) {
   practice?.destroy(); practice=null;
   if (!area.levels) return renderUnavailable(area.title, null);
   main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-home>← กลับประเภทการเรียน</button><span class="eyebrow">NATHOENG SCHOOL</span><h1>${esc(area.title)}</h1><p>${esc(area.description)} — เลือกระดับหรือสายการเรียนที่ต้องการ</p></section>
-  <section class="level-grid">${area.levels.map(([id,label])=>`<button type="button" class="level-card" data-level="${esc(id)}"><span>${esc(label)}</span><b aria-hidden="true">→</b></button>`).join('')}</section>`;
+  <section class="level-grid">${area.levels.map(([id,label])=>{
+    const hasContent = area.id === 'military-prep' && id === 'army';
+    const hasSubmenu = area.id === 'secondary' && id === 'm6';
+    const status = hasContent ? '<small class="level-status ready">พร้อมใช้งาน</small>' : hasSubmenu ? '<small class="level-status">มีหมวดย่อย</small>' : '<small class="level-status pending">อยู่ระหว่างการดำเนินงาน</small>';
+    return `<button type="button" class="level-card" data-level="${esc(id)}"><span><strong>${esc(label)}</strong>${status}</span><b aria-hidden="true">→</b></button>`;
+  }).join('')}</section>`;
 }
 
 function renderUnavailable(areaTitle, levelLabel) {
@@ -138,7 +143,7 @@ function renderUnavailable(areaTitle, levelLabel) {
   const path = levelLabel ? `${areaTitle} / ${levelLabel}` : areaTitle;
   const back = levelLabel ? 'data-back-area' : 'data-home';
   main.innerHTML = `<section class="page-head"><button type="button" class="back-link" ${back}>← กลับ</button><span class="eyebrow">NATHOENG SCHOOL</span><h1>${esc(title)}</h1><p>${esc(path)}</p></section>
-  <section class="empty-state"><strong>เตรียมพื้นที่หมวดนี้ไว้แล้ว</strong><p>ขณะนี้ยังไม่ได้เพิ่มคลังบทเรียนหรือชุดทดสอบในหมวดนี้ เมื่อมีเนื้อหาใหม่จะสามารถเปิดใช้งานจากโครงสร้างนี้ได้ทันที</p><button type="button" class="secondary" data-home>กลับหน้าประเภทการเรียน</button></section>`;
+  <section class="empty-state"><strong>อยู่ระหว่างการดำเนินงาน</strong><p>ขณะนี้ยังไม่มีเนื้อหาหรือชุดทดสอบในหมวดนี้</p><button type="button" class="secondary" data-home>กลับหน้าประเภทการเรียน</button></section>`;
 }
 
 function openLevel(levelId) {
@@ -150,7 +155,37 @@ function openLevel(levelId) {
     renderCatalogShell(currentArea.title, label);
     return;
   }
+  if (currentArea.id === 'secondary' && levelId === 'm6') {
+    renderM6();
+    return;
+  }
   renderUnavailable(currentArea.title, label);
+}
+
+function renderM6() {
+  practice?.destroy(); practice=null;
+  main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-back-area>← กลับชั้นมัธยม</button><span class="eyebrow">NATHOENG SCHOOL</span><h1>มัธยมศึกษาปีที่ 6</h1><p>เลือกการเรียนตามระดับชั้น หรือเตรียมสอบเข้ามหาวิทยาลัย</p></section>
+  <section class="level-grid">
+    <button type="button" class="level-card" data-m6-path="curriculum"><span><strong>เรียนตามระดับชั้น ม.6</strong><small class="level-status pending">อยู่ระหว่างการดำเนินงาน</small></span><b aria-hidden="true">→</b></button>
+    <button type="button" class="level-card" data-m6-path="university"><span><strong>เตรียมสอบเข้ามหาวิทยาลัย</strong><small class="level-status">A-Level · TGAT · TPAT</small></span><b aria-hidden="true">→</b></button>
+  </section>`;
+}
+
+function renderUniversityPrep() {
+  practice?.destroy(); practice=null;
+  main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-m6>← กลับ ม.6</button><span class="eyebrow">NATHOENG SCHOOL</span><h1>เตรียมสอบเข้ามหาวิทยาลัย</h1><p>เลือกประเภทข้อสอบที่ต้องการฝึกฝนและทดสอบ</p></section>
+  <section class="level-grid">
+    <button type="button" class="level-card" data-university-exam="alevel"><span><strong>A-Level</strong><small class="level-status pending">อยู่ระหว่างการดำเนินงาน</small></span><b aria-hidden="true">→</b></button>
+    <button type="button" class="level-card" data-university-exam="tgat"><span><strong>TGAT</strong><small class="level-status pending">อยู่ระหว่างการดำเนินงาน</small></span><b aria-hidden="true">→</b></button>
+    <button type="button" class="level-card" data-university-exam="tpat"><span><strong>TPAT</strong><small class="level-status pending">อยู่ระหว่างการดำเนินงาน</small></span><b aria-hidden="true">→</b></button>
+  </section>`;
+}
+
+function renderALevelSubjects() {
+  practice?.destroy(); practice=null;
+  const subjects = ['คณิตศาสตร์ประยุกต์ 1','ฟิสิกส์','เคมี','ชีววิทยา','ภาษาอังกฤษ','ภาษาไทย','สังคมศึกษา'];
+  main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-university-prep>← กลับเตรียมสอบเข้ามหาวิทยาลัย</button><span class="eyebrow">A-LEVEL</span><h1>ข้อสอบ A-Level</h1><p>แยกตามรายวิชา เพื่อรองรับคลังข้อสอบและชุดฝึกแต่ละปี</p></section>
+  <section class="level-grid">${subjects.map(name=>`<button type="button" class="level-card" data-alevel-subject="${esc(name)}"><span><strong>${esc(name)}</strong><small class="level-status pending">อยู่ระหว่างการดำเนินงาน</small></span><b aria-hidden="true">→</b></button>`).join('')}</section>`;
 }
 
 function renderCatalogShell(areaTitle, levelLabel) {
@@ -192,8 +227,21 @@ function renderCatalog() {
 main.addEventListener('click',event=>{
   const home=event.target.closest('[data-home]'); if(home){renderLearningHome();return;}
   const backArea=event.target.closest('[data-back-area]'); if(backArea){currentArea?renderArea(currentArea.id):renderLearningHome();return;}
+  const backM6=event.target.closest('[data-m6]'); if(backM6){renderM6();return;}
+  const backUniversity=event.target.closest('[data-university-prep]'); if(backUniversity){renderUniversityPrep();return;}
   const area=event.target.closest('[data-area]'); if(area){renderArea(area.dataset.area);return;}
   const level=event.target.closest('[data-level]'); if(level){openLevel(level.dataset.level);return;}
+  const m6Path=event.target.closest('[data-m6-path]'); if(m6Path){
+    if(m6Path.dataset.m6Path==='university') renderUniversityPrep();
+    else renderUnavailable('เรียน ชั้นมัธยม','เรียนตามระดับชั้น ม.6');
+    return;
+  }
+  const universityExam=event.target.closest('[data-university-exam]'); if(universityExam){
+    if(universityExam.dataset.universityExam==='alevel') renderALevelSubjects();
+    else renderUnavailable('เตรียมสอบเข้ามหาวิทยาลัย', universityExam.dataset.universityExam.toUpperCase());
+    return;
+  }
+  const alevelSubject=event.target.closest('[data-alevel-subject]'); if(alevelSubject){renderUnavailable('A-Level',alevelSubject.dataset.alevelSubject);return;}
   const tab=event.target.closest('[data-subject]'); if(tab){subject=tab.dataset.subject;renderCatalog();practice?.subjectChanged();return;}
   const topic=event.target.closest('[data-topic]'); if(topic)showQuestions(topic.dataset.topic);
 });
