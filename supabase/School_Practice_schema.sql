@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS public.school_practice_answers (
   question_id text NOT NULL,
   set_no integer NOT NULL,
   subject_id text NOT NULL,
-  selected_answer integer NOT NULL CHECK (selected_answer BETWEEN 1 AND 5),
+  selected_answer integer NOT NULL CHECK (selected_answer BETWEEN 1 AND 10),
   is_correct boolean,
   updated_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (attempt_id, question_id),
