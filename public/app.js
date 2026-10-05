@@ -9,6 +9,7 @@ const learningAreas = [
     id:'primary',
     title:'เรียน ชั้นประถม',
     description:'เลือกชั้นเรียนระดับประถมศึกษา',
+    backgroundFile:'Klassenzimmer - Grundschule.JPG',
     levels:[
       ['p1','ประถมศึกษาปีที่ 1'],['p2','ประถมศึกษาปีที่ 2'],['p3','ประถมศึกษาปีที่ 3'],
       ['p4','ประถมศึกษาปีที่ 4'],['p5','ประถมศึกษาปีที่ 5'],['p6','ประถมศึกษาปีที่ 6']
@@ -18,6 +19,7 @@ const learningAreas = [
     id:'secondary',
     title:'เรียน ชั้นมัธยม',
     description:'เลือกชั้นเรียนระดับมัธยมศึกษา',
+    backgroundFile:'The first group of Mathayom students in Mae Sariang Boripat Suksa school.jpg',
     levels:[
       ['m1','มัธยมศึกษาปีที่ 1'],['m2','มัธยมศึกษาปีที่ 2'],['m3','มัธยมศึกษาปีที่ 3'],
       ['m4','มัธยมศึกษาปีที่ 4'],['m5','มัธยมศึกษาปีที่ 5'],['m6','มัธยมศึกษาปีที่ 6']
@@ -27,28 +29,33 @@ const learningAreas = [
     id:'vocational-certificate',
     title:'เรียน ปวช.',
     description:'ประกาศนียบัตรวิชาชีพ',
+    backgroundFile:'นักเรียนโรงเรียนการช่างสตรีกระบี่ ในปี 2508.png',
     levels:[['vc1','ปวช. 1'],['vc2','ปวช. 2'],['vc3','ปวช. 3']]
   },
   {
     id:'higher-vocational',
     title:'เรียน ปวส.',
     description:'ประกาศนียบัตรวิชาชีพชั้นสูง',
+    backgroundFile:'Rajamangala University of Technology Tawan-ok Chakrabongse Bhuvanarth Campus 2.jpg',
     levels:[['hvc1','ปวส. 1'],['hvc2','ปวส. 2']]
   },
   {
     id:'career',
     title:'เรียน วิชาชีพบุคคลทั่วไป',
-    description:'ทักษะอาชีพและการเรียนรู้สำหรับบุคคลทั่วไป'
+    description:'ทักษะอาชีพและการเรียนรู้สำหรับบุคคลทั่วไป',
+    backgroundFile:'Thailand workshop.JPG'
   },
   {
     id:'higher-education',
     title:'เรียน อุดมศึกษา',
-    description:'การเรียนรู้และการทดสอบระดับอุดมศึกษา'
+    description:'การเรียนรู้และการทดสอบระดับอุดมศึกษา',
+    backgroundFile:'University of Central Thailand building.jpg'
   },
   {
     id:'military-prep',
     title:'เรียน เตรียมทหาร',
     description:'เลือกสายการสอบเตรียมทหาร',
+    backgroundFile:'Washington National Guard senior enlisted leaders visit Chulachomklao Royal Thai Military Academy (8788084).jpg',
     levels:[
       ['police','ตำรวจ'],
       ['army','ทหารบก (จปร.)'],
@@ -59,12 +66,14 @@ const learningAreas = [
   {
     id:'nco',
     title:'เรียน ชั้นประทวนทหาร-ตำรวจ',
-    description:'การฝึกฝนและเตรียมสอบชั้นประทวน'
+    description:'การฝึกฝนและเตรียมสอบชั้นประทวน',
+    backgroundFile:'Opening of a US-funded tactical training center facility for the Royal Thai Police Nongsarai THAI-U.S. Indoor Tactical Training Center.jpg'
   },
   {
     id:'recruitment',
     title:'เรียน เตรียมสอบบรรจุ',
     description:'เลือกกลุ่มการสอบบรรจุ',
+    backgroundFile:'ข้าราชการไทย.jpg',
     levels:[
       ['teacher','บรรจุครู'],
       ['government','บรรจุข้าราชการทั่วไป']
@@ -75,6 +84,7 @@ const learningAreas = [
 let data, subject = 'ENG', query = '', filter = 'all', noticeTimer, practice, currentArea = null;
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const roles = member => [member.can_study?'นักเรียน':'',member.can_teach?'ครู / ผู้สอน':'',member.can_manage?'ผู้ดูแล':''].filter(Boolean).map(x=>`<span class="role">${x}</span>`).join('');
+const commonsImage = file => file ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}` : '';
 
 async function api(url, options) {
   const response = await fetch(url, { credentials:'include', cache:'no-store', ...options });
@@ -109,7 +119,9 @@ function areaCard(area) {
   const ready = area.id === 'military-prep'
     ? '<span class="learning-ready">มีคลังข้อสอบแล้ว: ทหารบก (จปร.)</span>'
     : '<span class="learning-muted">อยู่ระหว่างการดำเนินงาน</span>';
-  return `<button type="button" class="learning-card" data-area="${esc(area.id)}"><span class="learning-card-kicker">หมวดการเรียน</span><strong>${esc(area.title)}</strong><small>${esc(area.description)}</small>${ready}<span class="learning-arrow" aria-hidden="true">→</span></button>`;
+  const bg = commonsImage(area.backgroundFile);
+  const bgStyle = bg ? ` style="--card-bg:url('${esc(bg)}')"` : '';
+  return `<button type="button" class="learning-card ${bg?'has-bg':''}" data-area="${esc(area.id)}"${bgStyle}><span class="learning-card-kicker">หมวดการเรียน</span><strong>${esc(area.title)}</strong><small>${esc(area.description)}</small>${ready}<span class="learning-arrow" aria-hidden="true">→</span></button>`;
 }
 
 function renderLearningHome() {
