@@ -7,6 +7,11 @@ SET LOCAL standard_conforming_strings = on;
 CREATE TABLE IF NOT EXISTS public.school_practice_sets (
   set_no integer PRIMARY KEY CHECK (set_no BETWEEN 1 AND 10),
   label text NOT NULL,
+  display_label text,
+  source_year integer,
+  source_title text,
+  source_type text NOT NULL DEFAULT 'generated',
+  description text,
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now()
 );
@@ -18,13 +23,18 @@ CREATE TABLE IF NOT EXISTS public.school_practice_questions (
   subject_id text NOT NULL REFERENCES public.exam_subjects_master(subject_id),
   sort_order integer NOT NULL CHECK (sort_order > 0),
   prompt text NOT NULL CHECK (length(prompt) > 0),
-  choices jsonb NOT NULL CHECK (jsonb_typeof(choices) = 'array' AND jsonb_array_length(choices) = 5),
-  answer_key integer NOT NULL CHECK (answer_key BETWEEN 1 AND 5),
+  choices jsonb NOT NULL CHECK (jsonb_typeof(choices) = 'array' AND jsonb_array_length(choices) BETWEEN 2 AND 10),
+  question_no integer,
+  question_image_url text,
+  source_page integer,
+  source_year integer,
+  source_title text,
+  source_type text NOT NULL DEFAULT 'generated',
+  answer_key integer NOT NULL CHECK (answer_key BETWEEN 1 AND 10),
   explanation text NOT NULL CHECK (length(explanation) > 0),
   reasoning text NOT NULL CHECK (length(reasoning) > 0),
   source_question_ids jsonb NOT NULL DEFAULT '[]'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (set_no, topic_id),
   UNIQUE (question_id, set_no, subject_id),
   CHECK (left(topic_id, length(subject_id) + 1) = subject_id || '-')
 );
@@ -68,6 +78,12 @@ CREATE TABLE IF NOT EXISTS public.school_practice_answers (
 
 CREATE INDEX IF NOT EXISTS school_practice_question_order
   ON public.school_practice_questions(set_no, subject_id, sort_order, topic_id);
+CREATE UNIQUE INDEX IF NOT EXISTS school_practice_set_question_no_unique
+  ON public.school_practice_questions(set_no, question_no) WHERE question_no IS NOT NULL;
+CREATE INDEX IF NOT EXISTS school_practice_topic_lookup
+  ON public.school_practice_questions(topic_id, set_no, sort_order);
+CREATE INDEX IF NOT EXISTS school_practice_questions_with_image
+  ON public.school_practice_questions(set_no, subject_id, question_no) WHERE question_image_url IS NOT NULL;
 CREATE INDEX IF NOT EXISTS school_practice_review_queue
   ON public.school_practice_attempts(submitted_at) WHERE status = 'submitted';
 
