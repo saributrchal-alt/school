@@ -102,7 +102,7 @@ $fn$;
 
 CREATE OR REPLACE FUNCTION public.school_practice_save(p_member_id text, p_attempt_id uuid, p_question_id text, p_selected_answer integer)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $fn$
-DECLARE a public.school_practice_attempts%ROWTYPE;
+DECLARE a public.school_practice_attempts%ROWTYPE; choice_count integer;
 BEGIN
   PERFORM 1 FROM public.school_members WHERE member_id = p_member_id AND is_active AND can_study FOR SHARE;
   IF NOT FOUND THEN RAISE SQLSTATE 'PT403' USING MESSAGE = 'study_permission_required'; END IF;
@@ -110,12 +110,12 @@ BEGIN
     WHERE attempt_id = p_attempt_id AND member_id = p_member_id FOR UPDATE;
   IF NOT FOUND THEN RAISE SQLSTATE 'PT404' USING MESSAGE = 'attempt_not_found'; END IF;
   IF a.status <> 'draft' THEN RAISE SQLSTATE 'PT409' USING MESSAGE = 'attempt_locked'; END IF;
-  IF p_selected_answer IS NULL OR p_selected_answer NOT BETWEEN 1 AND 5 THEN
-    RAISE SQLSTATE 'PT400' USING MESSAGE = 'invalid_choice';
-  END IF;
-  PERFORM 1 FROM public.school_practice_questions
+  SELECT jsonb_array_length(choices) INTO choice_count FROM public.school_practice_questions
     WHERE question_id = p_question_id AND set_no = a.set_no AND subject_id = a.subject_id;
   IF NOT FOUND THEN RAISE SQLSTATE 'PT404' USING MESSAGE = 'question_not_in_attempt'; END IF;
+  IF p_selected_answer IS NULL OR p_selected_answer < 1 OR p_selected_answer > choice_count THEN
+    RAISE SQLSTATE 'PT400' USING MESSAGE = 'invalid_choice';
+  END IF;
   INSERT INTO public.school_practice_answers(attempt_id, question_id, set_no, subject_id, selected_answer)
     VALUES (a.attempt_id, p_question_id, a.set_no, a.subject_id, p_selected_answer)
     ON CONFLICT (attempt_id, question_id) DO UPDATE
