@@ -33,13 +33,17 @@ export function createPractice({ main, data, api, notice, rerender, getSubject }
 
   function topicAction(topic) {
     if (!bank?.ready) return '<span class="practice-topic-pending">ชุดฝึกที่ 1 · กำลังเตรียม</span>';
-    const question = bank.topics.find(q => q.set_no === selectedSet && q.topic_id === topic.topic_id);
-    if (!question) return '';
-    const a = ownAttempt(topic.subject_id), answer = ownAnswers(topic.subject_id).find(x => x.question_id === question.question_id);
+    const questions = bank.topics.filter(q => q.set_no === selectedSet && q.topic_id === topic.topic_id);
+    if (!questions.length) return '';
+    const a = ownAttempt(topic.subject_id), ids = new Set(questions.map(q => q.question_id));
+    const answers = ownAnswers(topic.subject_id).filter(x => ids.has(x.question_id));
     let badge = '';
-    if (a?.status === 'graded' && answer) badge = `<span class="practice-badge ${answer.is_correct ? 'correct' : 'incorrect'}">${answer.is_correct ? 'ถูก' : 'ควรทบทวน'} · ${answer.is_correct ? '100%' : '0%'}</span>`;
-    else if (answer) badge = '<span class="practice-badge answered">✓ ตอบแล้ว</span>';
-    return `<div class="practice-topic-action"><button type="button" class="practice-topic-button" data-practice="${esc(topic.topic_id)}">${a?.status === 'graded' ? 'ดูผล / เฉลย' : data.member.can_study ? 'ทำ' : 'ดู'}${setText(bank?.sets, selectedSet)}</button>${badge}</div>`;
+    if (a?.status === 'graded' && answers.length) {
+      const correct = answers.filter(x => x.is_correct).length;
+      badge = `<span class="practice-badge ${correct === answers.length ? 'correct' : 'incorrect'}">${correct}/${questions.length} ถูก · ${pct(correct, questions.length)}</span>`;
+    } else if (answers.length) badge = `<span class="practice-badge answered">✓ ${answers.length}/${questions.length} ข้อ</span>`;
+    const count = questions.length > 1 ? ` · ${questions.length} ข้อ` : '';
+    return `<div class="practice-topic-action"><button type="button" class="practice-topic-button" data-practice="${esc(topic.topic_id)}">${a?.status === 'graded' ? 'ดูผล / เฉลย' : data.member.can_study ? 'ทำ' : 'ดู'}${setText(bank?.sets, selectedSet)}${count}</button>${badge}</div>`;
   }
 
   function renderPanel() {
