@@ -1,5 +1,47 @@
-import { body, requireMember, sameOrigin, fail, sendError } from '../lib/school.js';
+import { body, requireMember, sameOrigin, fail, sendError, db } from '../lib/school.js';
 import { summary, subject, reviewQueue, studentResults, transaction } from '../lib/practice.js';
+
+async function migratePracticeMedia(setNo = 2) {
+  const uploadKey = process.env.MEDIA_UPLOAD_KEY?.trim();
+  const uploadUrl = process.env.MEDIA_UPLOAD_URL?.trim();
+  if (!uploadKey) fail('ยังไม่ได้ตั้งค่า MEDIA_UPLOAD_KEY', 503);
+  if (!uploadUrl || uploadUrl !== 'https://media.nathoeng.com/upload.php') fail('MEDIA_UPLOAD_URL ไม่ถูกต้อง', 503);
+
+  const rows = await db(`school_practice_questions?set_no=eq.${setNo}&question_image_url=like.data:image/*&select=question_id,question_no,question_image_url&order=question_no.asc`);
+  const migrated = [];
+  for (const row of rows) {
+    const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(row.question_image_url || '');
+    if (!match) fail(`รูปข้อ ${row.question_no} ไม่ใช่ data URL ที่รองรับ`, 422);
+    const bytes = Buffer.from(match[2], 'base64');
+    if (!bytes.length || bytes.length > 2 * 1024 * 1024) fail(`รูปข้อ ${row.question_no} มีขนาดไม่ถูกต้อง`, 422);
+
+    const ext = match[1] === 'image/jpeg' ? 'jpg' : match[1].split('/')[1];
+    const form = new FormData();
+    form.append('folder', 'school');
+    form.append('file', new Blob([bytes], { type: match[1] }), `set${setNo}-q${String(row.question_no).padStart(3, '0')}.${ext}`);
+
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: { 'X-Upload-Key': uploadKey },
+      body: form,
+      cache: 'no-store',
+      signal: AbortSignal.timeout(20000)
+    });
+    let result;
+    try { result = await response.json(); }
+    catch { fail(`Media Server ตอบกลับไม่ถูกต้องที่ข้อ ${row.question_no}`, 502); }
+
+    if (!response.ok || !result?.ok || typeof result.url !== 'string' ||
+        !result.url.startsWith('https://media.nathoeng.com/')) {
+      fail(`อัปโหลดภาพข้อ ${row.question_no} ไม่สำเร็จ`, 502);
+    }
+
+    await db(`school_practice_questions?question_id=eq.${encodeURIComponent(row.question_id)}`, 'PATCH',
+      { question_image_url: result.url }, 'return=minimal');
+    migrated.push({ question_no: row.question_no, url: result.url });
+  }
+  return migrated;
+}
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -26,6 +68,14 @@ export default async function handler(req, res) {
     }
     if (req.method !== 'POST') fail('Method not allowed', 405);
     sameOrigin(req);
+    if (route === 'migrate-media') {
+      if (!member.can_manage) fail('เฉพาะผู้ดูแล School', 403);
+      const payload = body(req);
+      const set = Number(payload.set_no ?? 2);
+      if (!Number.isInteger(set) || set < 1 || set > 10) fail('ชุดฝึกไม่ถูกต้อง');
+      const migrated = await migratePracticeMedia(set);
+      return res.status(200).json({ success: true, migrated_count: migrated.length, migrated });
+    }
     if (!['start', 'save', 'submit', 'grade'].includes(route)) fail('ไม่พบรายการ', 404);
     return res.status(200).json({ success: true, item: await transaction(route, member, body(req)) });
   } catch (error) { return sendError(res, error); }
