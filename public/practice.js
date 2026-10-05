@@ -32,7 +32,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject }
   }
 
   function topicAction(topic) {
-    if (!bank?.ready) return '<span class="practice-topic-pending">ชุดฝึกที่ 1 · กำลังเตรียม</span>';
+    if (!bank?.ready) return '<span class="practice-topic-pending">กำลังเตรียมชุดฝึก</span>';
     const questions = bank.topics.filter(q => q.set_no === selectedSet && q.topic_id === topic.topic_id);
     if (!questions.length) return '';
     const a = ownAttempt(topic.subject_id), ids = new Set(questions.map(q => q.question_id));
@@ -49,7 +49,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject }
   function renderPanel() {
     if (!bank) { panel.innerHTML = '<p class="practice-muted" role="status">กำลังเปิดผลการฝึก…</p>'; return; }
     if (!bank.ready) {
-      panel.innerHTML = `<div class="practice-heading"><div><span class="eyebrow">PRACTICE</span><h2>ชุดฝึกใหม่ · ชุดที่ 1</h2><p>กำลังเตรียมโจทย์และเฉลยสำหรับแต่ละหัวข้อ</p></div><div class="practice-toolbar"><button type="button" class="secondary" data-practice-refresh>ตรวจอีกครั้ง</button>${resultButton()}</div></div>`;
+      panel.innerHTML = `<div class="practice-heading"><div><span class="eyebrow">PRACTICE</span><h2>กำลังเตรียมชุดฝึกใหม่</h2><p>กำลังเตรียมโจทย์และเฉลยสำหรับแต่ละหัวข้อ</p></div><div class="practice-toolbar"><button type="button" class="secondary" data-practice-refresh>ตรวจอีกครั้ง</button>${resultButton()}</div></div>`;
       return;
     }
     const graded = bank.attempts.filter(a => a.set_no === selectedSet && a.status === 'graded');
@@ -274,7 +274,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject }
     modalBody.innerHTML = '<p class="practice-muted" role="status">กำลังเปิดรายการ…</p>'; if (!modal.open) modal.showModal();
     try {
       const result = await api('/api/practice?route=review');
-      modalBody.innerHTML = `<p class="practice-muted">กดตรวจเพื่อให้ระบบเทียบเฉลย คำนวณคะแนน และเปิดผลให้นักเรียน</p>${result.attempts.length ? result.attempts.map(a => `<article class="practice-review-row"><div><strong>${esc(a.member_name)}</strong><span>${esc(subjectName(a.subject_id))} · ชุดที่ ${a.set_no} · ${a.total_count} ข้อ</span><small>ส่ง ${esc(new Date(a.submitted_at).toLocaleString('th-TH'))}</small></div><div><button type="button" class="secondary" data-review-open="${a.attempt_id}" data-review-set="${a.set_no}" data-review-subject="${a.subject_id}">ดูคำตอบ</button><button type="button" class="practice-primary" data-grade="${a.attempt_id}">ตรวจและเปิดผล</button></div></article>`).join('') : '<div class="empty">ไม่มีคำตอบรอตรวจในขณะนี้</div>'}`;
+      modalBody.innerHTML = `<p class="practice-muted">กดตรวจเพื่อให้ระบบเทียบเฉลย คำนวณคะแนน และเปิดผลให้นักเรียน</p>${result.attempts.length ? result.attempts.map(a => `<article class="practice-review-row"><div><strong>${esc(a.member_name)}</strong><span>${esc(subjectName(a.subject_id))}${setText(bank?.sets, a.set_no) ? ` · ${esc(setText(bank?.sets, a.set_no))}` : ''} · ${a.total_count} ข้อ</span><small>ส่ง ${esc(new Date(a.submitted_at).toLocaleString('th-TH'))}</small></div><div><button type="button" class="secondary" data-review-open="${a.attempt_id}" data-review-set="${a.set_no}" data-review-subject="${a.subject_id}">ดูคำตอบ</button><button type="button" class="practice-primary" data-grade="${a.attempt_id}">ตรวจและเปิดผล</button></div></article>`).join('') : '<div class="empty">ไม่มีคำตอบรอตรวจในขณะนี้</div>'}`;
     } catch (error) { modalBody.innerHTML = `<p class="practice-inline-error" role="alert">${esc(error.message)}</p>`; }
     finally { busy = false; document.querySelector('#practice-close').disabled = false; }
   }
