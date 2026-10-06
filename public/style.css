@@ -178,3 +178,62 @@
 @media(max-width:640px){
   .military-level-grid .level-card{min-height:132px}
 }
+
+/* Emphasized learning category titles */
+.learning-title{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:3px;
+  max-width:88%;
+  margin:0;
+  padding-right:30px !important;
+}
+.learning-title-prefix{
+  display:block;
+  font-size:11px;
+  line-height:1;
+  font-weight:700;
+  letter-spacing:.08em;
+  opacity:.92;
+}
+.learning-title-main{
+  display:block;
+  font-size:clamp(27px,2.35vw,37px);
+  line-height:1.04;
+  font-weight:800;
+  letter-spacing:-.025em;
+}
+.learning-card>small{
+  max-width:82%;
+  margin-top:9px;
+}
+.learning-card.has-bg .learning-title,
+.learning-card.has-art .learning-title{
+  color:#fff;
+}
+.learning-card.has-bg .learning-title-prefix,
+.learning-card.has-art .learning-title-prefix{
+  color:rgba(255,255,255,.92);
+  text-shadow:0 1px 6px rgba(0,0,0,.45);
+}
+.learning-card.has-bg .learning-title-main,
+.learning-card.has-art .learning-title-main{
+  color:#fff;
+  text-shadow:0 2px 13px rgba(0,0,0,.62);
+}
+.learning-card:not(.has-bg):not(.has-art) .learning-title-prefix{
+  color:#6f8b7b;
+}
+.learning-card:not(.has-bg):not(.has-art) .learning-title-main{
+  color:var(--green);
+}
+.learning-card.has-art>.learning-title{
+  max-width:70%;
+}
+@media(max-width:640px){
+  .learning-title{max-width:92%}
+  .learning-title-main{font-size:clamp(25px,7vw,33px)}
+  .learning-card>small{max-width:88%}
+  .learning-card.has-art>.learning-title{max-width:74%}
+}
