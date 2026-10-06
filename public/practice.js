@@ -17,12 +17,13 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   let staffResults = null, staffStudentId = null, resultsQuery = '', resultsFilter = 'all', returnView = null;
   let examSessionsData = null, examEditingId = null, examMembersData = null;
   const isALevel = apiPath === '/api/alevel';
-  const subjectName = id => data.subjects.find(s => s.subject_id === id)?.subject_name_th || id;
+  const examTrack = isALevel ? 'A-Level' : 'เตรียมทหาร';
+  const subjectName = id => id === 'ALL' ? 'ข้อสอบทั้งชุด · ทุกวิชา' : (data.subjects.find(s => s.subject_id === id)?.subject_name_th || id);
   const topicName = id => data.topics.find(t => t.topic_id === id)?.topic_name_th || id;
   const canSeeResults = () => data.member.can_teach || data.member.can_manage;
   const date = value => value ? new Date(value).toLocaleString('th-TH') : '—';
   const resultButton = () => canSeeResults() ? '<button type="button" class="secondary" data-student-results>ผลตรวจรายคน</button>' : '';
-  const examManageButton = () => isALevel && canSeeResults() ? '<button type="button" class="secondary" data-exam-manage>จัดการสอบจริง</button>' : '';
+  const examManageButton = () => canSeeResults() ? '<button type="button" class="secondary" data-exam-manage>จัดการสอบจริง</button>' : '';
   const post = (route, value) => api(`${apiPath}?route=${route}`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(value) });
   const ownAttempt = sid => bank?.attempts?.find(a => a.set_no === selectedSet && a.subject_id === sid);
   const ownAnswers = sid => {
@@ -112,7 +113,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
 
   function renderExamManager() {
     const sessions = examSessionsData?.sessions || [];
-    document.querySelector('#practice-title').textContent = 'จัดการรอบสอบจริง A-Level';
+    document.querySelector('#practice-title').textContent = 'จัดการรอบสอบจริง '+examTrack;
     modalBody.innerHTML =
       '<div class="exam-manager-head">'+
         '<div><span class="eyebrow">REAL EXAM</span><h3>รอบสอบจริง</h3><p>ครูและผู้ดูแลกำหนดเวลา เงื่อนไข และผู้เข้าสอบได้เอง</p></div>'+
@@ -124,7 +125,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
             return '<article class="exam-session-card">'+
               '<div class="exam-session-main">'+
                 '<div class="exam-session-title"><span class="practice-badge '+(s.is_published?'correct':'')+'">'+(s.is_published?'เผยแพร่แล้ว':'ฉบับร่าง')+'</span><h4>'+esc(s.title)+'</h4></div>'+
-                '<p>'+esc(subjectName(s.subject_id))+' · ชุด 2 · '+esc(String(s.duration_minutes))+' นาที</p>'+
+                '<p>'+esc(subjectName(s.subject_id))+' · ชุด '+esc(String(s.set_no||2))+' · '+esc(String(s.duration_minutes))+' นาที</p>'+
                 '<small>'+esc(examPolicyText(s))+'</small>'+
                 '<small>เปิด: '+esc(date(s.opens_at))+' · ปิด: '+esc(date(s.closes_at))+'</small>'+
                 '<div class="exam-session-stats"><span><b>'+Number(s.student_count||0)+'</b> นักเรียนเริ่มแล้ว</span><span><b>'+Number(s.submitted_count||0)+'</b> ส่งแล้ว</span><span><b>'+Number(s.attempt_count||0)+'</b> ครั้งสอบ</span></div>'+
@@ -142,16 +143,17 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
 
   function renderExamForm(item=null) {
     examEditingId = item?.session_id || null;
-    const subjectId = item?.subject_id || getSubject() || data.subjects[0]?.subject_id;
-    const duration = item?.duration_minutes || data.subjects.find(s=>s.subject_id===subjectId)?.duration_minutes || 90;
+    const subjectId = item?.subject_id || (isALevel ? (getSubject() || data.subjects[0]?.subject_id) : 'ALL');
+    const duration = item?.duration_minutes || (isALevel ? (data.subjects.find(s=>s.subject_id===subjectId)?.duration_minutes || 90) : 180);
+    const subjectOptions = (isALevel ? [] : [{subject_id:'ALL',subject_name_th:'ข้อสอบทั้งชุด · ทุกวิชา'}]).concat(data.subjects);
     document.querySelector('#practice-title').textContent = item ? 'แก้ไขรอบสอบจริง' : 'สร้างรอบสอบจริง';
     modalBody.innerHTML =
       '<button type="button" class="secondary" data-exam-list>← กลับรายการรอบสอบ</button>'+
       '<div class="exam-form">'+
-        '<label class="exam-field exam-wide"><span>ชื่อรอบสอบ</span><input id="exam-title" maxlength="160" value="'+esc(item?.title||'')+'" placeholder="เช่น สอบจำลอง A-Level คณิตศาสตร์ ครั้งที่ 1"></label>'+
-        '<label class="exam-field"><span>วิชา</span><select id="exam-subject">'+data.subjects.map(s=>'<option value="'+esc(s.subject_id)+'" '+(s.subject_id===subjectId?'selected':'')+'>'+esc(s.subject_name_th)+'</option>').join('')+'</select></label>'+
-        '<label class="exam-field"><span>ชุดข้อสอบ</span><select id="exam-set" disabled><option value="2">ชุด 2 · ข้อสอบจริง 2568</option></select></label>'+
-        '<label class="exam-field"><span>เวลาสอบ (นาที)</span><input id="exam-duration" type="number" min="1" max="480" value="'+esc(duration)+'"></label>'+
+        '<label class="exam-field exam-wide"><span>ชื่อรอบสอบ</span><input id="exam-title" maxlength="160" value="'+esc(item?.title||'')+'" placeholder="'+esc(isALevel?'เช่น สอบจำลอง A-Level คณิตศาสตร์ ครั้งที่ 1':'เช่น สอบจำลองเตรียมทหาร ชุด 2 ครั้งที่ 1')+'"></label>'+
+        '<label class="exam-field"><span>'+(isALevel?'วิชา':'ขอบเขตข้อสอบ')+'</span><select id="exam-subject">'+subjectOptions.map(s=>'<option value="'+esc(s.subject_id)+'" '+(s.subject_id===subjectId?'selected':'')+'>'+esc(s.subject_name_th)+'</option>').join('')+'</select></label>'+
+        '<label class="exam-field"><span>ชุดข้อสอบ</span><select id="exam-set" disabled><option value="2">'+esc(isALevel?'ชุด 2 · ข้อสอบจริง 2568':'ชุด 2 · ข้อสอบจริงเตรียมทหาร')+'</option></select></label>'+
+        '<label class="exam-field"><span>เวลาสอบ (นาที)</span><input id="exam-duration" type="number" min="1" max="'+(isALevel?'480':'600')+'" value="'+esc(duration)+'"></label>'+
         '<label class="exam-field"><span>จำนวนครั้งที่สอบได้</span><input id="exam-attempts" type="number" min="1" max="10" value="'+esc(item?.max_attempts||1)+'"></label>'+
         '<label class="exam-field"><span>เปิดให้เข้าสอบ</span><input id="exam-opens" type="datetime-local" value="'+esc(localInput(item?.opens_at))+'"></label>'+
         '<label class="exam-field"><span>ปิดรับการสอบ</span><input id="exam-closes" type="datetime-local" value="'+esc(localInput(item?.closes_at))+'"></label>'+
@@ -176,10 +178,10 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   }
 
   async function openExamManager() {
-    if (!isALevel || !canSeeResults() || busy) return;
+    if (!canSeeResults() || busy) return;
     const ticket=++requestNo;
     busy=true; session=null; returnView=null; examEditingId=null; examMembersData=null;
-    document.querySelector('#practice-title').textContent='จัดการรอบสอบจริง A-Level';
+    document.querySelector('#practice-title').textContent='จัดการรอบสอบจริง '+examTrack;
     document.querySelector('#practice-close').disabled=true;
     modalBody.innerHTML='<p class="practice-muted" role="status">กำลังเปิดรายการรอบสอบ…</p>';
     if(!modal.open) modal.showModal();
