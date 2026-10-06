@@ -1,5 +1,5 @@
 import { body, requireMember, sameOrigin, fail, sendError } from '../lib/school.js';
-import { summary, subject, reviewQueue, studentResults, transaction } from '../lib/practice.js';
+import { summary, subject, reviewQueue, studentResults, transaction, examSessions, examMembers, saveExamSession, saveExamMembers, deleteExamSession } from '../lib/practice.js';
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -22,11 +22,16 @@ export default async function handler(req, res) {
         if (!member.can_manage) fail('เฉพาะผู้ดูแล School', 403);
         return res.status(200).json({ success: true, attempts: await reviewQueue() });
       }
+      if (route === 'exam-sessions') return res.status(200).json({ success:true, ...await examSessions(member) });
+      if (route === 'exam-members') return res.status(200).json({ success:true, ...await examMembers(member,req.query) });
       fail('ไม่พบรายการ', 404);
     }
     if (req.method !== 'POST') fail('Method not allowed', 405);
     sameOrigin(req);
-    if (!['start', 'save', 'submit', 'grade'].includes(route)) fail('ไม่พบรายการ', 404);
-    return res.status(200).json({ success: true, item: await transaction(route, member, body(req)) });
+    if (['start','save','submit','grade'].includes(route)) return res.status(200).json({ success:true, item:await transaction(route,member,body(req)) });
+    if (route === 'exam-session-save') return res.status(200).json({ success:true, item:await saveExamSession(member,body(req)) });
+    if (route === 'exam-members-save') return res.status(200).json({ success:true, item:await saveExamMembers(member,body(req)) });
+    if (route === 'exam-session-delete') return res.status(200).json({ success:true, item:await deleteExamSession(member,body(req)) });
+    fail('ไม่พบรายการ',404);
   } catch (error) { return sendError(res, error); }
 }
