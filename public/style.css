@@ -267,3 +267,16 @@
   .welcome .hero-with-logo{grid-template-columns:minmax(0,1fr) 84px}
   .welcome .hero-school-logo{width:84px;height:84px}
 }
+
+
+/* Prominent real-exam entry for teachers/admins */
+.hero .hero-exam-button{
+  position:relative;
+  z-index:1;
+  margin-top:18px;
+  border-color:rgba(25,62,53,.24);
+  background:rgba(255,255,255,.86);
+  color:var(--green);
+  font-weight:650;
+}
+.hero .hero-exam-button:hover{background:#fff;border-color:rgba(25,62,53,.38)}
