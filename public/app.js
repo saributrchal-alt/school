@@ -29,14 +29,14 @@ const learningAreas = [
     id:'vocational-certificate',
     title:'เรียน ปวช.',
     description:'ประกาศนียบัตรวิชาชีพ',
-    art:'vocational',
+    backgroundUrl:'https://media.nathoeng.com/uploads/school/bg/pwch.png',
     levels:[['vc1','ปวช. 1'],['vc2','ปวช. 2'],['vc3','ปวช. 3']]
   },
   {
     id:'higher-vocational',
     title:'เรียน ปวส.',
     description:'ประกาศนียบัตรวิชาชีพชั้นสูง',
-    art:'higher-vocational',
+    backgroundUrl:'https://media.nathoeng.com/uploads/school/bg/pws.png',
     levels:[['hvc1','ปวส. 1'],['hvc2','ปวส. 2']]
   },
   {
@@ -55,7 +55,7 @@ const learningAreas = [
     id:'military-prep',
     title:'เรียน เตรียมทหาร',
     description:'เลือกสายการสอบเตรียมทหาร',
-    backgroundUrl:'https://media.nathoeng.com/uploads/school/bg/cardet.png',
+    backgroundUrl:'https://media.nathoeng.com/uploads/school/bg/ppr.png',
     levels:[
       ['police','ตำรวจ'],
       ['army','ทหารบก (จปร.)'],
@@ -67,7 +67,7 @@ const learningAreas = [
     id:'nco',
     title:'เรียน ชั้นประทวนทหาร-ตำรวจ',
     description:'การฝึกฝนและเตรียมสอบชั้นประทวน',
-    backgroundFile:'ThaiPoliceCadet-1.jpg'
+    backgroundUrl:'https://media.nathoeng.com/uploads/school/bg/patuan.png'
   },
   {
     id:'recruitment',
@@ -87,9 +87,9 @@ const roles = member => [member.can_study?'นักเรียน':'',member.c
 const commonsImage = file => file ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}` : '';
 const militaryLevelImages = {
   police:'/images/military-prep/police.webp',
-  army:'/images/military-prep/army.webp',
-  navy:'/images/military-prep/navy.webp',
-  airforce:'/images/military-prep/airforce.webp'
+  army:'https://media.nathoeng.com/uploads/school/bg/ppr.png',
+  navy:'https://media.nathoeng.com/uploads/school/bg/navy.png',
+  airforce:'https://media.nathoeng.com/uploads/school/bg/airforce.png'
 };
 
 const learningCardArt = {
