@@ -331,7 +331,7 @@ async function renderALevelCatalog(subjectId) {
   main.innerHTML = `<section id="practice-dashboard" class="practice-dashboard" aria-label="ผลการฝึก A-Level ของฉัน"></section>
   <section class="hero"><button type="button" class="hero-back" data-university-exam="alevel">← A-Level</button><span class="eyebrow">A-LEVEL · ${esc(String(s.subject_code))}</span><h1>${esc(s.subject_name_th)}</h1><p>ข้อสอบจริง พ.ศ. 2568 · ${esc(String(source?.question_count || s.source_question_count_2568))} ข้อ · ${esc(String(s.duration_minutes))} นาที<br>แยกหัวข้อตามเนื้อหาจริงและมีชุดฝึกในหลักการเดียวกับระบบ จปร.</p></section>
   <section class="stats"><div class="stat"><strong>${chapters.length}</strong><span>หมวด</span></div><div class="stat"><strong>${topics.length}</strong><span>หัวข้อ</span></div><div class="stat"><strong>${s.imported_question_count || 0}</strong><span>ข้อที่นำเข้ารายข้อแล้ว</span></div><div class="stat"><strong>${completed}</strong><span>หัวข้อที่เรียนแล้ว</span></div></section>
-  <section><div class="section-title"><div><h2>รายการหัวข้อเรียน</h2><p>เลือกหัวข้อ ดูข้อสอบต้นฉบับ และบันทึกสถานะการเรียนของตนเอง</p></div></div>
+  <section><div class="section-title"><div><h2>รายการหัวข้อเรียน</h2><p>เลือกหัวข้อ ดูข้อสอบจริง หรือกดทำชุดฝึก 1 แล้วส่งให้ผู้ดูแลตรวจได้เหมือนระบบ จปร.</p></div></div>
   <div class="search-row"><input type="search" id="alevel-search" aria-label="ค้นหาหัวข้อ A-Level" placeholder="ค้นหาชื่อหัวข้อ หรือรหัสหัวข้อ…"><select id="alevel-status-filter" aria-label="กรองสถานะ A-Level"><option value="all">ทุกสถานะ</option>${Object.entries(labels).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div>
   <p class="progress-note" id="alevel-progress-note"></p><div id="alevel-chapters"></div></section>`;
   document.querySelector('#alevel-search').addEventListener('input',e=>{alevelQuery=e.target.value;renderALevelTopics();});
@@ -352,11 +352,14 @@ async function renderALevelCatalog(subjectId) {
 function renderALevelTopics() {
   const root = document.querySelector('#alevel-chapters');
   if (!root || !alevelData) return;
+  const existingChapters = [...root.querySelectorAll('[data-alevel-chapter]')];
+  const openChapters = new Set(existingChapters.filter(c=>c.open).map(c=>c.dataset.alevelChapter));
+  const hadChapters = existingChapters.length > 0;
   const progress = new Map(alevelData.progress.map(p=>[p.topic_id,p.status]));
   const allTopics = alevelData.topics.filter(t=>t.subject_id===alevelSubject);
   const completed = allTopics.filter(t=>progress.get(t.topic_id)==='completed').length;
   const note = document.querySelector('#alevel-progress-note');
-  if (note) note.innerHTML = `บันทึกว่าเรียนแล้ว <strong>${completed} / ${allTopics.length}</strong> หัวข้อ · ข้อสอบจริง A-Level 2568 นำเข้าครบทุกวิชาแล้ว`;
+  if (note) note.innerHTML = `บันทึกว่าเรียนแล้ว <strong>${completed} / ${allTopics.length}</strong> หัวข้อ · ข้อสอบจริง A-Level 2568 ครบแล้ว · ชุดฝึก 1 มีโจทย์ครบทุก Topic`;
   const search = alevelQuery.trim().toLocaleLowerCase('th');
   const chapters = alevelData.chapters.filter(c=>c.subject_id===alevelSubject).map(c=>{
     const topics = allTopics.filter(t=>t.chapter_id===c.chapter_id
@@ -364,10 +367,10 @@ function renderALevelTopics() {
       && (alevelFilter==='all' || (progress.get(t.topic_id)||'not_started')===alevelFilter));
     return {...c,topics};
   }).filter(c=>c.topics.length);
-  root.innerHTML = chapters.length ? chapters.map((c,index)=>`<details class="chapter" ${index===0?'open':''}><summary><span class="chapter-code">${esc(c.chapter_id)}</span><span class="chapter-name">${esc(c.chapter_name_th)}</span><small>${c.topics.length} หัวข้อ</small></summary>${c.topics.map(t=>{
+  root.innerHTML = chapters.length ? chapters.map((c,index)=>`<details class="chapter" data-alevel-chapter="${esc(c.chapter_id)}" ${search||openChapters.has(c.chapter_id)||(!hadChapters&&index===0)?'open':''}><summary><span class="chapter-code">${esc(c.chapter_id)}</span><span class="chapter-name">${esc(c.chapter_name_th)}</span><small>${c.topics.length} หัวข้อ</small></summary>${c.topics.map(t=>{
     const status = progress.get(t.topic_id)||'not_started';
     const q = Number(t.question_count || 0);
-    return `<article class="topic"><div><div class="topic-head"><span class="topic-code">${esc(t.topic_id)}</span><span class="topic-name">${esc(t.topic_name_th)}</span></div><div class="topic-meta">${q ? `นำเข้าข้อสอบจริงแล้ว ${q} ข้อ <button type="button" data-alevel-topic="${esc(t.topic_id)}">ดูข้อสอบอ้างอิง</button>` : 'กำลังจัดข้อสอบปี 2568 เข้าหัวข้อนี้'}</div></div>${data.member.can_study?`<select aria-label="สถานะ ${esc(t.topic_name_th)}" data-alevel-progress="${esc(t.topic_id)}">${Object.entries(labels).map(([k,v])=>`<option value="${k}" ${k===status?'selected':''}>${v}</option>`).join('')}</select>`:`<span class="status">${labels[status]}</span>`}</article>`;
+    return `<article class="topic"><div><div class="topic-head"><span class="topic-code">${esc(t.topic_id)}</span><span class="topic-name">${esc(t.topic_name_th)}</span></div><div class="topic-meta">${q ? `นำเข้าข้อสอบจริงแล้ว ${q} ข้อ <button type="button" data-alevel-topic="${esc(t.topic_id)}">ดูข้อสอบจริง</button>` : 'ยังไม่มีข้อสอบจริงในหัวข้อนี้'}</div>${practice?.topicAction(t)||''}</div>${data.member.can_study?`<select aria-label="สถานะ ${esc(t.topic_name_th)}" data-alevel-progress="${esc(t.topic_id)}">${Object.entries(labels).map(([k,v])=>`<option value="${k}" ${k===status?'selected':''}>${v}</option>`).join('')}</select>`:`<span class="status">${labels[status]}</span>`}</article>`;
   }).join('')}</details>`).join('') : '<div class="empty">ไม่พบหัวข้อที่ตรงกับคำค้นหรือสถานะที่เลือก</div>';
 }
 
