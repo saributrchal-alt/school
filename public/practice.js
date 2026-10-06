@@ -346,6 +346,325 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     finally { busy=false; }
   }
 
+
+  const realExamResponseOf = answer => answer?.response ?? answer?.selected_answer;
+
+  function realExamHasResponse(q,value) {
+    if(q.response_mode==='numeric') return value!==undefined && value!==null && String(value).trim()!=='';
+    if(q.response_mode==='complex') {
+      if(!value||typeof value!=='object'||Array.isArray(value)) return false;
+      return (q.part_keys||[]).every(k=>[1,2].includes(Number(value[k])));
+    }
+    return Number.isInteger(Number(value))&&Number(value)>=1;
+  }
+
+  function realExamResultText(s) {
+    if(s.result_policy==='immediate') return 'เปิดคะแนนทันทีหลังส่ง';
+    if(s.result_policy==='scheduled') return 'เปิดคะแนน '+date(s.result_release_at);
+    return 'ครู / ผู้ดูแลเป็นผู้เปิดคะแนน';
+  }
+
+  function realExamAnswerText(s) {
+    if(s.answer_policy==='with_result') return 'เปิดเฉลยพร้อมคะแนน';
+    if(s.answer_policy==='scheduled') return 'เปิดเฉลย '+date(s.answer_release_at);
+    if(s.answer_policy==='never') return 'ไม่เปิดเฉลย';
+    return 'ครู / ผู้ดูแลเป็นผู้เปิดเฉลย';
+  }
+
+  function realExamIntroCard(s,a) {
+    const scope=subjectName(s.subject_id);
+    const start=s.start_policy==='fixed'?'เริ่มพร้อมกัน '+date(s.fixed_start_at):'จับเวลาเมื่อกดเริ่มสอบ';
+    return '<div class="real-exam-intro">'+
+      '<span class="eyebrow">REAL EXAM · '+esc(examTrack)+'</span>'+
+      '<h3>'+esc(s.title)+'</h3>'+
+      '<div class="real-exam-facts">'+
+        '<span><b>'+esc(scope)+'</b><small>ขอบเขตข้อสอบ</small></span>'+
+        '<span><b>'+esc(String(s.duration_minutes))+' นาที</b><small>เวลาสอบ</small></span>'+
+        '<span><b>'+esc(String(s.max_attempts))+' ครั้ง</b><small>จำนวนครั้งที่สอบได้</small></span>'+
+      '</div>'+
+      '<div class="real-exam-rules">'+
+        '<p><b>เวลา:</b> '+esc(start)+'</p>'+
+        '<p><b>เปิดสอบ:</b> '+esc(date(s.opens_at))+' · <b>ปิด:</b> '+esc(date(s.closes_at))+'</p>'+
+        '<p><b>ส่งก่อนเวลา:</b> '+(s.allow_submit_early?'ได้':'ไม่ได้')+(s.require_all_answers?' · ต้องตอบครบ':'')+'</p>'+
+        '<p><b>ออกแล้วกลับมา:</b> '+(s.allow_resume?'ได้ แต่เวลายังคงเดินต่อ':'ไม่ได้')+'</p>'+
+        '<p><b>ผลสอบ:</b> '+esc(realExamResultText(s))+'</p>'+
+        '<p><b>เฉลย:</b> '+esc(realExamAnswerText(s))+'</p>'+
+      '</div>'+
+      (s.instructions?'<div class="real-exam-instructions"><b>คำชี้แจง</b><p>'+esc(s.instructions)+'</p></div>':'')+
+      '<div class="real-exam-warning"><b>เมื่อเริ่มสอบแล้ว เวลาจะนับจากฐานข้อมูลและไม่หยุดเมื่อรีเฟรชหรือปิดหน้า</b></div>'+
+      (a?.status==='draft'
+        ? '<button type="button" class="practice-primary real-exam-start" data-real-exam-start="'+esc(s.session_id)+'">กลับเข้าสอบต่อ</button>'
+        : '<button type="button" class="practice-primary real-exam-start" data-real-exam-start="'+esc(s.session_id)+'">ยืนยันและเริ่มสอบ</button>')+
+    '</div>';
+  }
+
+  async function openRealExamIntro(id) {
+    if(busy) return;
+    const s=(examSessionsData?.sessions||[]).find(x=>x.session_id===id);
+    if(!s) return notice('ไม่พบรอบสอบนี้');
+    const attempts=(examSessionsData?.attempts||[]).filter(a=>a.session_id===id).sort((a,b)=>Number(b.attempt_no)-Number(a.attempt_no));
+    const a=attempts[0];
+    realExam=null;
+    clearInterval(realExamTimer); realExamTimer=null; realExamWarnings.clear();
+    document.querySelector('#practice-title').textContent='สอบจริง · '+examTrack;
+    if(!modal.open) modal.showModal();
+    if(a?.status==='submitted'){
+      busy=true;
+      modalBody.innerHTML='<p class="practice-muted" role="status">กำลังเปิดสถานะการสอบ…</p>';
+      try{
+        const result=await api(apiPath+'?route=exam-open&session_id='+encodeURIComponent(id));
+        loadRealExam(result);
+      }catch(error){modalBody.innerHTML='<p class="practice-inline-error" role="alert">'+esc(error.message)+'</p>';}
+      finally{busy=false;}
+      return;
+    }
+    if(a?.status==='draft'){
+      await beginRealExam(id);
+      return;
+    }
+    modalBody.innerHTML=realExamIntroCard(s,a);
+    modal.scrollTop=0;
+  }
+
+  function loadRealExam(result) {
+    realExam=result;
+    realExamSaved=new Map((result.answers||[]).map(a=>[a.question_id,a]));
+    realExamChoices=new Map((result.answers||[]).map(a=>[a.question_id,realExamResponseOf(a)]));
+    realExamClockOffset=result.server_time?new Date(result.server_time).getTime()-Date.now():0;
+    realExamWarnings.clear();
+    if(result.attempt?.status==='submitted') realExamIndex=-1;
+    else {
+      realExamIndex=(result.questions||[]).findIndex(q=>!realExamSaved.has(q.question_id));
+      if(realExamIndex<0) realExamIndex=0;
+    }
+    startRealExamTimer();
+    renderRealExam();
+  }
+
+  async function beginRealExam(id) {
+    if(busy) return;
+    busy=true;
+    document.querySelector('#practice-title').textContent='สอบจริง · '+examTrack;
+    modalBody.innerHTML='<p class="practice-muted" role="status">กำลังเริ่มจับเวลาและเปิดข้อสอบ…</p>';
+    if(!modal.open) modal.showModal();
+    try{
+      const result=await post('exam-start',{session_id:id});
+      loadRealExam(result);
+      notice('เริ่มสอบแล้ว · เวลาจะเดินต่อเนื่องจนหมดเวลา');
+      examSessionsData=await api(apiPath+'?route=exam-sessions').catch(()=>examSessionsData);
+      renderPanel();
+    }catch(error){
+      modalBody.innerHTML='<p class="practice-inline-error" role="alert">'+esc(error.message)+'</p>'+
+        '<button type="button" class="secondary" data-real-exam-close>ปิด</button>';
+    }finally{busy=false;}
+  }
+
+  function realExamRemainingMs() {
+    if(!realExam?.attempt?.deadline_at) return 0;
+    return new Date(realExam.attempt.deadline_at).getTime()-(Date.now()+realExamClockOffset);
+  }
+
+  function formatExamClock(ms) {
+    const sec=Math.max(0,Math.ceil(ms/1000));
+    const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
+    const p=n=>String(n).padStart(2,'0');
+    return h>0?p(h)+':'+p(m)+':'+p(s):p(m)+':'+p(s);
+  }
+
+  function updateRealExamClock() {
+    if(!realExam||realExam.attempt?.status!=='draft') return;
+    const ms=realExamRemainingMs();
+    const el=modalBody.querySelector('[data-real-exam-clock]');
+    if(el){
+      el.textContent=formatExamClock(ms);
+      el.closest('.real-exam-clock')?.classList.toggle('urgent',ms<=5*60*1000);
+      el.closest('.real-exam-clock')?.classList.toggle('critical',ms<=60*1000);
+    }
+    for(const [limit,label] of [[10,'เหลือเวลา 10 นาที'],[5,'เหลือเวลา 5 นาที'],[1,'เหลือเวลา 1 นาที']]){
+      if(ms<=limit*60*1000 && ms>0 && !realExamWarnings.has(limit)){
+        realExamWarnings.add(limit); notice(label);
+      }
+    }
+    if(ms<=0 && !realExamSubmitting) submitRealExam(true);
+  }
+
+  function startRealExamTimer() {
+    clearInterval(realExamTimer); realExamTimer=null;
+    if(realExam?.attempt?.status!=='draft') return;
+    realExamTimer=setInterval(updateRealExamClock,1000);
+    setTimeout(updateRealExamClock,0);
+  }
+
+  function realExamGrid() {
+    if(!realExam?.questions?.length) return '';
+    return '<details class="practice-grid-wrap real-exam-grid"><summary>ไปยังข้อ · เขียวหมายถึงบันทึกคำตอบแล้ว</summary><div class="practice-question-grid">'+
+      realExam.questions.map((q,i)=>{
+        const a=realExamSaved.get(q.question_id);
+        const incorrect=realExam.can_review&&a&&a.is_correct===false;
+        return '<button type="button" class="'+(a?(incorrect?'incorrect':'answered'):'')+' '+(i===realExamIndex?'current':'')+'" data-real-exam-index="'+i+'">'+(i+1)+(a?'<span aria-hidden="true">✓</span>':'')+'</button>';
+      }).join('')+
+    '</div></details>';
+  }
+
+  function realExamAnswerKey(q) {
+    if(!realExam?.can_review||q.answer_key==null) return '';
+    if(q.response_mode==='numeric'){
+      const values=Array.isArray(q.answer_key)?q.answer_key:[q.answer_key];
+      return '<h4>เฉลย</h4><p class="practice-correct-answer">'+esc(values.join(' หรือ '))+'</p>';
+    }
+    if(q.response_mode==='complex'){
+      const key=q.answer_key||{};
+      return '<h4>เฉลย</h4><div class="practice-complex-key">'+(q.part_keys||[]).map((part,i)=>{
+        const values=Array.isArray(key[part])?key[part]:[key[part]];
+        const nums=values.map(Number);
+        const label=nums.includes(1)&&nums.includes(2)?'ยอมรับทั้ง ใช่ และ ไม่ใช่':nums.includes(1)?'ใช่':'ไม่ใช่';
+        return '<p><b>'+esc(part)+'</b> '+esc(q.choices?.[i]||'')+'<span>'+esc(label)+'</span></p>';
+      }).join('')+'</div>';
+    }
+    const values=(Array.isArray(q.answer_key)?q.answer_key:[q.answer_key]).map(Number).filter(Number.isFinite);
+    return '<h4>เฉลย · ตัวเลือก '+esc(values.join(' หรือ '))+'</h4><div class="practice-correct-answer">'+values.map(k=>'<p>'+k+'. '+esc(q.choices?.[k-1]||'')+'</p>').join('')+'</div>';
+  }
+
+  function realExamControl(q,selected) {
+    const editable=realExam?.attempt?.status==='draft'&&!realExamSubmitting;
+    if(q.response_mode==='numeric'){
+      return '<div class="practice-numeric-wrap"><label for="real-exam-numeric">คำตอบตัวเลข</label><input id="real-exam-numeric" class="practice-numeric-input" type="text" inputmode="decimal" autocomplete="off" value="'+esc(selected??'')+'" placeholder="กรอกคำตอบ เช่น 1.28" '+(!editable?'disabled':'')+'><small>กด “ยืนยันและไปข้อต่อไป” เพื่อบันทึกคำตอบ</small></div>';
+    }
+    if(q.response_mode==='complex'){
+      const value=selected&&typeof selected==='object'&&!Array.isArray(selected)?selected:{};
+      return '<fieldset class="practice-complex"><legend>เลือก ใช่ / ไม่ใช่ ให้ครบทุกข้อความ</legend>'+
+        (q.part_keys||[]).map((part,i)=>{
+          const current=Number(value[part]);
+          return '<div class="practice-complex-item"><p><b>'+esc(part)+'</b> '+esc(q.choices?.[i]||part)+'</p><div class="practice-binary">'+
+            '<label class="'+(current===1?'selected':'')+'"><input type="radio" name="real-exam-part-'+i+'" data-real-exam-part="'+esc(part)+'" value="1" '+(current===1?'checked':'')+' '+(!editable?'disabled':'')+'> ใช่</label>'+
+            '<label class="'+(current===2?'selected':'')+'"><input type="radio" name="real-exam-part-'+i+'" data-real-exam-part="'+esc(part)+'" value="2" '+(current===2?'checked':'')+' '+(!editable?'disabled':'')+'> ไม่ใช่</label>'+
+          '</div></div>';
+        }).join('')+
+      '</fieldset>';
+    }
+    return '<fieldset class="practice-choices"><legend class="sr-only">เลือกคำตอบหนึ่งตัวเลือก</legend>'+
+      (q.choices||[]).map((text,i)=>{
+        const value=i+1;
+        const keys=realExam?.can_review?(Array.isArray(q.answer_key)?q.answer_key:[q.answer_key]).map(Number):[];
+        const correct=keys.includes(value);
+        return '<label class="practice-choice '+(Number(selected)===value?'selected ':'')+(correct?'answer-key':'')+'"><input type="radio" name="real-exam-choice" value="'+value+'" '+(Number(selected)===value?'checked':'')+' '+(!editable?'disabled':'')+'><span class="practice-choice-number">'+value+'</span><span>'+esc(text)+'</span>'+(correct?'<b class="practice-choice-key">เฉลย</b>':'')+'</label>';
+      }).join('')+
+    '</fieldset>';
+  }
+
+  function realExamTimerHeader() {
+    const a=realExam.attempt, n=realExam.questions.length;
+    if(a.status!=='draft'){
+      return '<div class="real-exam-statusbar"><span>ส่งข้อสอบแล้ว '+esc(date(a.submitted_at))+'</span><span>ตอบ '+realExamSaved.size+' / '+n+' ข้อ</span></div>';
+    }
+    return '<div class="real-exam-statusbar"><div class="real-exam-clock"><small>เวลาคงเหลือ</small><strong data-real-exam-clock>'+formatExamClock(realExamRemainingMs())+'</strong></div><div><b>ตอบแล้ว '+realExamSaved.size+' / '+n+' ข้อ</b><small>หมดเวลา '+esc(date(a.deadline_at))+'</small></div></div>';
+  }
+
+  function renderRealExam() {
+    if(!realExam) return;
+    const s=realExam.exam_session, a=realExam.attempt, n=realExam.questions.length;
+    document.querySelector('#practice-title').textContent='สอบจริง · '+s.title;
+    document.querySelector('#practice-close').disabled=realExamSubmitting;
+
+    if(a.status==='submitted' && realExamIndex<0){
+      const score=a.result_visible&&Number.isInteger(Number(a.correct_count))
+        ? '<div class="real-exam-score"><strong>'+pct(a.correct_count,a.total_count)+'</strong><span>ถูก '+a.correct_count+' / '+a.total_count+' ข้อ</span></div>'
+        : '<div class="real-exam-score pending"><strong>ส่งแล้ว</strong><span>'+esc(realExamResultText(s))+'</span></div>';
+      modalBody.innerHTML=realExamTimerHeader()+
+        '<div class="real-exam-complete"><span class="eyebrow">EXAM SUBMITTED</span><h3>'+(a.timed_out?'หมดเวลา · ระบบส่งข้อสอบอัตโนมัติ':'ส่งข้อสอบเรียบร้อย')+'</h3>'+
+        score+
+        '<p>'+esc(realExamAnswerText(s))+'</p>'+
+        (realExam.can_review?'<button type="button" class="practice-primary" data-real-exam-review>ทบทวนคำตอบและเฉลย</button>':'')+
+        '<button type="button" class="secondary" data-real-exam-close>ปิด</button></div>';
+      return;
+    }
+
+    if(a.status==='draft' && realExamIndex===n){
+      modalBody.innerHTML=realExamTimerHeader()+
+        '<div class="practice-complete real-exam-complete"><span class="eyebrow">EXAM SUMMARY</span><h3>'+(realExamSaved.size===n?'ตอบครบทุกข้อแล้ว':'ยังเหลือ '+(n-realExamSaved.size)+' ข้อ')+'</h3>'+
+        '<p>'+(s.allow_submit_early?'สามารถส่งข้อสอบก่อนหมดเวลาได้':'รอจนหมดเวลา ระบบจะส่งข้อสอบอัตโนมัติ')+'</p>'+
+        (s.allow_submit_early?'<button type="button" class="practice-primary" data-real-exam-submit>ส่งข้อสอบ</button>':'')+
+        (realExamSaved.size<n?'<button type="button" class="secondary" data-real-exam-unanswered>ไปข้อที่ยังไม่ตอบ</button>':'')+
+        '<button type="button" class="secondary" data-real-exam-index="0">กลับข้อแรก</button></div>'+realExamGrid();
+      updateRealExamClock(); return;
+    }
+
+    const q=realExam.questions[Math.max(0,realExamIndex)];
+    if(!q){modalBody.innerHTML='<p class="practice-inline-error">ไม่พบข้อสอบในรอบนี้</p>';return;}
+    const answer=realExamSaved.get(q.question_id), selected=realExamChoices.get(q.question_id);
+    const review=realExam.can_review
+      ? '<section class="practice-explanation"><span class="eyebrow">REVIEW & LEARN</span>'+realExamAnswerKey(q)+'<h4>วิธีทำ / การพิจารณา</h4><p>'+esc(q.explanation||'')+'</p><h4>เหตุผลและจุดที่ควรระวัง</h4><p>'+esc(q.reasoning||'')+'</p></section>'
+      : '';
+    const subjectLine=s.subject_id==='ALL'?subjectName(q.subject_id)+' · ':'';
+    const savedBadge=answer?'<span class="practice-badge '+(realExam.can_review?(answer.is_correct?'correct':'incorrect'):'answered')+'">'+(realExam.can_review?(answer.is_correct?'✓ ตอบถูก':'ควรทบทวน'):'✓ บันทึกแล้ว')+'</span>':'';
+    const canNext=a.status!=='draft'||realExamHasResponse(q,selected);
+    modalBody.innerHTML=realExamTimerHeader()+
+      '<div class="practice-question-heading"><span>ข้อ '+(Math.max(0,realExamIndex)+1)+' / '+n+' · '+esc(subjectLine+topicName(q.topic_id))+'</span>'+savedBadge+'<h3>'+(q.question_no?'ข้อ '+esc(q.question_no):'ข้อ '+(Math.max(0,realExamIndex)+1))+'</h3></div>'+
+      '<p class="practice-prompt">'+esc(q.prompt)+'</p>'+
+      (q.question_image_url?'<figure class="practice-source-figure"><img src="'+esc(freshQuestionImage(q.question_image_url))+'" alt="ภาพประกอบข้อ '+esc(q.question_no||realExamIndex+1)+'" loading="lazy"><figcaption>ภาพประกอบจากข้อสอบต้นฉบับ</figcaption></figure>':'')+
+      realExamControl(q,selected)+
+      '<p class="practice-save-status" role="status">'+(a.status==='draft'?'ระบบบันทึกคำตอบระหว่างทำ · เวลายังคงเดินต่อเนื่อง':'ข้อสอบถูกล็อกแล้ว')+'</p>'+
+      '<div class="practice-navigation"><button type="button" class="secondary" data-real-exam-back '+(realExamSubmitting||realExamIndex===0?'disabled':'')+'>← ย้อน</button>'+
+      (a.status==='draft'?'<button type="button" class="secondary" data-real-exam-skip>ข้าม →</button>':'')+
+      '<button type="button" class="practice-primary" data-real-exam-next '+(!canNext||realExamSubmitting?'disabled':'')+'>'+(realExamIndex===n-1?'สรุปข้อสอบ':'ยืนยันและไปข้อต่อไป →')+'</button></div>'+
+      review+realExamGrid();
+    updateRealExamClock();
+  }
+
+  async function saveRealExamResponse(q,value) {
+    if(!realExam||realExam.attempt.status!=='draft'||realExamSubmitting||!realExamHasResponse(q,value)) return false;
+    const previous=realExamResponseOf(realExamSaved.get(q.question_id));
+    if(JSON.stringify(previous)===JSON.stringify(value)) return true;
+    realExamSubmitting=true;
+    try{
+      const result=await post('exam-save',{exam_attempt_id:realExam.attempt.exam_attempt_id,question_id:q.question_id,response:value});
+      const stored={question_id:q.question_id,response:result.item.response??value};
+      if(q.response_mode==='choice') stored.selected_answer=Number(value);
+      realExamSaved.set(q.question_id,stored);
+      return true;
+    }catch(error){
+      notice(error.message);
+      if(error.status===408) await submitRealExam(true);
+      return false;
+    }finally{
+      realExamSubmitting=false;
+      if(realExam) renderRealExam();
+    }
+  }
+
+  async function moveRealExam(to,skip=false) {
+    if(!realExam||realExamSubmitting) return;
+    if(realExam.attempt.status==='draft' && realExamIndex>=0 && realExamIndex<realExam.questions.length && !skip){
+      const q=realExam.questions[realExamIndex], value=realExamChoices.get(q.question_id);
+      if(realExamHasResponse(q,value) && !await saveRealExamResponse(q,value)) return;
+    }
+    realExamIndex=Math.max(0,Math.min(to,realExam.questions.length));
+    renderRealExam(); modal.scrollTop=0;
+  }
+
+  async function submitRealExam(timeout=false) {
+    if(!realExam||realExam.attempt.status!=='draft'||realExamSubmitting) return;
+    if(!timeout){
+      if(realExam.exam_session.require_all_answers&&realExamSaved.size<realExam.questions.length){
+        notice('รอบสอบนี้กำหนดให้ตอบครบทุกข้อก่อนส่ง'); return;
+      }
+      if(!confirm('ยืนยันส่งข้อสอบ? หลังส่งแล้วจะกลับมาแก้คำตอบไม่ได้')) return;
+    }
+    realExamSubmitting=true;
+    clearInterval(realExamTimer); realExamTimer=null;
+    try{
+      const result=await post('exam-submit',{exam_attempt_id:realExam.attempt.exam_attempt_id,timeout});
+      loadRealExam(result);
+      notice(timeout?'หมดเวลา · ระบบส่งข้อสอบอัตโนมัติแล้ว':'ส่งข้อสอบเรียบร้อย');
+      examSessionsData=await api(apiPath+'?route=exam-sessions').catch(()=>examSessionsData);
+      renderPanel();
+    }catch(error){
+      notice(error.message);
+      realExamSubmitting=false;
+      startRealExamTimer(); renderRealExam();
+    }
+  }
+
   async function openSubject(sid, topicId, otherAttempt, set = selectedSet) {
     if (busy) return;
     const ticket = ++requestNo;
