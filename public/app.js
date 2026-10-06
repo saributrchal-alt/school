@@ -204,7 +204,9 @@ function renderAccount() {
 function areaCard(area) {
   const ready = area.id === 'military-prep'
     ? '<span class="learning-ready">มีคลังข้อสอบแล้ว: ทหารบก (จปร.)</span>'
-    : '<span class="learning-muted">อยู่ระหว่างการดำเนินงาน</span>';
+    : area.id === 'secondary'
+      ? '<span class="learning-ready">มีคลังข้อสอบแล้ว: A-Level 2568</span>'
+      : '<span class="learning-muted">อยู่ระหว่างการดำเนินงาน</span>';
   const bg = area.backgroundUrl || commonsImage(area.backgroundFile);
   const art = area.art ? learningCardArt[area.art] : '';
   const bgStyle = bg ? ` style="--card-bg:url('${esc(bg)}')"` : '';
@@ -232,7 +234,7 @@ function renderArea(areaId) {
   <section class="level-grid ${area.id==='military-prep'?'military-level-grid':''}">${area.levels.map(([id,label])=>{
     const hasContent = area.id === 'military-prep' && id === 'army';
     const hasSubmenu = area.id === 'secondary' && id === 'm6';
-    const status = hasContent ? '<small class="level-status ready">พร้อมใช้งาน</small>' : hasSubmenu ? '<small class="level-status">มีหมวดย่อย</small>' : '<small class="level-status pending">อยู่ระหว่างการดำเนินงาน</small>';
+    const status = hasContent ? '<small class="level-status ready">พร้อมใช้งาน</small>' : hasSubmenu ? '<small class="level-status ready">มี A-Level 2568 พร้อมใช้งาน</small>' : '<small class="level-status pending">อยู่ระหว่างการดำเนินงาน</small>';
     const militaryImage = area.id === 'military-prep' ? militaryLevelImages[id] : '';
     const imageStyle = militaryImage ? ` style="--level-bg:url('${esc(militaryImage)}')"` : '';
     return `<button type="button" class="level-card ${militaryImage?'has-level-photo':''}" data-level="${esc(id)}"${imageStyle}><span><strong>${esc(label)}</strong>${status}</span><b aria-hidden="true">→</b></button>`;
@@ -277,7 +279,7 @@ function renderUniversityPrep() {
   practice?.destroy(); practice=null;
   main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-m6>← กลับ ม.6</button><span class="eyebrow">NATHOENG SCHOOL</span><h1>เตรียมสอบเข้ามหาวิทยาลัย</h1><p>เลือกประเภทข้อสอบที่ต้องการฝึกฝนและทดสอบ</p></section>
   <section class="level-grid">
-    <button type="button" class="level-card" data-university-exam="alevel"><span><strong>A-Level</strong><small class="level-status ready">โครงสร้างพร้อม · ปี 2568</small></span><b aria-hidden="true">→</b></button>
+    <button type="button" class="level-card" data-university-exam="alevel"><span><strong>A-Level</strong><small class="level-status ready">พร้อมใช้งาน · ปี 2568 · 315 ข้อ</small></span><b aria-hidden="true">→</b></button>
     <button type="button" class="level-card" data-university-exam="tgat"><span><strong>TGAT</strong><small class="level-status pending">อยู่ระหว่างการดำเนินงาน</small></span><b aria-hidden="true">→</b></button>
     <button type="button" class="level-card" data-university-exam="tpat"><span><strong>TPAT</strong><small class="level-status pending">อยู่ระหว่างการดำเนินงาน</small></span><b aria-hidden="true">→</b></button>
   </section>`;
@@ -354,7 +356,7 @@ function renderALevelTopics() {
   const allTopics = alevelData.topics.filter(t=>t.subject_id===alevelSubject);
   const completed = allTopics.filter(t=>progress.get(t.topic_id)==='completed').length;
   const note = document.querySelector('#alevel-progress-note');
-  if (note) note.innerHTML = `บันทึกว่าเรียนแล้ว <strong>${completed} / ${allTopics.length}</strong> หัวข้อ · ข้อสอบรายข้อจะเพิ่มตามการนำเข้าจาก PDF ปี 2568`;
+  if (note) note.innerHTML = `บันทึกว่าเรียนแล้ว <strong>${completed} / ${allTopics.length}</strong> หัวข้อ · ข้อสอบจริง A-Level 2568 นำเข้าครบทุกวิชาแล้ว`;
   const search = alevelQuery.trim().toLocaleLowerCase('th');
   const chapters = alevelData.chapters.filter(c=>c.subject_id===alevelSubject).map(c=>{
     const topics = allTopics.filter(t=>t.chapter_id===c.chapter_id
