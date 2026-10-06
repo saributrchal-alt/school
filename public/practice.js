@@ -90,6 +90,202 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     } finally { loading = false; panel.querySelector('[data-practice-refresh]')?.removeAttribute('disabled'); }
   }
 
+
+  const localInput = value => {
+    if (!value) return '';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    const p = n => String(n).padStart(2,'0');
+    return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes());
+  };
+
+  const examPolicyText = s => {
+    const start = s.start_policy === 'fixed'
+      ? 'เริ่มพร้อมกัน '+date(s.fixed_start_at)
+      : 'จับเวลาเมื่อกดเริ่ม';
+    const audience = s.audience_mode === 'selected' ? 'เฉพาะรายชื่อที่เลือก' : 'นักเรียนทุกคน';
+    const result = s.result_policy === 'immediate' ? 'เปิดคะแนนทันที'
+      : s.result_policy === 'scheduled' ? 'เปิดคะแนน '+date(s.result_release_at)
+      : 'ครูเปิดคะแนนภายหลัง';
+    return start+' · '+audience+' · '+result;
+  };
+
+  function renderExamManager() {
+    const sessions = examSessionsData?.sessions || [];
+    document.querySelector('#practice-title').textContent = 'จัดการรอบสอบจริง A-Level';
+    modalBody.innerHTML =
+      '<div class="exam-manager-head">'+
+        '<div><span class="eyebrow">REAL EXAM</span><h3>รอบสอบจริง</h3><p>ครูและผู้ดูแลกำหนดเวลา เงื่อนไข และผู้เข้าสอบได้เอง</p></div>'+
+        '<button type="button" class="practice-primary" data-exam-new>+ สร้างรอบสอบ</button>'+
+      '</div>'+
+      (sessions.length
+        ? '<div class="exam-session-list">'+sessions.map(s=>{
+            const canEdit = data.member.can_manage || s.created_by === data.member.member_id;
+            return '<article class="exam-session-card">'+
+              '<div class="exam-session-main">'+
+                '<div class="exam-session-title"><span class="practice-badge '+(s.is_published?'correct':'')+'">'+(s.is_published?'เผยแพร่แล้ว':'ฉบับร่าง')+'</span><h4>'+esc(s.title)+'</h4></div>'+
+                '<p>'+esc(subjectName(s.subject_id))+' · ชุด 2 · '+esc(String(s.duration_minutes))+' นาที</p>'+
+                '<small>'+esc(examPolicyText(s))+'</small>'+
+                '<small>เปิด: '+esc(date(s.opens_at))+' · ปิด: '+esc(date(s.closes_at))+'</small>'+
+                '<div class="exam-session-stats"><span><b>'+Number(s.student_count||0)+'</b> นักเรียนเริ่มแล้ว</span><span><b>'+Number(s.submitted_count||0)+'</b> ส่งแล้ว</span><span><b>'+Number(s.attempt_count||0)+'</b> ครั้งสอบ</span></div>'+
+              '</div>'+
+              '<div class="exam-session-actions">'+
+                (canEdit?'<button type="button" class="secondary" data-exam-edit="'+esc(s.session_id)+'">แก้ไข</button>':'')+
+                (canEdit&&s.audience_mode==='selected'?'<button type="button" class="secondary" data-exam-members="'+esc(s.session_id)+'">รายชื่อนักเรียน</button>':'')+
+                (canEdit&&Number(s.attempt_count||0)===0?'<button type="button" class="secondary danger" data-exam-delete="'+esc(s.session_id)+'">ลบ</button>':'')+
+              '</div>'+
+            '</article>';
+          }).join('')+'</div>'
+        : '<div class="empty">ยังไม่มีรอบสอบจริง กด “สร้างรอบสอบ” เพื่อเริ่มต้น</div>');
+    modal.scrollTop = 0;
+  }
+
+  function renderExamForm(item=null) {
+    examEditingId = item?.session_id || null;
+    const subjectId = item?.subject_id || getSubject() || data.subjects[0]?.subject_id;
+    const duration = item?.duration_minutes || data.subjects.find(s=>s.subject_id===subjectId)?.duration_minutes || 90;
+    document.querySelector('#practice-title').textContent = item ? 'แก้ไขรอบสอบจริง' : 'สร้างรอบสอบจริง';
+    modalBody.innerHTML =
+      '<button type="button" class="secondary" data-exam-list>← กลับรายการรอบสอบ</button>'+
+      '<div class="exam-form">'+
+        '<label class="exam-field exam-wide"><span>ชื่อรอบสอบ</span><input id="exam-title" maxlength="160" value="'+esc(item?.title||'')+'" placeholder="เช่น สอบจำลอง A-Level คณิตศาสตร์ ครั้งที่ 1"></label>'+
+        '<label class="exam-field"><span>วิชา</span><select id="exam-subject">'+data.subjects.map(s=>'<option value="'+esc(s.subject_id)+'" '+(s.subject_id===subjectId?'selected':'')+'>'+esc(s.subject_name_th)+'</option>').join('')+'</select></label>'+
+        '<label class="exam-field"><span>ชุดข้อสอบ</span><select id="exam-set" disabled><option value="2">ชุด 2 · ข้อสอบจริง 2568</option></select></label>'+
+        '<label class="exam-field"><span>เวลาสอบ (นาที)</span><input id="exam-duration" type="number" min="1" max="480" value="'+esc(duration)+'"></label>'+
+        '<label class="exam-field"><span>จำนวนครั้งที่สอบได้</span><input id="exam-attempts" type="number" min="1" max="10" value="'+esc(item?.max_attempts||1)+'"></label>'+
+        '<label class="exam-field"><span>เปิดให้เข้าสอบ</span><input id="exam-opens" type="datetime-local" value="'+esc(localInput(item?.opens_at))+'"></label>'+
+        '<label class="exam-field"><span>ปิดรับการสอบ</span><input id="exam-closes" type="datetime-local" value="'+esc(localInput(item?.closes_at))+'"></label>'+
+        '<label class="exam-field"><span>วิธีเริ่มจับเวลา</span><select id="exam-start-policy"><option value="on_click" '+(item?.start_policy!=='fixed'?'selected':'')+'>เริ่มเมื่อผู้สอบกด “เริ่มสอบ”</option><option value="fixed" '+(item?.start_policy==='fixed'?'selected':'')+'>เริ่มพร้อมกันตามเวลาที่กำหนด</option></select></label>'+
+        '<label class="exam-field"><span>เวลาเริ่มพร้อมกัน</span><input id="exam-fixed-start" type="datetime-local" value="'+esc(localInput(item?.fixed_start_at))+'"></label>'+
+        '<label class="exam-field"><span>ผู้มีสิทธิ์สอบ</span><select id="exam-audience"><option value="all_students" '+(item?.audience_mode!=='selected'?'selected':'')+'>นักเรียน School ทุกคน</option><option value="selected" '+(item?.audience_mode==='selected'?'selected':'')+'>เฉพาะรายชื่อที่เลือก</option></select></label>'+
+        '<label class="exam-field"><span>การเปิดคะแนน</span><select id="exam-result-policy"><option value="manual" '+(!item||item.result_policy==='manual'?'selected':'')+'>ครูเปิดภายหลัง</option><option value="immediate" '+(item?.result_policy==='immediate'?'selected':'')+'>เปิดทันทีหลังส่ง</option><option value="scheduled" '+(item?.result_policy==='scheduled'?'selected':'')+'>เปิดตามเวลาที่กำหนด</option></select></label>'+
+        '<label class="exam-field"><span>เวลาเปิดคะแนน</span><input id="exam-result-release" type="datetime-local" value="'+esc(localInput(item?.result_release_at))+'"></label>'+
+        '<label class="exam-field"><span>การเปิดเฉลย</span><select id="exam-answer-policy"><option value="manual" '+(!item||item.answer_policy==='manual'?'selected':'')+'>ครูเปิดภายหลัง</option><option value="with_result" '+(item?.answer_policy==='with_result'?'selected':'')+'>เปิดพร้อมคะแนน</option><option value="scheduled" '+(item?.answer_policy==='scheduled'?'selected':'')+'>เปิดตามเวลาที่กำหนด</option><option value="never" '+(item?.answer_policy==='never'?'selected':'')+'>ไม่เปิดเฉลย</option></select></label>'+
+        '<label class="exam-field"><span>เวลาเปิดเฉลย</span><input id="exam-answer-release" type="datetime-local" value="'+esc(localInput(item?.answer_release_at))+'"></label>'+
+        '<label class="exam-field exam-wide"><span>คำชี้แจงก่อนสอบ</span><textarea id="exam-instructions" rows="3" placeholder="เช่น ห้ามใช้เครื่องคิดเลข เมื่อกดเริ่มแล้วเวลาจะเดินต่อเนื่อง">'+esc(item?.instructions||'')+'</textarea></label>'+
+        '<div class="exam-options exam-wide">'+
+          '<label><input id="exam-submit-early" type="checkbox" '+(item?.allow_submit_early!==false?'checked':'')+'> อนุญาตส่งก่อนหมดเวลา</label>'+
+          '<label><input id="exam-require-all" type="checkbox" '+(item?.require_all_answers?'checked':'')+'> ต้องตอบครบก่อนส่งก่อนเวลา</label>'+
+          '<label><input id="exam-resume" type="checkbox" '+(item?.allow_resume!==false?'checked':'')+'> ออกจากหน้าแล้วกลับมาทำต่อได้ (เวลาไม่หยุด)</label>'+
+          '<label><input id="exam-published" type="checkbox" '+(item?.is_published?'checked':'')+'> เผยแพร่ให้นักเรียนเห็น</label>'+
+        '</div>'+
+        '<div class="exam-form-note exam-wide">หลังมีนักเรียนเริ่มสอบแล้ว ระบบจะล็อกเงื่อนไขหลัก เช่น วิชา เวลา และกลุ่มผู้สอบ เพื่อไม่ให้กติกาเปลี่ยนกลางการสอบ</div>'+
+        '<div class="exam-form-actions exam-wide"><button type="button" class="practice-primary" data-exam-save>บันทึกรอบสอบ</button></div>'+
+      '</div>';
+    modal.scrollTop = 0;
+  }
+
+  async function openExamManager() {
+    if (!isALevel || !canSeeResults() || busy) return;
+    const ticket=++requestNo;
+    busy=true; session=null; returnView=null; examEditingId=null; examMembersData=null;
+    document.querySelector('#practice-title').textContent='จัดการรอบสอบจริง A-Level';
+    document.querySelector('#practice-close').disabled=true;
+    modalBody.innerHTML='<p class="practice-muted" role="status">กำลังเปิดรายการรอบสอบ…</p>';
+    if(!modal.open) modal.showModal();
+    try {
+      examSessionsData=await api(apiPath+'?route=exam-sessions');
+      if(ticket!==requestNo||!modal.open) return;
+      renderExamManager();
+    } catch(error) {
+      modalBody.innerHTML='<p class="practice-inline-error" role="alert">'+esc(error.message)+'</p>';
+    } finally {
+      busy=false; document.querySelector('#practice-close').disabled=false;
+    }
+  }
+
+  async function saveExamForm() {
+    if(busy) return;
+    const value=id=>modalBody.querySelector(id)?.value || '';
+    const checked=id=>Boolean(modalBody.querySelector(id)?.checked);
+    const payload={
+      ...(examEditingId?{session_id:examEditingId}:{}),
+      title:value('#exam-title'),
+      subject_id:value('#exam-subject'),
+      set_no:2,
+      duration_minutes:Number(value('#exam-duration')),
+      max_attempts:Number(value('#exam-attempts')),
+      opens_at:value('#exam-opens')?new Date(value('#exam-opens')).toISOString():null,
+      closes_at:value('#exam-closes')?new Date(value('#exam-closes')).toISOString():null,
+      start_policy:value('#exam-start-policy'),
+      fixed_start_at:value('#exam-fixed-start')?new Date(value('#exam-fixed-start')).toISOString():null,
+      audience_mode:value('#exam-audience'),
+      result_policy:value('#exam-result-policy'),
+      result_release_at:value('#exam-result-release')?new Date(value('#exam-result-release')).toISOString():null,
+      answer_policy:value('#exam-answer-policy'),
+      answer_release_at:value('#exam-answer-release')?new Date(value('#exam-answer-release')).toISOString():null,
+      instructions:value('#exam-instructions'),
+      allow_submit_early:checked('#exam-submit-early'),
+      require_all_answers:checked('#exam-require-all'),
+      allow_resume:checked('#exam-resume'),
+      is_published:checked('#exam-published')
+    };
+    busy=true;
+    const button=modalBody.querySelector('[data-exam-save]');
+    if(button){button.disabled=true;button.textContent='กำลังบันทึก…';}
+    try {
+      const result=await post('exam-session-save',payload);
+      notice('บันทึกรอบสอบแล้ว');
+      examEditingId=result.item.session_id;
+      examSessionsData=await api(apiPath+'?route=exam-sessions');
+      if(result.item.audience_mode==='selected') await openExamMembers(result.item.session_id);
+      else renderExamManager();
+    } catch(error) {
+      notice(error.message);
+      const box=modalBody.querySelector('.exam-form-note');
+      if(box) box.innerHTML='<span class="practice-inline-error">'+esc(error.message)+'</span>';
+    } finally { busy=false; }
+  }
+
+  async function openExamMembers(id) {
+    if(busy) return;
+    const s=(examSessionsData?.sessions||[]).find(x=>x.session_id===id);
+    if(!s) return;
+    busy=true; examEditingId=id;
+    document.querySelector('#practice-title').textContent='รายชื่อนักเรียน · '+s.title;
+    modalBody.innerHTML='<p class="practice-muted" role="status">กำลังเปิดรายชื่อนักเรียน…</p>';
+    try {
+      examMembersData=await api(apiPath+'?route=exam-members&session_id='+encodeURIComponent(id));
+      const selected=new Set(examMembersData.selected||[]);
+      modalBody.innerHTML=
+        '<button type="button" class="secondary" data-exam-list>← กลับรายการรอบสอบ</button>'+
+        '<div class="exam-member-head"><div><h3>'+esc(s.title)+'</h3><p>เลือกนักเรียนที่มีสิทธิ์เข้าสอบรอบนี้</p></div><button type="button" class="secondary" data-exam-select-all>เลือกทั้งหมด</button></div>'+
+        '<input class="exam-member-search" id="exam-member-search" type="search" placeholder="ค้นหาชื่อนักเรียนหรือรหัสสมาชิก…">'+
+        '<div class="exam-member-list" id="exam-member-list">'+examMembersData.members.map(m=>
+          '<label class="exam-member-row" data-member-text="'+esc((m.member_name+' '+m.member_id).toLowerCase())+'"><input type="checkbox" data-exam-member value="'+esc(m.member_id)+'" '+(selected.has(m.member_id)?'checked':'')+'><span><b>'+esc(m.member_name)+'</b><small>'+esc(m.member_id)+'</small></span></label>'
+        ).join('')+'</div>'+
+        '<div class="exam-form-actions"><button type="button" class="practice-primary" data-exam-members-save>บันทึกรายชื่อ</button></div>';
+    } catch(error) {
+      modalBody.innerHTML='<p class="practice-inline-error" role="alert">'+esc(error.message)+'</p>';
+    } finally { busy=false; }
+  }
+
+  async function saveExamMembers() {
+    if(busy||!examEditingId) return;
+    const ids=[...modalBody.querySelectorAll('[data-exam-member]:checked')].map(x=>x.value);
+    busy=true;
+    try {
+      await post('exam-members-save',{session_id:examEditingId,member_ids:ids});
+      notice('บันทึกรายชื่อนักเรียน '+ids.length+' คนแล้ว');
+      examSessionsData=await api(apiPath+'?route=exam-sessions');
+      renderExamManager();
+    } catch(error) { notice(error.message); }
+    finally { busy=false; }
+  }
+
+  async function deleteExamSession(id) {
+    if(busy||!id) return;
+    if(!confirm('ยืนยันลบรอบสอบนี้?')) return;
+    busy=true;
+    try {
+      await post('exam-session-delete',{session_id:id});
+      notice('ลบรอบสอบแล้ว');
+      examSessionsData=await api(apiPath+'?route=exam-sessions');
+      renderExamManager();
+    } catch(error) { notice(error.message); }
+    finally { busy=false; }
+  }
+
   async function openSubject(sid, topicId, otherAttempt, set = selectedSet) {
     if (busy) return;
     const ticket = ++requestNo;
