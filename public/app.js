@@ -85,6 +85,9 @@ let data, subject = 'ENG', query = '', filter = 'all', noticeTimer, practice, cu
 let alevelData = null, alevelSubject = 'AL61', alevelQuery = '', alevelFilter = 'all';
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const roles = member => [member.can_study?'นักเรียน':'',member.can_teach?'ครู / ผู้สอน':'',member.can_manage?'ผู้ดูแล':''].filter(Boolean).map(x=>`<span class="role">${x}</span>`).join('');
+const QUESTION_IMAGE_REV = '20261006-crop2';
+const freshQuestionImage = url => url ? `${url}${url.includes("?") ? "&" : "?"}v=${QUESTION_IMAGE_REV}` : '';
+
 const commonsImage = file => file ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}` : '';
 const militaryLevelImages = {
   police:'/images/military-prep/police.webp',
@@ -386,7 +389,7 @@ async function showALevelQuestions(id) {
       const choices = Array.isArray(q.choices) && q.choices.length ? `<ol>${q.choices.map(x=>`<li>${esc(typeof x==='string'?x:(x?.label ?? x?.text ?? JSON.stringify(x)))}</li>`).join('')}</ol>` : '';
       const answer = result.can_review && q.answer_key != null ? `<div class="key">เฉลยสำหรับครู/ผู้ดูแล: ${esc(typeof q.answer_key==='object'?JSON.stringify(q.answer_key):q.answer_key)}</div>` : '';
       const explanation = result.can_review && q.explanation ? `<p><strong>เฉลย:</strong> ${esc(q.explanation)}</p>` : '';
-      return `<article class="reference"><strong>พ.ศ. ${q.year_be} · ข้อ ${q.question_no}</strong><p>${esc(q.prompt)}</p>${choices}<small>หน้า PDF ${q.source_page} · ${esc(q.question_type)}</small>${q.question_image_url?`<p><img src="${esc(q.question_image_url)}" alt="รูปประกอบข้อ ${q.question_no}" style="max-width:100%;height:auto"></p>`:''}${answer}${explanation}</article>`;
+      return `<article class="reference"><strong>พ.ศ. ${q.year_be} · ข้อ ${q.question_no}</strong><p>${esc(q.prompt)}</p>${choices}<small>หน้า PDF ${q.source_page} · ${esc(q.question_type)}</small>${q.question_image_url?`<p><img src="${esc(freshQuestionImage(q.question_image_url))}" alt="รูปประกอบข้อ ${q.question_no}" style="max-width:100%;height:auto"></p>`:''}${answer}${explanation}</article>`;
     }).join('') || '<p>หัวข้อนี้ยังอยู่ระหว่างนำข้อสอบจาก PDF ปี 2568 เข้าระบบ</p>';
   } catch (error) {
     document.querySelector('#detail-body').textContent = error.message;
