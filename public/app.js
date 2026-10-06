@@ -19,7 +19,7 @@ const learningAreas = [
     id:'secondary',
     title:'เรียน ชั้นมัธยม',
     description:'เลือกชั้นเรียนระดับมัธยมศึกษา',
-    backgroundFile:'นักเรียนโรงเรียนอัสสัมชัญ ม.ต้น.png',
+    backgroundUrl:'https://media.nathoeng.com/uploads/school/bg/hischool.png',
     levels:[
       ['m1','มัธยมศึกษาปีที่ 1'],['m2','มัธยมศึกษาปีที่ 2'],['m3','มัธยมศึกษาปีที่ 3'],
       ['m4','มัธยมศึกษาปีที่ 4'],['m5','มัธยมศึกษาปีที่ 5'],['m6','มัธยมศึกษาปีที่ 6']
