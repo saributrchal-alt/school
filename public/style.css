@@ -239,9 +239,26 @@
 }
 
 /* Nathoeng School seal */
-.hero-with-logo{display:grid;grid-template-columns:minmax(0,1fr) 118px;gap:28px;align-items:center}
+.hero-with-logo{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 118px;
+  gap:28px;
+  align-items:center;
+  background:#F5F5DC;
+  color:var(--green);
+  border:1px solid #e4e0c2;
+}
+.hero-with-logo::after{
+  border-color:rgba(25,62,53,.08);
+  box-shadow:0 0 0 35px rgba(25,62,53,.035),0 0 0 70px rgba(25,62,53,.025);
+}
 .hero-with-logo .hero-copy{position:relative;z-index:1}
-.hero-school-logo{position:relative;z-index:1;width:118px;height:118px;object-fit:contain;justify-self:end;filter:drop-shadow(0 8px 18px rgba(0,0,0,.16))}
+.hero-with-logo .eyebrow{color:#9a6b2f}
+.hero-with-logo h1{color:var(--green);text-shadow:none}
+.hero-with-logo p{color:#53685d}
+.hero-with-logo .primary{background:var(--green);color:#fff}
+.hero-with-logo .primary:hover{background:#102f28}
+.hero-school-logo{position:relative;z-index:1;width:118px;height:118px;object-fit:contain;justify-self:end;filter:drop-shadow(0 8px 18px rgba(86,35,35,.12))}
 .welcome .hero-with-logo{grid-template-columns:minmax(0,1fr) 132px}
 .welcome .hero-school-logo{width:132px;height:132px}
 @media(max-width:640px){
