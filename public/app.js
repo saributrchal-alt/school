@@ -9,7 +9,7 @@ const learningAreas = [
     id:'primary',
     title:'เรียน ชั้นประถม',
     description:'เลือกชั้นเรียนระดับประถมศึกษา',
-    backgroundFile:'Primary school children in classroom.jpg',
+    backgroundFile:'Student in Ban Khung Taphao School 1.JPG',
     levels:[
       ['p1','ประถมศึกษาปีที่ 1'],['p2','ประถมศึกษาปีที่ 2'],['p3','ประถมศึกษาปีที่ 3'],
       ['p4','ประถมศึกษาปีที่ 4'],['p5','ประถมศึกษาปีที่ 5'],['p6','ประถมศึกษาปีที่ 6']
@@ -19,7 +19,7 @@ const learningAreas = [
     id:'secondary',
     title:'เรียน ชั้นมัธยม',
     description:'เลือกชั้นเรียนระดับมัธยมศึกษา',
-    backgroundFile:'Students in classroom at Secondary school.jpg',
+    backgroundFile:'นักเรียนโรงเรียนอัสสัมชัญ ม.ต้น.png',
     levels:[
       ['m1','มัธยมศึกษาปีที่ 1'],['m2','มัธยมศึกษาปีที่ 2'],['m3','มัธยมศึกษาปีที่ 3'],
       ['m4','มัธยมศึกษาปีที่ 4'],['m5','มัธยมศึกษาปีที่ 5'],['m6','มัธยมศึกษาปีที่ 6']
@@ -29,14 +29,14 @@ const learningAreas = [
     id:'vocational-certificate',
     title:'เรียน ปวช.',
     description:'ประกาศนียบัตรวิชาชีพ',
-    backgroundFile:'Heavy Equipment Students.jpg',
+    backgroundFile:'นักเรียนโรงเรียนการช่างสตรีกระบี่ ในปี 2508.png',
     levels:[['vc1','ปวช. 1'],['vc2','ปวช. 2'],['vc3','ปวช. 3']]
   },
   {
     id:'higher-vocational',
     title:'เรียน ปวส.',
     description:'ประกาศนียบัตรวิชาชีพชั้นสูง',
-    backgroundFile:'Technical college students.jpg',
+    backgroundFile:'เข้าแถว.JPG',
     levels:[['hvc1','ปวส. 1'],['hvc2','ปวส. 2']]
   },
   {
@@ -49,13 +49,13 @@ const learningAreas = [
     id:'higher-education',
     title:'เรียน อุดมศึกษา',
     description:'การเรียนรู้และการทดสอบระดับอุดมศึกษา',
-    backgroundFile:'University students in a technology learning classroom.jpg'
+    backgroundFile:'University student in Siam Square.jpg'
   },
   {
     id:'military-prep',
     title:'เรียน เตรียมทหาร',
     description:'เลือกสายการสอบเตรียมทหาร',
-    backgroundFile:'Medical Cadets in classroom.JPG',
+    backgroundFile:'Thai army reserve force students walking 1.jpg',
     levels:[
       ['police','ตำรวจ'],
       ['army','ทหารบก (จปร.)'],
@@ -67,13 +67,13 @@ const learningAreas = [
     id:'nco',
     title:'เรียน ชั้นประทวนทหาร-ตำรวจ',
     description:'การฝึกฝนและเตรียมสอบชั้นประทวน',
-    backgroundFile:'Student Police Cadet-Kerala.jpg'
+    backgroundFile:'ThaiPoliceCadet-1.jpg'
   },
   {
     id:'recruitment',
     title:'เรียน เตรียมสอบบรรจุ',
     description:'เลือกกลุ่มการสอบบรรจุ',
-    backgroundFile:'Bal Uddhar Students taking exam .jpg',
+    backgroundFile:'Student In Uttaradit 1.JPG',
     levels:[
       ['teacher','บรรจุครู'],
       ['government','บรรจุข้าราชการทั่วไป']
