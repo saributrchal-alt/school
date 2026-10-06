@@ -29,14 +29,14 @@ const learningAreas = [
     id:'vocational-certificate',
     title:'เรียน ปวช.',
     description:'ประกาศนียบัตรวิชาชีพ',
-    backgroundFile:'นักเรียนโรงเรียนการช่างสตรีกระบี่ ในปี 2508.png',
+    art:'vocational',
     levels:[['vc1','ปวช. 1'],['vc2','ปวช. 2'],['vc3','ปวช. 3']]
   },
   {
     id:'higher-vocational',
     title:'เรียน ปวส.',
     description:'ประกาศนียบัตรวิชาชีพชั้นสูง',
-    backgroundFile:'เข้าแถว.JPG',
+    art:'higher-vocational',
     levels:[['hvc1','ปวส. 1'],['hvc2','ปวส. 2']]
   },
   {
@@ -49,13 +49,13 @@ const learningAreas = [
     id:'higher-education',
     title:'เรียน อุดมศึกษา',
     description:'การเรียนรู้และการทดสอบระดับอุดมศึกษา',
-    backgroundFile:'University student in Siam Square.jpg'
+    art:'university'
   },
   {
     id:'military-prep',
     title:'เรียน เตรียมทหาร',
     description:'เลือกสายการสอบเตรียมทหาร',
-    backgroundFile:'Thai army reserve force students walking 1.jpg',
+    art:'military',
     levels:[
       ['police','ตำรวจ'],
       ['army','ทหารบก (จปร.)'],
@@ -73,7 +73,7 @@ const learningAreas = [
     id:'recruitment',
     title:'เรียน เตรียมสอบบรรจุ',
     description:'เลือกกลุ่มการสอบบรรจุ',
-    backgroundFile:'Student In Uttaradit 1.JPG',
+    art:'recruitment',
     levels:[
       ['teacher','บรรจุครู'],
       ['government','บรรจุข้าราชการทั่วไป']
@@ -85,6 +85,85 @@ let data, subject = 'ENG', query = '', filter = 'all', noticeTimer, practice, cu
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const roles = member => [member.can_study?'นักเรียน':'',member.can_teach?'ครู / ผู้สอน':'',member.can_manage?'ผู้ดูแล':''].filter(Boolean).map(x=>`<span class="role">${x}</span>`).join('');
 const commonsImage = file => file ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}` : '';
+
+const learningCardArt = {
+  vocational: `
+    <svg viewBox="0 0 360 210" aria-hidden="true">
+      <g class="art-person art-person-a">
+        <circle cx="236" cy="59" r="24"/><path d="M217 53c5-20 39-22 46 1-8-7-15-9-24-8-8 0-15 3-22 7Z" class="hair"/>
+        <path d="M205 109c5-24 18-35 34-35s30 11 35 35v54h-69Z" class="shirt"/>
+        <path d="M205 109h69v28h-69Z" class="jacket"/><path d="M226 136h16v43h-16Z" class="pants"/><path d="M249 136h16v43h-16Z" class="pants"/>
+        <path d="M209 112 183 139M270 112l24 25" class="limb"/>
+        <path d="m177 140 16-17 6 5-16 17Z" class="tool"/>
+      </g>
+      <g class="art-person art-person-b">
+        <circle cx="308" cy="78" r="20"/><path d="M291 72c5-17 30-18 35 0-10-6-24-6-35 0Z" class="hair"/>
+        <path d="M282 119c4-20 15-29 28-29 14 0 25 9 29 29v44h-57Z" class="shirt"/>
+        <path d="M287 136h47v8h-47Z" class="belt"/><rect x="292" y="115" width="36" height="26" rx="3" class="paper"/>
+      </g>
+      <path d="M174 176h174" class="ground"/>
+    </svg>`,
+  'higher-vocational': `
+    <svg viewBox="0 0 360 210" aria-hidden="true">
+      <g class="art-person">
+        <circle cx="232" cy="61" r="23"/><path d="M214 55c3-18 34-23 43 0-12-7-30-7-43 0Z" class="hair"/>
+        <path d="M202 111c5-24 18-35 32-35 16 0 29 11 35 35v57h-67Z" class="shirt"/>
+        <path d="M223 137h17v41h-17Z" class="pants"/><path d="M247 137h17v41h-17Z" class="pants"/>
+        <rect x="177" y="110" width="63" height="39" rx="5" class="laptop"/><path d="M171 151h76" class="laptop-line"/>
+      </g>
+      <g class="art-person art-person-b">
+        <circle cx="308" cy="77" r="20"/><path d="M291 72c4-16 30-19 35 1-11-7-25-7-35-1Z" class="hair"/>
+        <path d="M282 119c4-18 14-28 28-28s25 10 29 28v48h-57Z" class="shirt"/>
+        <rect x="285" y="118" width="50" height="35" rx="3" class="blueprint"/><path d="m292 128 14 8 18-11M292 143h34" class="blueprint-line"/>
+      </g>
+      <path d="M171 178h178" class="ground"/>
+    </svg>`,
+  university: `
+    <svg viewBox="0 0 360 210" aria-hidden="true">
+      <g class="art-person">
+        <circle cx="225" cy="62" r="23"/><path d="M207 57c4-20 35-23 42 0-11-7-29-7-42 0Z" class="hair"/>
+        <path d="M195 111c5-24 18-35 32-35 15 0 28 11 34 35v57h-66Z" class="shirt"/>
+        <path d="M217 137h17v41h-17Z" class="pants"/><path d="M241 137h17v41h-17Z" class="pants"/>
+        <path d="M225 82v42" class="tie"/><rect x="176" y="108" width="50" height="41" rx="4" class="book"/><path d="M201 109v40" class="book-line"/>
+      </g>
+      <g class="art-person art-person-b">
+        <circle cx="307" cy="74" r="21"/><path d="M289 70c3-19 34-22 38 1-12-7-26-8-38-1Z" class="hair"/>
+        <path d="M279 118c4-21 15-31 29-31 15 0 26 10 30 31v50h-59Z" class="shirt"/>
+        <path d="M290 136h39l-5 42h-29Z" class="skirt"/><rect x="280" y="115" width="45" height="31" rx="4" class="laptop"/>
+      </g>
+      <path d="M168 179h181" class="ground"/>
+    </svg>`,
+  military: `
+    <svg viewBox="0 0 360 210" aria-hidden="true">
+      <g class="art-person">
+        <circle cx="235" cy="62" r="23"/><path d="M213 55h44l-5-13h-34Z" class="cap"/><path d="M205 112c5-25 18-36 32-36 16 0 29 11 35 36v58h-67Z" class="uniform"/>
+        <path d="M221 83h32M214 105h47" class="uniform-line"/><circle cx="239" cy="118" r="3" class="button"/><circle cx="239" cy="130" r="3" class="button"/>
+        <path d="M226 139h17v40h-17Z" class="uniform-dark"/><path d="M249 139h17v40h-17Z" class="uniform-dark"/>
+      </g>
+      <g class="art-person art-person-b">
+        <circle cx="306" cy="77" r="20"/><path d="M287 72h38l-4-11h-29Z" class="cap"/><path d="M279 120c4-21 15-31 28-31 14 0 25 10 29 31v49h-57Z" class="uniform"/>
+        <path d="M288 100h39" class="uniform-line"/><circle cx="308" cy="128" r="3" class="button"/>
+      </g>
+      <path d="M174 180h174" class="ground"/>
+    </svg>`,
+  recruitment: `
+    <svg viewBox="0 0 360 210" aria-hidden="true">
+      <g class="desk">
+        <path d="M176 145h171v12H176Z"/><path d="M190 157h9v31h-9ZM326 157h9v31h-9Z"/>
+      </g>
+      <g class="art-person">
+        <circle cx="225" cy="64" r="22"/><path d="M208 58c4-18 33-21 40 0-11-7-28-7-40 0Z" class="hair"/>
+        <path d="M199 111c4-22 16-33 29-33 15 0 27 11 31 33v35h-60Z" class="shirt"/>
+        <path d="M226 96v25" class="tie"/><path d="m242 122 26 16" class="limb"/>
+        <rect x="257" y="128" width="45" height="28" rx="2" class="paper"/><path d="M263 136h31M263 143h24" class="paper-line"/>
+      </g>
+      <g class="art-person art-person-b">
+        <circle cx="311" cy="78" r="19"/><path d="M295 72c4-16 28-19 33 0-10-6-23-6-33 0Z" class="hair"/>
+        <path d="M286 120c4-19 14-28 27-28 13 0 23 9 27 28v28h-54Z" class="shirt"/>
+        <path d="m300 124-20 14" class="limb"/>
+      </g>
+    </svg>`
+};
 
 async function api(url, options) {
   const response = await fetch(url, { credentials:'include', cache:'no-store', ...options });
@@ -120,8 +199,9 @@ function areaCard(area) {
     ? '<span class="learning-ready">มีคลังข้อสอบแล้ว: ทหารบก (จปร.)</span>'
     : '<span class="learning-muted">อยู่ระหว่างการดำเนินงาน</span>';
   const bg = commonsImage(area.backgroundFile);
+  const art = area.art ? learningCardArt[area.art] : '';
   const bgStyle = bg ? ` style="--card-bg:url('${esc(bg)}')"` : '';
-  return `<button type="button" class="learning-card ${bg?'has-bg':''}" data-area="${esc(area.id)}"${bgStyle}><span class="learning-card-kicker">หมวดการเรียน</span><strong>${esc(area.title)}</strong><small>${esc(area.description)}</small>${ready}<span class="learning-arrow" aria-hidden="true">→</span></button>`;
+  return `<button type="button" class="learning-card ${bg?'has-bg':''} ${art?'has-art art-'+esc(area.art):''}" data-area="${esc(area.id)}"${bgStyle}>${art?`<span class="learning-card-art">${art}</span>`:''}<span class="learning-card-kicker">หมวดการเรียน</span><strong>${esc(area.title)}</strong><small>${esc(area.description)}</small>${ready}<span class="learning-arrow" aria-hidden="true">→</span></button>`;
 }
 
 function renderLearningHome() {
