@@ -135,3 +135,46 @@
   .learning-card.has-art>strong,.learning-card.has-art>small,.learning-card.has-art .learning-muted,.learning-card.has-art .learning-ready{max-width:62%}
   .learning-card-art{width:66%;height:92%;right:-10px}
 }
+
+/* Military-prep branch cards from user-selected Thai academy images */
+.military-level-grid .level-card{min-height:150px}
+.level-card.has-level-photo{
+  position:relative;
+  overflow:hidden;
+  align-items:flex-end;
+  border-color:rgba(255,255,255,.14);
+  color:#fff;
+  background:
+    linear-gradient(180deg,rgba(8,20,17,.10) 0%,rgba(8,20,17,.22) 38%,rgba(8,20,17,.82) 100%),
+    var(--level-bg);
+  background-size:cover;
+  background-position:center;
+  background-repeat:no-repeat;
+}
+.level-card.has-level-photo::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(90deg,rgba(8,20,17,.45),rgba(8,20,17,.08) 70%);
+  pointer-events:none;
+}
+.level-card.has-level-photo>span,
+.level-card.has-level-photo>b{
+  position:relative;
+  z-index:1;
+}
+.level-card.has-level-photo>span>strong{
+  color:#fff;
+  font-size:17px;
+  text-shadow:0 2px 10px rgba(0,0,0,.55);
+}
+.level-card.has-level-photo .level-status{color:rgba(255,255,255,.84)}
+.level-card.has-level-photo .level-status.ready{color:#dff7d8}
+.level-card.has-level-photo>b{color:rgba(255,255,255,.85)}
+.level-card.has-level-photo:hover{
+  border-color:rgba(255,255,255,.28);
+  filter:brightness(1.04);
+}
+@media(max-width:640px){
+  .military-level-grid .level-card{min-height:132px}
+}
