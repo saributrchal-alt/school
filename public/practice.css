@@ -53,3 +53,27 @@ progress{accent-color:#4a7d58}.practice-subject progress{display:block;width:100
 .practice-complex-key p{margin:0;border:1px solid #dbe8d2;border-radius:9px;padding:10px 12px;background:#f6faF2;font-size:12px;line-height:1.8}
 .practice-complex-key p span{display:block;margin-top:4px;font-weight:700;color:#416d3e}
 @media(max-width:640px){.practice-numeric-wrap{padding:14px}.practice-numeric-input{font-size:17px}.practice-complex-item{padding:12px}.practice-binary label{flex:1;justify-content:center}}
+
+
+/* Real exam session manager */
+.exam-manager-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin:4px 0 20px}
+.exam-manager-head h3{font-size:22px;margin:5px 0 5px;color:var(--green)}
+.exam-manager-head p{font-size:12px;color:#748078;line-height:1.8}
+.exam-session-list{display:grid;gap:12px}
+.exam-session-card{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;border:1px solid var(--line);border-radius:13px;padding:18px;background:#fff}
+.exam-session-main{min-width:0;flex:1}.exam-session-title{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.exam-session-title h4{margin:0;font-size:16px;color:var(--green)}
+.exam-session-main>p{font-size:12px;color:#58705d;margin:8px 0 5px}.exam-session-main>small{display:block;font-size:10px;line-height:1.9;color:#829083}
+.exam-session-stats{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.exam-session-stats span{border:1px solid #e2e8dd;border-radius:9px;padding:7px 10px;background:#f8faf6;font-size:10px;color:#71816d}.exam-session-stats b{font:650 14px system-ui,sans-serif;color:var(--green);margin-right:4px}
+.exam-session-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.exam-session-actions button{font-size:11px;padding:8px 10px}.exam-session-actions .danger{color:#9a4b27;border-color:#e5c9bb}
+.exam-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:18px}.exam-wide{grid-column:1/-1}
+.exam-field{display:flex;flex-direction:column;gap:7px}.exam-field>span{font-size:11px;color:#65776a}.exam-field input,.exam-field select,.exam-field textarea{width:100%;min-width:0;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--green);padding:11px 12px;font:12px/1.5 system-ui,sans-serif}.exam-field textarea{resize:vertical;min-height:86px}.exam-field input:focus,.exam-field select:focus,.exam-field textarea:focus{outline:3px solid rgba(206,170,102,.22);border-color:#ceaa66}
+.exam-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;border:1px solid #e2e8dd;border-radius:11px;padding:14px;background:#f8faf6}.exam-options label{font-size:11px;color:#5f7464;display:flex;align-items:flex-start;gap:8px;line-height:1.7}.exam-options input{margin-top:3px;accent-color:#476e4b}
+.exam-form-note{font-size:10px;line-height:1.9;color:#7d8a7c;background:#f5f7f2;border-radius:9px;padding:11px 13px}.exam-form-actions{display:flex;justify-content:flex-end;margin-top:3px}
+.exam-member-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;margin:18px 0 12px}.exam-member-head h3{font-size:17px;color:var(--green);margin:0 0 4px}.exam-member-head p{font-size:11px;color:#7a8c76;margin:0}.exam-member-head .secondary{font-size:11px}
+.exam-member-search{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;background:#fff;color:var(--green);font-size:12px;margin-bottom:10px}
+.exam-member-list{max-height:430px;overflow:auto;border:1px solid var(--line);border-radius:11px;background:#fff}.exam-member-row{display:flex;align-items:center;gap:11px;padding:11px 13px;border-bottom:1px solid #edf1e8;cursor:pointer}.exam-member-row:last-child{border-bottom:0}.exam-member-row:hover{background:#f8faf6}.exam-member-row input{accent-color:#476e4b}.exam-member-row span{min-width:0}.exam-member-row b{display:block;font-size:12px;color:#455f4b}.exam-member-row small{display:block;font-size:9px;color:#879488;margin-top:2px}
+@media(max-width:640px){
+  .exam-manager-head{flex-direction:column}.exam-session-card{flex-direction:column}.exam-session-actions{justify-content:flex-start}
+  .exam-form{grid-template-columns:1fr}.exam-wide{grid-column:auto}.exam-options{grid-template-columns:1fr}.exam-form-actions{justify-content:stretch}.exam-form-actions .practice-primary{width:100%}
+  .exam-member-head{flex-direction:column}
+}
