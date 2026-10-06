@@ -59,7 +59,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
 
   function studentExamSection() {
     if (!data.member.can_study || !examSessionsData) return '';
-    const sessions=(examSessionsData.sessions||[]).filter(s=>s.is_published);
+    const sessions=(examSessionsData.sessions||[]).filter(s=>s.is_published && (!isALevel || s.subject_id===getSubject()));
     if(!sessions.length) return examSessionsData.exam_error
       ? '<section class="real-exam-section"><div class="real-exam-section-head"><div><span class="eyebrow">REAL EXAM</span><h3>สอบจริง</h3></div></div><p class="practice-muted">'+esc(examSessionsData.exam_error)+'</p></section>'
       : '';
