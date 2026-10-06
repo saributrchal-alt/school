@@ -191,6 +191,8 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
               '<div class="exam-session-actions">'+
                 (canEdit?'<button type="button" class="secondary" data-exam-edit="'+esc(s.session_id)+'">แก้ไข</button>':'')+
                 (canEdit&&s.audience_mode==='selected'?'<button type="button" class="secondary" data-exam-members="'+esc(s.session_id)+'">รายชื่อนักเรียน</button>':'')+
+                (canEdit&&Number(s.submitted_count||0)>0&&s.result_policy==='manual'?'<button type="button" class="secondary" data-exam-release-results="'+esc(s.session_id)+'">เปิดคะแนน</button>':'')+
+                (canEdit&&Number(s.submitted_count||0)>0&&s.answer_policy==='manual'?'<button type="button" class="secondary" data-exam-release-answers="'+esc(s.session_id)+'">เปิดคะแนน + เฉลย</button>':'')+
                 (canEdit&&Number(s.attempt_count||0)===0?'<button type="button" class="secondary danger" data-exam-delete="'+esc(s.session_id)+'">ลบ</button>':'')+
               '</div>'+
             '</article>';
@@ -204,13 +206,15 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     const subjectId = item?.subject_id || (isALevel ? (getSubject() || data.subjects[0]?.subject_id) : 'ALL');
     const duration = item?.duration_minutes || (isALevel ? (data.subjects.find(s=>s.subject_id===subjectId)?.duration_minutes || 90) : 180);
     const subjectOptions = (isALevel ? [] : [{subject_id:'ALL',subject_name_th:'ข้อสอบทั้งชุด · ทุกวิชา'}]).concat(data.subjects);
+    const originalSets = isALevel ? [{set_no:2,label:'ชุด 2 · ข้อสอบจริง 2568'}] : ((bank?.sets||[]).filter(x=>x.source_type==='original_exam').length ? (bank?.sets||[]).filter(x=>x.source_type==='original_exam') : [{set_no:2,label:'ชุด 2 · ข้อสอบจริงเตรียมทหาร'}]);
+    const examSetNo = Number(item?.set_no || originalSets[0]?.set_no || 2);
     document.querySelector('#practice-title').textContent = item ? 'แก้ไขรอบสอบจริง' : 'สร้างรอบสอบจริง';
     modalBody.innerHTML =
       '<button type="button" class="secondary" data-exam-list>← กลับรายการรอบสอบ</button>'+
       '<div class="exam-form">'+
         '<label class="exam-field exam-wide"><span>ชื่อรอบสอบ</span><input id="exam-title" maxlength="160" value="'+esc(item?.title||'')+'" placeholder="'+esc(isALevel?'เช่น สอบจำลอง A-Level คณิตศาสตร์ ครั้งที่ 1':'เช่น สอบจำลองเตรียมทหาร ชุด 2 ครั้งที่ 1')+'"></label>'+
         '<label class="exam-field"><span>'+(isALevel?'วิชา':'ขอบเขตข้อสอบ')+'</span><select id="exam-subject">'+subjectOptions.map(s=>'<option value="'+esc(s.subject_id)+'" '+(s.subject_id===subjectId?'selected':'')+'>'+esc(s.subject_name_th)+'</option>').join('')+'</select></label>'+
-        '<label class="exam-field"><span>ชุดข้อสอบ</span><select id="exam-set" disabled><option value="2">'+esc(isALevel?'ชุด 2 · ข้อสอบจริง 2568':'ชุด 2 · ข้อสอบจริงเตรียมทหาร')+'</option></select></label>'+
+        '<label class="exam-field"><span>ชุดข้อสอบ</span><select id="exam-set" '+(isALevel?'disabled':'')+'>'+originalSets.map(x=>'<option value="'+esc(x.set_no)+'" '+(Number(x.set_no)===examSetNo?'selected':'')+'>'+esc(setLabel(x)||x.label||('ชุด '+x.set_no))+'</option>').join('')+'</select></label>'+
         '<label class="exam-field"><span>เวลาสอบ (นาที)</span><input id="exam-duration" type="number" min="1" max="'+(isALevel?'480':'600')+'" value="'+esc(duration)+'"></label>'+
         '<label class="exam-field"><span>จำนวนครั้งที่สอบได้</span><input id="exam-attempts" type="number" min="1" max="10" value="'+esc(item?.max_attempts||1)+'"></label>'+
         '<label class="exam-field"><span>เปิดให้เข้าสอบ</span><input id="exam-opens" type="datetime-local" value="'+esc(localInput(item?.opens_at))+'"></label>'+
@@ -262,7 +266,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
       ...(examEditingId?{session_id:examEditingId}:{}),
       title:value('#exam-title'),
       subject_id:value('#exam-subject'),
-      set_no:2,
+      set_no:Number(value('#exam-set')||2),
       duration_minutes:Number(value('#exam-duration')),
       max_attempts:Number(value('#exam-attempts')),
       opens_at:value('#exam-opens')?new Date(value('#exam-opens')).toISOString():null,
@@ -295,6 +299,33 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
       const box=modalBody.querySelector('.exam-form-note');
       if(box) box.innerHTML='<span class="practice-inline-error">'+esc(error.message)+'</span>';
     } finally { busy=false; }
+  }
+
+
+  async function releaseExamResults(id,withAnswers=false) {
+    if(busy) return;
+    const s=(examSessionsData?.sessions||[]).find(x=>x.session_id===id);
+    if(!s) return;
+    const message=withAnswers?'ยืนยันเปิดคะแนนและเฉลยให้นักเรียนที่ส่งแล้ว?':'ยืนยันเปิดคะแนนให้นักเรียนที่ส่งแล้ว?';
+    if(!confirm(message)) return;
+    busy=true;
+    try{
+      const payload={
+        session_id:s.session_id,title:s.title,instructions:s.instructions||'',subject_id:s.subject_id,
+        set_no:s.set_no,duration_minutes:s.duration_minutes,max_attempts:s.max_attempts,
+        opens_at:s.opens_at,closes_at:s.closes_at,start_policy:s.start_policy,fixed_start_at:s.fixed_start_at,
+        audience_mode:s.audience_mode,allow_submit_early:s.allow_submit_early,require_all_answers:s.require_all_answers,
+        allow_resume:s.allow_resume,is_published:s.is_published,
+        result_policy:'immediate',result_release_at:null,
+        answer_policy:withAnswers?'with_result':s.answer_policy,
+        answer_release_at:withAnswers?null:s.answer_release_at
+      };
+      await post('exam-session-save',payload);
+      notice(withAnswers?'เปิดคะแนนและเฉลยแล้ว':'เปิดคะแนนแล้ว');
+      examSessionsData=await api(apiPath+'?route=exam-sessions');
+      renderExamManager();
+    }catch(error){notice(error.message);}
+    finally{busy=false;}
   }
 
   async function openExamMembers(id) {
@@ -979,6 +1010,8 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     else if (t.dataset.examEdit) renderExamForm((examSessionsData?.sessions||[]).find(x=>x.session_id===t.dataset.examEdit));
     else if (t.dataset.examMembers) openExamMembers(t.dataset.examMembers);
     else if (t.dataset.examDelete) deleteExamSession(t.dataset.examDelete);
+    else if (t.dataset.examReleaseResults) releaseExamResults(t.dataset.examReleaseResults,false);
+    else if (t.dataset.examReleaseAnswers) releaseExamResults(t.dataset.examReleaseAnswers,true);
     else if (t.hasAttribute('data-exam-save')) saveExamForm();
     else if (t.hasAttribute('data-exam-members-save')) saveExamMembers();
     else if (t.hasAttribute('data-exam-select-all')) { const boxes=[...modalBody.querySelectorAll('[data-exam-member]')].filter(x=>x.closest('.exam-member-row')?.style.display!=='none'); const should=boxes.some(x=>!x.checked); boxes.forEach(x=>x.checked=should); t.textContent=should?'ยกเลิกทั้งหมด':'เลือกทั้งหมด'; }
