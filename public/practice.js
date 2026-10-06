@@ -802,7 +802,20 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   }
 
   async function closeModal() {
-    if (busy) return;
+    if (busy || realExamSubmitting) return;
+    if (realExam) {
+      if (realExam.attempt?.status==='draft' && !realExam.exam_session?.allow_resume) {
+        notice('รอบสอบนี้ไม่อนุญาตให้ออกจากหน้าสอบก่อนส่งหรือหมดเวลา');
+        return;
+      }
+      if (realExam.attempt?.status==='draft' && realExamIndex>=0 && realExamIndex<realExam.questions.length) {
+        const q=realExam.questions[realExamIndex], value=realExamChoices.get(q.question_id);
+        if (realExamHasResponse(q,value) && !await saveRealExamResponse(q,value)) return;
+      }
+      clearInterval(realExamTimer); realExamTimer=null; realExam=null;
+      requestNo++; modal.close(); returnView=null;
+      return;
+    }
     if (session && editable()) {
       const q = session.questions[index], value = q && choices.get(q.question_id);
       if (q && hasResponse(q,value) && !await saveResponse(q, value)) return;
@@ -931,6 +944,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     } else if (target.dataset.practiceSubject) openSubject(target.dataset.practiceSubject);
     else if (target.hasAttribute('data-practice-refresh')) refresh();
     else if (target.hasAttribute('data-student-results')) { resultsQuery = ''; resultsFilter = 'all'; openResults(); }
+    else if (target.dataset.realExamSession) openRealExamIntro(target.dataset.realExamSession);
     else if (target.hasAttribute('data-exam-manage')) openExamManager();
     else if (target.hasAttribute('data-review')) openReview();
     else if (target.dataset.resultSubject) { resultSubject = target.dataset.resultSubject; renderPanel(); }
@@ -938,7 +952,16 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   const setChange = event => { if (event.target.id === 'practice-set') { selectedSet = Number(event.target.value); renderPanel(); rerender(); } };
   const modalClick = event => {
     const t = event.target.closest('button'); if (!t || busy) return;
-    if (t.dataset.questionIndex !== undefined) move(Number(t.dataset.questionIndex));
+    if (t.dataset.realExamStart) beginRealExam(t.dataset.realExamStart);
+    else if (t.dataset.realExamIndex !== undefined) { realExamIndex=Number(t.dataset.realExamIndex); renderRealExam(); modal.scrollTop=0; }
+    else if (t.hasAttribute('data-real-exam-back')) moveRealExam(realExamIndex-1);
+    else if (t.hasAttribute('data-real-exam-next')) moveRealExam(realExamIndex+1);
+    else if (t.hasAttribute('data-real-exam-skip')) moveRealExam(realExamIndex+1,true);
+    else if (t.hasAttribute('data-real-exam-unanswered')) { const i=realExam.questions.findIndex(q=>!realExamSaved.has(q.question_id)); if(i>=0){realExamIndex=i;renderRealExam();modal.scrollTop=0;} }
+    else if (t.hasAttribute('data-real-exam-submit')) submitRealExam(false);
+    else if (t.hasAttribute('data-real-exam-review')) { realExamIndex=0; renderRealExam(); modal.scrollTop=0; }
+    else if (t.hasAttribute('data-real-exam-close')) closeModal();
+    else if (t.dataset.questionIndex !== undefined) move(Number(t.dataset.questionIndex));
     else if (t.hasAttribute('data-back')) move(index - 1);
     else if (t.hasAttribute('data-next') || t.hasAttribute('data-skip')) move(index + 1);
     else if (t.hasAttribute('data-unanswered')) move(session.questions.findIndex(q => !saved.has(q.question_id)));
@@ -963,6 +986,9 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   };
   const choiceChange = event => {
     if (event.target.id === 'practice-results-set') { openResults(Number(event.target.value), staffStudentId); return; }
+    if (realExam && realExam.attempt?.status==='draft' && event.target.name === 'real-exam-choice') { const q=realExam.questions[realExamIndex], value=Number(event.target.value); realExamChoices.set(q.question_id,value); saveRealExamResponse(q,value); return; }
+    if (realExam && realExam.attempt?.status==='draft' && event.target.dataset.realExamPart) { const q=realExam.questions[realExamIndex], current=realExamChoices.get(q.question_id); const value=current&&typeof current==='object'&&!Array.isArray(current)?{...current}:{}; value[event.target.dataset.realExamPart]=Number(event.target.value); realExamChoices.set(q.question_id,value); if(realExamHasResponse(q,value)) saveRealExamResponse(q,value); else renderRealExam(); return; }
+    if (realExam && realExam.attempt?.status==='draft' && event.target.id === 'real-exam-numeric') { const q=realExam.questions[realExamIndex]; realExamChoices.set(q.question_id,event.target.value); if(realExamHasResponse(q,event.target.value)) saveRealExamResponse(q,event.target.value); return; }
     if (event.target.id === 'practice-results-status') { resultsFilter = event.target.value; renderResultsList(); return; }
     if (!editable() || busy || !session || index >= session.questions.length) return;
     const q=session.questions[index];
@@ -980,6 +1006,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   const resultsSearch = event => {
     if (event.target.id === 'practice-results-search') { resultsQuery = event.target.value; renderResultsList(); return; }
     if (event.target.id === 'exam-member-search') { const q=event.target.value.trim().toLowerCase(); modalBody.querySelectorAll('.exam-member-row').forEach(row=>{row.style.display=!q||row.dataset.memberText.includes(q)?'':'none';}); return; }
+    if (event.target.id === 'real-exam-numeric' && realExam?.attempt?.status==='draft' && realExamIndex>=0) { const q=realExam.questions[realExamIndex]; realExamChoices.set(q.question_id,event.target.value); return; }
     if (event.target.id === 'practice-numeric' && editable() && session && index < session.questions.length) {
       const q=session.questions[index], value=event.target.value; choices.set(q.question_id,value);
       const next=modalBody.querySelector('[data-next]'); if(next) next.disabled=!hasResponse(q,value);
@@ -996,6 +1023,6 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     modalBody.removeEventListener('click', modalClick); modalBody.removeEventListener('change', choiceChange);
     modalBody.removeEventListener('input', resultsSearch);
     modal.removeEventListener('cancel', cancel); document.querySelector('#practice-close').removeEventListener('click', closeModal);
-    modal.close(); session = null;
+    clearInterval(realExamTimer); realExamTimer=null; realExam=null; modal.close(); session = null;
   } };
 }
