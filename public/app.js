@@ -55,7 +55,7 @@ const learningAreas = [
     id:'military-prep',
     title:'เรียน เตรียมทหาร',
     description:'เลือกสายการสอบเตรียมทหาร',
-    art:'military',
+    backgroundUrl:'https://media.nathoeng.com/uploads/school/bg/cardet.png',
     levels:[
       ['police','ตำรวจ'],
       ['army','ทหารบก (จปร.)'],
@@ -204,7 +204,7 @@ function areaCard(area) {
   const ready = area.id === 'military-prep'
     ? '<span class="learning-ready">มีคลังข้อสอบแล้ว: ทหารบก (จปร.)</span>'
     : '<span class="learning-muted">อยู่ระหว่างการดำเนินงาน</span>';
-  const bg = commonsImage(area.backgroundFile);
+  const bg = area.backgroundUrl || commonsImage(area.backgroundFile);
   const art = area.art ? learningCardArt[area.art] : '';
   const bgStyle = bg ? ` style="--card-bg:url('${esc(bg)}')"` : '';
   return `<button type="button" class="learning-card ${bg?'has-bg':''} ${art?'has-art art-'+esc(area.art):''}" data-area="${esc(area.id)}"${bgStyle}>${art?`<span class="learning-card-art">${art}</span>`:''}<span class="learning-card-kicker">หมวดการเรียน</span><strong>${esc(area.title)}</strong><small>${esc(area.description)}</small>${ready}<span class="learning-arrow" aria-hidden="true">→</span></button>`;
