@@ -73,7 +73,7 @@ const learningAreas = [
     id:'recruitment',
     title:'เรียน เตรียมสอบบรรจุ',
     description:'เลือกกลุ่มการสอบบรรจุ',
-    art:'recruitment',
+    backgroundUrl:'https://media.nathoeng.com/uploads/school/bg/official.png',
     levels:[
       ['teacher','บรรจุครู'],
       ['government','บรรจุข้าราชการทั่วไป']
