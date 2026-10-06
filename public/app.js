@@ -49,7 +49,7 @@ const learningAreas = [
     id:'higher-education',
     title:'เรียน อุดมศึกษา',
     description:'การเรียนรู้และการทดสอบระดับอุดมศึกษา',
-    art:'university'
+    backgroundUrl:'https://media.nathoeng.com/uploads/school/bg/univer.png'
   },
   {
     id:'military-prep',
