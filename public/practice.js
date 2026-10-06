@@ -4,7 +4,7 @@ const stateLabel = { draft:'กำลังทำ', submitted:'รอตรว�
 const setLabel = set => Number.isInteger(Number(set?.set_no)) ? `ชุด ${Number(set.set_no)}` : (set?.display_label || set?.label || '');
 const setText = (sets, no) => setLabel((sets || []).find(s => s.set_no === no));
 
-export function createPractice({ main, data, api, notice, rerender, getSubject }) {
+export function createPractice({ main, data, api, notice, rerender, getSubject, apiPath = '/api/practice' }) {
   const panel = document.querySelector('#practice-dashboard');
   const modal = document.querySelector('#practice-dialog');
   const modalBody = document.querySelector('#practice-body');
@@ -17,7 +17,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject }
   const canSeeResults = () => data.member.can_teach || data.member.can_manage;
   const date = value => value ? new Date(value).toLocaleString('th-TH') : '—';
   const resultButton = () => canSeeResults() ? '<button type="button" class="secondary" data-student-results>ผลตรวจรายคน</button>' : '';
-  const post = (route, value) => api(`/api/practice?route=${route}`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(value) });
+  const post = (route, value) => api(`${apiPath}?route=${route}`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(value) });
   const ownAttempt = sid => bank?.attempts?.find(a => a.set_no === selectedSet && a.subject_id === sid);
   const ownAnswers = sid => {
     const a = ownAttempt(sid);
@@ -76,7 +76,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject }
     if (loading) return;
     loading = true;
     try {
-      bank = await api('/api/practice?route=summary');
+      bank = await api(apiPath+'?route=summary');
       if (bank.ready && !bank.sets.some(s => s.set_no === selectedSet)) selectedSet = bank.sets[0].set_no;
       renderPanel(); rerender();
     } catch (error) {
@@ -94,7 +94,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject }
     if (!modal.open) modal.showModal();
     try {
       if (data.member.can_study && !otherAttempt) await post('start', { set_no:set, subject_id:sid });
-      const result = await api(`/api/practice?route=subject&set_no=${set}&subject_id=${sid}${otherAttempt ? `&attempt_id=${encodeURIComponent(otherAttempt)}` : ''}`);
+      const result = await api(`${apiPath}?route=subject&set_no=${set}&subject_id=${sid}${otherAttempt ? `&attempt_id=${encodeURIComponent(otherAttempt)}` : ''}`);
       if (!modal.open || ticket !== requestNo) return;
       session = result; saved = new Map(result.answers.map(a => [a.question_id, a]));
       choices = new Map(result.answers.map(a => [a.question_id, a.selected_answer]));
@@ -179,7 +179,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject }
     if (!session || busy) return;
     busy = true; const previousIndex = index;
     try {
-      session = await api(`/api/practice?route=subject&set_no=${session.set_no}&subject_id=${session.subject_id}${viewingOther ? `&attempt_id=${session.attempt.attempt_id}` : ''}`);
+      session = await api(`${apiPath}?route=subject&set_no=${session.set_no}&subject_id=${session.subject_id}${viewingOther ? `&attempt_id=${session.attempt.attempt_id}` : ''}`);
       saved = new Map(session.answers.map(a => [a.question_id, a])); choices = new Map(session.answers.map(a => [a.question_id, a.selected_answer]));
       index = previousIndex; await refresh(); modalError = '';
     } catch (error) { modalError = error.message; }
@@ -192,7 +192,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject }
     try {
       session.attempt = (await post('submit', { attempt_id:session.attempt.attempt_id })).item;
       if (session.attempt.status === 'graded') {
-        session = await api(`/api/practice?route=subject&set_no=${session.set_no}&subject_id=${session.subject_id}`);
+        session = await api(`${apiPath}?route=subject&set_no=${session.set_no}&subject_id=${session.subject_id}`);
         saved = new Map(session.answers.map(a => [a.question_id, a]));
       }
       notice(session.attempt.status === 'graded' ? 'ผู้ดูแลตรวจและเปิดผลแล้ว' : 'ส่งคำตอบครบทั้งวิชาแล้ว · รอผู้ดูแลตรวจ');
@@ -258,7 +258,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject }
     modalBody.innerHTML = '<p class="practice-muted" role="status">กำลังเปิดผลตรวจรายคน…</p>';
     if (!modal.open) modal.showModal();
     try {
-      const result = await api(`/api/practice?route=results&set_no=${set}`);
+      const result = await api(`${apiPath}?route=results&set_no=${set}`);
       if (!modal.open || ticket !== requestNo) return;
       staffResults = result;
       if (studentId) renderStudentResult(studentId); else renderResults();
@@ -273,7 +273,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject }
     document.querySelector('#practice-title').textContent = 'คำตอบนักเรียน · รอตรวจ';
     modalBody.innerHTML = '<p class="practice-muted" role="status">กำลังเปิดรายการ…</p>'; if (!modal.open) modal.showModal();
     try {
-      const result = await api('/api/practice?route=review');
+      const result = await api(apiPath+'?route=review');
       modalBody.innerHTML = `<p class="practice-muted">กดตรวจเพื่อให้ระบบเทียบเฉลย คำนวณคะแนน และเปิดผลให้นักเรียน</p>${result.attempts.length ? result.attempts.map(a => `<article class="practice-review-row"><div><strong>${esc(a.member_name)}</strong><span>${esc(subjectName(a.subject_id))}${setText(bank?.sets, a.set_no) ? ` · ${esc(setText(bank?.sets, a.set_no))}` : ''} · ${a.total_count} ข้อ</span><small>ส่ง ${esc(new Date(a.submitted_at).toLocaleString('th-TH'))}</small></div><div><button type="button" class="secondary" data-review-open="${a.attempt_id}" data-review-set="${a.set_no}" data-review-subject="${a.subject_id}">ดูคำตอบ</button><button type="button" class="practice-primary" data-grade="${a.attempt_id}">ตรวจและเปิดผล</button></div></article>`).join('') : '<div class="empty">ไม่มีคำตอบรอตรวจในขณะนี้</div>'}`;
     } catch (error) { modalBody.innerHTML = `<p class="practice-inline-error" role="alert">${esc(error.message)}</p>`; }
     finally { busy = false; document.querySelector('#practice-close').disabled = false; }
