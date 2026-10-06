@@ -82,6 +82,7 @@ const learningAreas = [
 ];
 
 let data, subject = 'ENG', query = '', filter = 'all', noticeTimer, practice, currentArea = null;
+let alevelData = null, alevelSubject = 'AL61', alevelQuery = '', alevelFilter = 'all';
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const roles = member => [member.can_study?'นักเรียน':'',member.can_teach?'ครู / ผู้สอน':'',member.can_manage?'ผู้ดูแล':''].filter(Boolean).map(x=>`<span class="role">${x}</span>`).join('');
 const commonsImage = file => file ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}` : '';
@@ -276,17 +277,104 @@ function renderUniversityPrep() {
   practice?.destroy(); practice=null;
   main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-m6>← กลับ ม.6</button><span class="eyebrow">NATHOENG SCHOOL</span><h1>เตรียมสอบเข้ามหาวิทยาลัย</h1><p>เลือกประเภทข้อสอบที่ต้องการฝึกฝนและทดสอบ</p></section>
   <section class="level-grid">
-    <button type="button" class="level-card" data-university-exam="alevel"><span><strong>A-Level</strong><small class="level-status pending">อยู่ระหว่างการดำเนินงาน</small></span><b aria-hidden="true">→</b></button>
+    <button type="button" class="level-card" data-university-exam="alevel"><span><strong>A-Level</strong><small class="level-status ready">โครงสร้างพร้อม · ปี 2568</small></span><b aria-hidden="true">→</b></button>
     <button type="button" class="level-card" data-university-exam="tgat"><span><strong>TGAT</strong><small class="level-status pending">อยู่ระหว่างการดำเนินงาน</small></span><b aria-hidden="true">→</b></button>
     <button type="button" class="level-card" data-university-exam="tpat"><span><strong>TPAT</strong><small class="level-status pending">อยู่ระหว่างการดำเนินงาน</small></span><b aria-hidden="true">→</b></button>
   </section>`;
 }
 
-function renderALevelSubjects() {
+async function renderALevelSubjects() {
   practice?.destroy(); practice=null;
-  const subjects = ['คณิตศาสตร์ประยุกต์ 1','ฟิสิกส์','เคมี','ชีววิทยา','ภาษาอังกฤษ','ภาษาไทย','สังคมศึกษา'];
-  main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-university-prep>← กลับเตรียมสอบเข้ามหาวิทยาลัย</button><span class="eyebrow">A-LEVEL</span><h1>ข้อสอบ A-Level</h1><p>แยกตามรายวิชา เพื่อรองรับคลังข้อสอบและชุดฝึกแต่ละปี</p></section>
-  <section class="level-grid">${subjects.map(name=>`<button type="button" class="level-card" data-alevel-subject="${esc(name)}"><span><strong>${esc(name)}</strong><small class="level-status pending">อยู่ระหว่างการดำเนินงาน</small></span><b aria-hidden="true">→</b></button>`).join('')}</section>`;
+  main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-university-prep>← กลับเตรียมสอบเข้ามหาวิทยาลัย</button><span class="eyebrow">A-LEVEL</span><h1>ข้อสอบ A-Level</h1><p>ใช้หลักการเดียวกับคลังข้อสอบ จปร. — แยกวิชา หมวด หัวข้อ ข้อสอบต้นฉบับ และบันทึกความก้าวหน้ารายคน</p></section>
+  <section class="empty-state"><strong>กำลังเปิดคลัง A-Level 2568…</strong><p>กำลังอ่านโครงสร้างรายวิชาและหัวข้อจากฐานข้อมูล School</p></section>`;
+  try {
+    const result = await api('/api/alevel?route=catalog');
+    if (result.setup_required) {
+      alevelData = null;
+      main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-university-prep>← กลับเตรียมสอบเข้ามหาวิทยาลัย</button><span class="eyebrow">A-LEVEL</span><h1>ข้อสอบ A-Level</h1><p>โครงสร้างระบบพร้อมแล้ว เหลือเปิดตาราง A-Level ใน Supabase</p></section>
+      <section class="empty-state"><strong>ต้องรัน School_ALevel_schema.sql หนึ่งครั้ง</strong><p>หลังรัน SQL แล้ว หน้านี้จะแสดง 7 วิชา พร้อมหมวด หัวข้อ และคลังข้อสอบปี 2568 โดยไม่กระทบระบบ จปร. เดิม</p></section>`;
+      return;
+    }
+    alevelData = result;
+    const sourceTotal = result.source_question_count || 0;
+    main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-university-prep>← กลับเตรียมสอบเข้ามหาวิทยาลัย</button><span class="eyebrow">A-LEVEL · 2568</span><h1>ข้อสอบ A-Level</h1><p>เลือกวิชาเพื่อเปิดหมวดและหัวข้อ เนื้อหาต้นฉบับรวม ${sourceTotal.toLocaleString('th-TH')} ข้อจาก 7 รายวิชา</p></section>
+    <section class="stats" aria-label="ภาพรวม A-Level"><div class="stat"><strong>${result.subjects.length}</strong><span>วิชา</span></div><div class="stat"><strong>${result.chapters.length}</strong><span>หมวด</span></div><div class="stat"><strong>${result.topics.length}</strong><span>หัวข้อ</span></div><div class="stat"><strong>${result.question_count}</strong><span>ข้อที่นำเข้ารายข้อแล้ว</span></div></section>
+    <section class="level-grid">${result.subjects.map(s=>{
+      const imported = Number(s.imported_question_count || 0);
+      const total = Number(s.source_question_count_2568 || 0);
+      const status = imported ? `<small class="level-status ready">นำเข้าแล้ว ${imported}/${total} ข้อ</small>` : `<small class="level-status">ต้นฉบับ ${total} ข้อ · พร้อมจัดเข้าหัวข้อ</small>`;
+      return `<button type="button" class="level-card" data-alevel-subject="${esc(s.subject_id)}"><span><strong>${esc(s.subject_name_th)}</strong>${status}</span><b aria-hidden="true">→</b></button>`;
+    }).join('')}</section>`;
+  } catch (error) {
+    main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-university-prep>← กลับเตรียมสอบเข้ามหาวิทยาลัย</button><span class="eyebrow">A-LEVEL</span><h1>ข้อสอบ A-Level</h1></section><section class="empty-state"><strong>เปิดคลัง A-Level ไม่สำเร็จ</strong><p>${esc(error.message)}</p></section>`;
+  }
+}
+
+async function renderALevelCatalog(subjectId) {
+  practice?.destroy(); practice=null;
+  if (!alevelData) {
+    await renderALevelSubjects();
+    if (!alevelData) return;
+  }
+  const s = alevelData.subjects.find(x=>x.subject_id===subjectId);
+  if (!s) return renderALevelSubjects();
+  alevelSubject = subjectId;
+  alevelQuery = '';
+  alevelFilter = 'all';
+  const source = alevelData.sources.find(x=>x.subject_id===subjectId);
+  const chapters = alevelData.chapters.filter(x=>x.subject_id===subjectId);
+  const topics = alevelData.topics.filter(x=>x.subject_id===subjectId);
+  const progress = new Map(alevelData.progress.map(p=>[p.topic_id,p.status]));
+  const completed = topics.filter(t=>progress.get(t.topic_id)==='completed').length;
+  main.innerHTML = `<section class="hero"><button type="button" class="hero-back" data-university-exam="alevel">← A-Level</button><span class="eyebrow">A-LEVEL · ${esc(String(s.subject_code))}</span><h1>${esc(s.subject_name_th)}</h1><p>ข้อสอบจริง พ.ศ. 2568 · ${esc(String(source?.question_count || s.source_question_count_2568))} ข้อ · ${esc(String(s.duration_minutes))} นาที<br>แยกหัวข้อตามเนื้อหาจริงในแนวเดียวกับระบบ จปร.</p></section>
+  <section class="stats"><div class="stat"><strong>${chapters.length}</strong><span>หมวด</span></div><div class="stat"><strong>${topics.length}</strong><span>หัวข้อ</span></div><div class="stat"><strong>${s.imported_question_count || 0}</strong><span>ข้อที่นำเข้ารายข้อแล้ว</span></div><div class="stat"><strong>${completed}</strong><span>หัวข้อที่เรียนแล้ว</span></div></section>
+  <section><div class="section-title"><div><h2>รายการหัวข้อเรียน</h2><p>เลือกหัวข้อ ดูข้อสอบต้นฉบับ และบันทึกสถานะการเรียนของตนเอง</p></div></div>
+  <div class="search-row"><input type="search" id="alevel-search" aria-label="ค้นหาหัวข้อ A-Level" placeholder="ค้นหาชื่อหัวข้อ หรือรหัสหัวข้อ…"><select id="alevel-status-filter" aria-label="กรองสถานะ A-Level"><option value="all">ทุกสถานะ</option>${Object.entries(labels).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div>
+  <p class="progress-note" id="alevel-progress-note"></p><div id="alevel-chapters"></div></section>`;
+  document.querySelector('#alevel-search').addEventListener('input',e=>{alevelQuery=e.target.value;renderALevelTopics();});
+  document.querySelector('#alevel-status-filter').addEventListener('change',e=>{alevelFilter=e.target.value;renderALevelTopics();});
+  renderALevelTopics();
+}
+
+function renderALevelTopics() {
+  const root = document.querySelector('#alevel-chapters');
+  if (!root || !alevelData) return;
+  const progress = new Map(alevelData.progress.map(p=>[p.topic_id,p.status]));
+  const allTopics = alevelData.topics.filter(t=>t.subject_id===alevelSubject);
+  const completed = allTopics.filter(t=>progress.get(t.topic_id)==='completed').length;
+  const note = document.querySelector('#alevel-progress-note');
+  if (note) note.innerHTML = `บันทึกว่าเรียนแล้ว <strong>${completed} / ${allTopics.length}</strong> หัวข้อ · ข้อสอบรายข้อจะเพิ่มตามการนำเข้าจาก PDF ปี 2568`;
+  const search = alevelQuery.trim().toLocaleLowerCase('th');
+  const chapters = alevelData.chapters.filter(c=>c.subject_id===alevelSubject).map(c=>{
+    const topics = allTopics.filter(t=>t.chapter_id===c.chapter_id
+      && (!search || `${t.topic_id} ${t.topic_name_th} ${c.chapter_name_th}`.toLocaleLowerCase('th').includes(search))
+      && (alevelFilter==='all' || (progress.get(t.topic_id)||'not_started')===alevelFilter));
+    return {...c,topics};
+  }).filter(c=>c.topics.length);
+  root.innerHTML = chapters.length ? chapters.map((c,index)=>`<details class="chapter" ${index===0?'open':''}><summary><span class="chapter-code">${esc(c.chapter_id)}</span><span class="chapter-name">${esc(c.chapter_name_th)}</span><small>${c.topics.length} หัวข้อ</small></summary>${c.topics.map(t=>{
+    const status = progress.get(t.topic_id)||'not_started';
+    const q = Number(t.question_count || 0);
+    return `<article class="topic"><div><div class="topic-head"><span class="topic-code">${esc(t.topic_id)}</span><span class="topic-name">${esc(t.topic_name_th)}</span></div><div class="topic-meta">${q ? `นำเข้าข้อสอบจริงแล้ว ${q} ข้อ <button type="button" data-alevel-topic="${esc(t.topic_id)}">ดูข้อสอบอ้างอิง</button>` : 'กำลังจัดข้อสอบปี 2568 เข้าหัวข้อนี้'}</div></div>${data.member.can_study?`<select aria-label="สถานะ ${esc(t.topic_name_th)}" data-alevel-progress="${esc(t.topic_id)}">${Object.entries(labels).map(([k,v])=>`<option value="${k}" ${k===status?'selected':''}>${v}</option>`).join('')}</select>`:`<span class="status">${labels[status]}</span>`}</article>`;
+  }).join('')}</details>`).join('') : '<div class="empty">ไม่พบหัวข้อที่ตรงกับคำค้นหรือสถานะที่เลือก</div>';
+}
+
+async function showALevelQuestions(id) {
+  const topic = alevelData?.topics.find(t=>t.topic_id===id);
+  document.querySelector('#detail-title').textContent = topic?.topic_name_th || 'ข้อสอบ A-Level';
+  document.querySelector('#detail-body').textContent = 'กำลังเปิดรายการ…';
+  dialog.showModal();
+  try {
+    const result = await api('/api/alevel?route=questions&topic_id='+encodeURIComponent(id));
+    if (!dialog.open) return;
+    document.querySelector('#detail-body').innerHTML = result.questions.map(q=>{
+      const choices = Array.isArray(q.choices) && q.choices.length ? `<ol>${q.choices.map(x=>`<li>${esc(typeof x==='string'?x:(x?.label ?? x?.text ?? JSON.stringify(x)))}</li>`).join('')}</ol>` : '';
+      const answer = result.can_review && q.answer_key != null ? `<div class="key">เฉลยสำหรับครู/ผู้ดูแล: ${esc(typeof q.answer_key==='object'?JSON.stringify(q.answer_key):q.answer_key)}</div>` : '';
+      const explanation = result.can_review && q.explanation ? `<p><strong>เฉลย:</strong> ${esc(q.explanation)}</p>` : '';
+      return `<article class="reference"><strong>พ.ศ. ${q.year_be} · ข้อ ${q.question_no}</strong><p>${esc(q.prompt)}</p>${choices}<small>หน้า PDF ${q.source_page} · ${esc(q.question_type)}</small>${q.question_image_url?`<p><img src="${esc(q.question_image_url)}" alt="รูปประกอบข้อ ${q.question_no}" style="max-width:100%;height:auto"></p>`:''}${answer}${explanation}</article>`;
+    }).join('') || '<p>หัวข้อนี้ยังอยู่ระหว่างนำข้อสอบจาก PDF ปี 2568 เข้าระบบ</p>';
+  } catch (error) {
+    document.querySelector('#detail-body').textContent = error.message;
+  }
 }
 
 function renderCatalogShell(areaTitle, levelLabel) {
@@ -342,11 +430,25 @@ main.addEventListener('click',event=>{
     else renderUnavailable('เตรียมสอบเข้ามหาวิทยาลัย', universityExam.dataset.universityExam.toUpperCase());
     return;
   }
-  const alevelSubject=event.target.closest('[data-alevel-subject]'); if(alevelSubject){renderUnavailable('A-Level',alevelSubject.dataset.alevelSubject);return;}
+  const alevelSubjectCard=event.target.closest('[data-alevel-subject]'); if(alevelSubjectCard){renderALevelCatalog(alevelSubjectCard.dataset.alevelSubject);return;}
+  const alevelTopic=event.target.closest('[data-alevel-topic]'); if(alevelTopic){showALevelQuestions(alevelTopic.dataset.alevelTopic);return;}
   const tab=event.target.closest('[data-subject]'); if(tab){subject=tab.dataset.subject;renderCatalog();practice?.subjectChanged();return;}
   const topic=event.target.closest('[data-topic]'); if(topic)showQuestions(topic.dataset.topic);
 });
 main.addEventListener('change',async event=>{
+  const alevelSelect=event.target.closest('[data-alevel-progress]');
+  if(alevelSelect){
+    const id=alevelSelect.dataset.alevelProgress, status=alevelSelect.value;
+    alevelSelect.disabled=true;
+    try{
+      await api('/api/alevel?route=progress',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic_id:id,status})});
+      const existing=alevelData?.progress.find(p=>p.topic_id===id);
+      if(existing) existing.status=status; else alevelData?.progress.push({topic_id:id,status});
+      renderALevelTopics();
+      notice('บันทึกสถานะ A-Level แล้ว');
+    }catch(error){notice(error.message);alevelSelect.disabled=false;}
+    return;
+  }
   const select=event.target.closest('[data-progress]'); if(!select)return;
   const id=select.dataset.progress, status=select.value;
   select.disabled=true;
