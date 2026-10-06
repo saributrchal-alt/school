@@ -105,3 +105,68 @@ progress{accent-color:#4a7d58}.practice-subject progress{display:block;width:100
   .real-exam-list{grid-template-columns:1fr}.real-exam-card{align-items:flex-start;flex-direction:column}.real-exam-card>.practice-primary{width:100%}
   .real-exam-facts{grid-template-columns:1fr}.real-exam-statusbar{align-items:center}.real-exam-clock{flex-direction:column;gap:2px}.real-exam-clock strong{font-size:22px}
 }
+
+
+/* Real exam live-state emphasis */
+.real-exam-card{
+  display:block;
+  padding:0;
+  overflow:hidden;
+}
+.real-exam-stripe{
+  padding:8px 14px;
+  background:#F4C542;
+  color:#5B4300;
+  font-size:10px;
+  font-weight:750;
+  letter-spacing:.02em;
+  border-bottom:1px solid rgba(91,67,0,.12);
+}
+.real-exam-card-body{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:14px;
+}
+.real-exam-action{
+  flex:0 0 auto;
+  min-width:112px;
+  border:1px solid #d9e1d6;
+  border-radius:10px;
+  background:#6f867b;
+  color:#fff;
+  padding:10px 14px;
+  font:650 10px/1.2 system-ui,sans-serif;
+  cursor:pointer;
+}
+.real-exam-action:hover:not(:disabled){
+  filter:brightness(.96);
+}
+.real-exam-action.is-danger{
+  background:#C0392B;
+  border-color:#C0392B;
+  box-shadow:0 5px 14px rgba(192,57,43,.16);
+}
+.real-exam-action.is-danger:hover:not(:disabled){
+  background:#A93226;
+  border-color:#A93226;
+}
+.real-exam-action:disabled{
+  opacity:.62;
+  cursor:not-allowed;
+}
+.real-exam-card.is-open{
+  border-color:#E7C85C;
+  background:#FFFDF6;
+  box-shadow:0 4px 14px rgba(114,87,12,.07);
+}
+@media(max-width:640px){
+  .real-exam-card-body{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+  .real-exam-action{
+    width:100%;
+  }
+}
