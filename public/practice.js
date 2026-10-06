@@ -552,6 +552,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     } else if (target.dataset.practiceSubject) openSubject(target.dataset.practiceSubject);
     else if (target.hasAttribute('data-practice-refresh')) refresh();
     else if (target.hasAttribute('data-student-results')) { resultsQuery = ''; resultsFilter = 'all'; openResults(); }
+    else if (target.hasAttribute('data-exam-manage')) openExamManager();
     else if (target.hasAttribute('data-review')) openReview();
     else if (target.dataset.resultSubject) { resultSubject = target.dataset.resultSubject; renderPanel(); }
   };
@@ -571,6 +572,14 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     else if (t.hasAttribute('data-results-back') && returnView) openResults(returnView.set_no, returnView.member_id);
     else if (t.dataset.resultAttempt) { returnView = { set_no:staffResults.set_no, member_id:staffStudentId }; openSubject(t.dataset.resultSubject, null, t.dataset.resultAttempt, staffResults.set_no); }
     else if (t.dataset.reviewOpen) openSubject(t.dataset.reviewSubject, null, t.dataset.reviewOpen, Number(t.dataset.reviewSet));
+    else if (t.hasAttribute('data-exam-list')) renderExamManager();
+    else if (t.hasAttribute('data-exam-new')) renderExamForm();
+    else if (t.dataset.examEdit) renderExamForm((examSessionsData?.sessions||[]).find(x=>x.session_id===t.dataset.examEdit));
+    else if (t.dataset.examMembers) openExamMembers(t.dataset.examMembers);
+    else if (t.dataset.examDelete) deleteExamSession(t.dataset.examDelete);
+    else if (t.hasAttribute('data-exam-save')) saveExamForm();
+    else if (t.hasAttribute('data-exam-members-save')) saveExamMembers();
+    else if (t.hasAttribute('data-exam-select-all')) { const boxes=[...modalBody.querySelectorAll('[data-exam-member]')].filter(x=>x.closest('.exam-member-row')?.style.display!=='none'); const should=boxes.some(x=>!x.checked); boxes.forEach(x=>x.checked=should); t.textContent=should?'ยกเลิกทั้งหมด':'เลือกทั้งหมด'; }
     else if (t.dataset.grade) grade(t.dataset.grade, t);
   };
   const choiceChange = event => {
@@ -591,6 +600,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   };
   const resultsSearch = event => {
     if (event.target.id === 'practice-results-search') { resultsQuery = event.target.value; renderResultsList(); return; }
+    if (event.target.id === 'exam-member-search') { const q=event.target.value.trim().toLowerCase(); modalBody.querySelectorAll('.exam-member-row').forEach(row=>{row.style.display=!q||row.dataset.memberText.includes(q)?'':'none';}); return; }
     if (event.target.id === 'practice-numeric' && editable() && session && index < session.questions.length) {
       const q=session.questions[index], value=event.target.value; choices.set(q.question_id,value);
       const next=modalBody.querySelector('[data-next]'); if(next) next.disabled=!hasResponse(q,value);
