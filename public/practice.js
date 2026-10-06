@@ -614,7 +614,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   modalBody.addEventListener('input', resultsSearch);
   modal.addEventListener('cancel', cancel); document.querySelector('#practice-close').addEventListener('click', closeModal);
   renderPanel();
-  return { refresh, topicAction, subjectChanged() { resultSubject = getSubject(); if (bank?.ready) renderPanel(); }, destroy() {
+  return { refresh, topicAction, openExamManager, subjectChanged() { resultSubject = getSubject(); if (bank?.ready) renderPanel(); }, destroy() {
     requestNo++; main.removeEventListener('click', mainClick); main.removeEventListener('change', setChange);
     modalBody.removeEventListener('click', modalClick); modalBody.removeEventListener('change', choiceChange);
     modalBody.removeEventListener('input', resultsSearch);
