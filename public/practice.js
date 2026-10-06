@@ -208,11 +208,14 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     const subjectOptions = (isALevel ? [] : [{subject_id:'ALL',subject_name_th:'ข้อสอบทั้งชุด · ทุกวิชา'}]).concat(data.subjects);
     const originalSets = isALevel ? [{set_no:2,label:'ชุด 2 · ข้อสอบจริง 2568'}] : ((bank?.sets||[]).filter(x=>x.source_type==='original_exam').length ? (bank?.sets||[]).filter(x=>x.source_type==='original_exam') : [{set_no:2,label:'ชุด 2 · ข้อสอบจริงเตรียมทหาร'}]);
     const examSetNo = Number(item?.set_no || originalSets[0]?.set_no || 2);
+    const defaultExamTitle = isALevel
+      ? 'สอบจริง A-Level · '+subjectName(subjectId)
+      : 'สอบจริงเตรียมทหาร · '+(subjectId==='ALL'?'ทั้งชุดทุกวิชา':subjectName(subjectId));
     document.querySelector('#practice-title').textContent = item ? 'แก้ไขรอบสอบจริง' : 'สร้างรอบสอบจริง';
     modalBody.innerHTML =
       '<button type="button" class="secondary" data-exam-list>← กลับรายการรอบสอบ</button>'+
       '<div class="exam-form">'+
-        '<label class="exam-field exam-wide"><span>ชื่อรอบสอบ</span><input id="exam-title" maxlength="160" value="'+esc(item?.title||'')+'" placeholder="'+esc(isALevel?'เช่น สอบจำลอง A-Level คณิตศาสตร์ ครั้งที่ 1':'เช่น สอบจำลองเตรียมทหาร ชุด 2 ครั้งที่ 1')+'"></label>'+
+        '<label class="exam-field exam-wide"><span>ชื่อรอบสอบ</span><input id="exam-title" maxlength="160" required value="'+esc(item?.title||defaultExamTitle)+'" placeholder="'+esc(isALevel?'เช่น สอบจำลอง A-Level คณิตศาสตร์ ครั้งที่ 1':'เช่น สอบจำลองเตรียมทหาร ชุด 2 ครั้งที่ 1')+'"></label>'+
         '<label class="exam-field"><span>'+(isALevel?'วิชา':'ขอบเขตข้อสอบ')+'</span><select id="exam-subject">'+subjectOptions.map(s=>'<option value="'+esc(s.subject_id)+'" '+(s.subject_id===subjectId?'selected':'')+'>'+esc(s.subject_name_th)+'</option>').join('')+'</select></label>'+
         '<label class="exam-field"><span>ชุดข้อสอบ</span><select id="exam-set" '+(isALevel?'disabled':'')+'>'+originalSets.map(x=>'<option value="'+esc(x.set_no)+'" '+(Number(x.set_no)===examSetNo?'selected':'')+'>'+esc(setLabel(x)||x.label||('ชุด '+x.set_no))+'</option>').join('')+'</select></label>'+
         '<label class="exam-field"><span>เวลาสอบ (นาที)</span><input id="exam-duration" type="number" min="1" max="'+(isALevel?'480':'600')+'" value="'+esc(duration)+'"></label>'+
@@ -262,9 +265,18 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     if(busy) return;
     const value=id=>modalBody.querySelector(id)?.value || '';
     const checked=id=>Boolean(modalBody.querySelector(id)?.checked);
+    const titleInput=modalBody.querySelector('#exam-title');
+    const title=String(titleInput?.value||'').trim();
+    if(!title || title.length>160){
+      const box=modalBody.querySelector('.exam-form-note');
+      if(box) box.innerHTML='<span class="practice-inline-error">กรุณาระบุชื่อรอบสอบไม่เกิน 160 ตัวอักษร</span>';
+      titleInput?.focus();
+      titleInput?.scrollIntoView({behavior:'smooth',block:'center'});
+      return;
+    }
     const payload={
       ...(examEditingId?{session_id:examEditingId}:{}),
-      title:value('#exam-title'),
+      title,
       subject_id:value('#exam-subject'),
       set_no:Number(value('#exam-set')||2),
       duration_minutes:Number(value('#exam-duration')),
@@ -298,7 +310,14 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
       notice(error.message);
       const box=modalBody.querySelector('.exam-form-note');
       if(box) box.innerHTML='<span class="practice-inline-error">'+esc(error.message)+'</span>';
-    } finally { busy=false; }
+    } finally {
+      busy=false;
+      const currentButton=modalBody.querySelector('[data-exam-save]');
+      if(currentButton){
+        currentButton.disabled=false;
+        currentButton.textContent='บันทึกรอบสอบ';
+      }
+    }
   }
 
 
