@@ -16,6 +16,9 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   let choices = new Map(), saved = new Map(), modalError = '';
   let staffResults = null, staffStudentId = null, resultsQuery = '', resultsFilter = 'all', returnView = null;
   let examSessionsData = null, examEditingId = null, examMembersData = null;
+  let realExam = null, realExamIndex = 0, realExamSaved = new Map(), realExamChoices = new Map();
+  let realExamTimer = null, realExamClockOffset = 0, realExamSubmitting = false;
+  const realExamWarnings = new Set();
   const isALevel = apiPath === '/api/alevel';
   const examTrack = isALevel ? 'A-Level' : 'เตรียมทหาร';
   const subjectName = id => id === 'ALL' ? 'ข้อสอบทั้งชุด · ทุกวิชา' : (data.subjects.find(s => s.subject_id === id)?.subject_name_th || id);
@@ -53,6 +56,53 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     return `<div class="practice-topic-action"><button type="button" class="practice-topic-button" data-practice="${esc(topic.topic_id)}">${a?.status === 'graded' ? 'ดูผล / เฉลย' : data.member.can_study ? 'ทำ' : 'ดู'}${setText(bank?.sets, selectedSet)}${count}</button>${badge}</div>`;
   }
 
+
+  function studentExamSection() {
+    if (!data.member.can_study || !examSessionsData) return '';
+    const sessions=(examSessionsData.sessions||[]).filter(s=>s.is_published);
+    if(!sessions.length) return examSessionsData.exam_error
+      ? '<section class="real-exam-section"><div class="real-exam-section-head"><div><span class="eyebrow">REAL EXAM</span><h3>สอบจริง</h3></div></div><p class="practice-muted">'+esc(examSessionsData.exam_error)+'</p></section>'
+      : '';
+
+    const attempts=examSessionsData.attempts||[];
+    const now=Date.now();
+    const cards=sessions.map(s=>{
+      const own=attempts.filter(a=>a.session_id===s.session_id).sort((a,b)=>Number(b.attempt_no)-Number(a.attempt_no));
+      const a=own[0];
+      const opens=s.opens_at?new Date(s.opens_at).getTime():null;
+      const closes=s.closes_at?new Date(s.closes_at).getTime():null;
+      const fixed=s.start_policy==='fixed'&&s.fixed_start_at?new Date(s.fixed_start_at).getTime():null;
+      let label='เริ่มสอบ', disabled=false, status='พร้อมสอบ', tone='';
+      if(a?.status==='draft'){
+        label='ทำข้อสอบต่อ';
+        status='กำลังสอบ · หมดเวลา '+date(a.deadline_at);
+        tone=' active';
+      }else if(a?.status==='submitted'){
+        label=a.result_visible?'ดูผลสอบ':'ดูสถานะ';
+        status=a.result_visible&&Number.isInteger(Number(a.correct_count))
+          ? 'ส่งแล้ว · ถูก '+a.correct_count+'/'+a.total_count+' ข้อ'
+          : (a.timed_out?'หมดเวลาและส่งอัตโนมัติแล้ว':'ส่งข้อสอบแล้ว · รอเปิดผล');
+        tone=' submitted';
+      }else if(opens&&now<opens){
+        label='ยังไม่เปิดสอบ'; disabled=true; status='เปิด '+date(s.opens_at);
+      }else if(fixed&&now<fixed){
+        label='รอเวลาเริ่ม'; disabled=true; status='เริ่มพร้อมกัน '+date(s.fixed_start_at);
+      }else if(closes&&now>=closes){
+        label='ปิดรอบสอบแล้ว'; disabled=true; status='ปิด '+date(s.closes_at);
+      }else if(own.length>=Number(s.max_attempts||1)){
+        label='ใช้สิทธิ์ครบแล้ว'; disabled=true; status='สอบครบ '+own.length+' ครั้ง';
+      }
+      const scope=subjectName(s.subject_id);
+      return '<article class="real-exam-card'+tone+'">'+
+        '<div class="real-exam-card-main"><span class="practice-badge '+(a?.status==='submitted'?'answered':'')+'">'+esc(status)+'</span>'+
+        '<h4>'+esc(s.title)+'</h4><p>'+esc(scope)+' · ชุด '+esc(String(s.set_no||2))+' · '+esc(String(s.duration_minutes))+' นาที</p>'+
+        '<small>'+esc(examPolicyText(s))+'</small></div>'+
+        '<button type="button" class="practice-primary" data-real-exam-session="'+esc(s.session_id)+'" '+(disabled?'disabled':'')+'>'+esc(label)+'</button>'+
+      '</article>';
+    }).join('');
+    return '<section class="real-exam-section"><div class="real-exam-section-head"><div><span class="eyebrow">REAL EXAM</span><h3>สอบจริง</h3><p>จับเวลาจริงจากฐานข้อมูล ปิดหน้าแล้วเวลาไม่หยุด</p></div></div><div class="real-exam-list">'+cards+'</div></section>';
+  }
+
   function renderPanel() {
     if (!bank) { panel.innerHTML = '<p class="practice-muted" role="status">กำลังเปิดผลการฝึก…</p>'; return; }
     if (!bank.ready) {
@@ -64,6 +114,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     const availableSubjects = data.subjects.filter(s => bank.counts.some(c => c.set_no === selectedSet && c.subject_id === s.subject_id));
     const percent = total ? 100 * correct / total : 0;
     panel.innerHTML = `<div class="practice-heading"><div><span class="eyebrow">MY PRACTICE</span><h2>ผลการฝึกของฉัน</h2><p>เห็นพัฒนาการทีละหัวข้อ · คะแนนเปิดเมื่อผู้ดูแลตรวจแล้ว</p></div><div class="practice-toolbar"><label class="practice-set-label">ชุดฝึก <select id="practice-set">${bank.sets.map(s => `<option value="${s.set_no}" ${s.set_no === selectedSet ? 'selected' : ''}>${esc(setLabel(s) || '—')}</option>`).join('')}</select></label><button type="button" class="secondary" data-practice-refresh ${loading ? 'disabled' : ''}>อัปเดตผล</button>${resultButton()}${examManageButton()}${data.member.can_manage ? '<button type="button" class="secondary" data-review>ตรวจคำตอบนักเรียน</button>' : ''}</div></div>
+      ${studentExamSection()}
       <div class="practice-overview"><div class="practice-score-ring" style="--score:${percent}%"><strong>${pct(correct, total)}</strong><span>ความถูกต้องรวม</span></div><div class="practice-overview-text"><h3>${total ? `ทำถูก ${correct} จาก ${total} ข้อที่ตรวจแล้ว` : 'เริ่มจากหนึ่งหัวข้อ แล้วค่อย ๆ ก้าวหน้า'}</h3><p>ตรวจแล้ว <b>${graded.length} / ${availableSubjects.length}</b> วิชา${bank.attempts.some(a => a.set_no === selectedSet && a.status === 'submitted') ? ' · มีคำตอบรอตรวจ' : ''}</p><small>คำนวณจากจำนวนข้อที่ถูก ÷ จำนวนข้อที่ตรวจแล้วทั้งหมด</small><small>วิชาที่ยังไม่ตรวจจะแสดงสถานะและยังไม่รวมในเปอร์เซ็นต์</small></div></div>
       <div class="practice-subjects">${availableSubjects.map(s => {
         const a = ownAttempt(s.subject_id), n = ownAnswers(s.subject_id).length;
@@ -83,7 +134,14 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     if (loading) return;
     loading = true;
     try {
-      bank = await api(apiPath+'?route=summary');
+      const results=await Promise.all([
+        api(apiPath+'?route=summary'),
+        data.member.can_study
+          ? api(apiPath+'?route=exam-sessions').catch(error=>({sessions:[],attempts:[],exam_error:error.message}))
+          : Promise.resolve(examSessionsData)
+      ]);
+      bank=results[0];
+      if(results[1]) examSessionsData=results[1];
       if (bank.ready && !bank.sets.some(s => s.set_no === selectedSet)) selectedSet = bank.sets[0].set_no;
       renderPanel(); rerender();
     } catch (error) {
