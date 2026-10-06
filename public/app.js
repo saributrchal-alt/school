@@ -85,7 +85,7 @@ let data, subject = 'ENG', query = '', filter = 'all', noticeTimer, practice, cu
 let alevelData = null, alevelSubject = 'AL61', alevelQuery = '', alevelFilter = 'all';
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const roles = member => [member.can_study?'นักเรียน':'',member.can_teach?'ครู / ผู้สอน':'',member.can_manage?'ผู้ดูแล':''].filter(Boolean).map(x=>`<span class="role">${x}</span>`).join('');
-const QUESTION_IMAGE_REV = '20261006-crop2';
+const QUESTION_IMAGE_REV = '20261006-crop3';
 const freshQuestionImage = url => url ? `${url}${url.includes("?") ? "&" : "?"}v=${QUESTION_IMAGE_REV}` : '';
 
 const commonsImage = file => file ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}` : '';
