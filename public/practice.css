@@ -32,3 +32,24 @@ progress{accent-color:#4a7d58}.practice-subject progress{display:block;width:100
 .practice-source-figure{margin:1rem 0;padding:.75rem;border:1px solid var(--line,#d8ddd9);border-radius:14px;background:#fff;text-align:center}
 .practice-source-figure img{display:block;max-width:100%;height:auto;margin:0 auto;border-radius:8px}
 .practice-source-figure figcaption{margin-top:.55rem;font-size:.78rem;color:#66736d}
+
+/* A-Level Set 2: original-exam response controls */
+.practice-numeric-wrap{border:1px solid #dfe7d9;border-radius:12px;padding:16px 18px;background:#fbfcf9;margin:0 0 8px}
+.practice-numeric-wrap label{display:block;font-size:13px;font-weight:600;color:var(--green);margin-bottom:9px}
+.practice-numeric-input{width:min(320px,100%);box-sizing:border-box;border:1px solid #cfdac8;border-radius:10px;padding:13px 14px;background:#fff;color:var(--green);font:600 18px system-ui,sans-serif;outline:none}
+.practice-numeric-input:focus{border-color:#789a72;box-shadow:0 0 0 3px rgba(89,127,83,.12)}
+.practice-numeric-wrap small{display:block;margin-top:9px;font-size:10px;line-height:1.8;color:#7c8c78}
+.practice-complex{border:0;padding:0;margin:0;display:grid;gap:11px}
+.practice-complex>legend{font-size:12px;color:#687d67;margin-bottom:4px}
+.practice-complex-item{border:1px solid #dfe7d9;border-radius:12px;padding:14px 15px;background:#fff}
+.practice-complex-item>p{font-size:13px;line-height:1.85;margin:0 0 10px;color:#445e49}
+.practice-complex-item>p b{color:#355e3d;margin-right:5px}
+.practice-binary{display:flex;gap:8px;flex-wrap:wrap}
+.practice-binary label{display:flex;align-items:center;gap:7px;border:1px solid #dce5d7;border-radius:9px;padding:8px 13px;font-size:12px;color:#60735f;background:#f9fbf7;cursor:pointer}
+.practice-binary label.selected{border-color:#98b38b;background:#f0f6e9;color:#31583a}
+.practice-binary label.answer-key{box-shadow:inset 0 0 0 1px #6e9c63;background:#edf6e7}
+.practice-binary input{accent-color:#476e4b}
+.practice-complex-key{display:grid;gap:8px}
+.practice-complex-key p{margin:0;border:1px solid #dbe8d2;border-radius:9px;padding:10px 12px;background:#f6faF2;font-size:12px;line-height:1.8}
+.practice-complex-key p span{display:block;margin-top:4px;font-weight:700;color:#416d3e}
+@media(max-width:640px){.practice-numeric-wrap{padding:14px}.practice-numeric-input{font-size:17px}.practice-complex-item{padding:12px}.practice-binary label{flex:1;justify-content:center}}
