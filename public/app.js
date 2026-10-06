@@ -85,6 +85,12 @@ let data, subject = 'ENG', query = '', filter = 'all', noticeTimer, practice, cu
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const roles = member => [member.can_study?'นักเรียน':'',member.can_teach?'ครู / ผู้สอน':'',member.can_manage?'ผู้ดูแล':''].filter(Boolean).map(x=>`<span class="role">${x}</span>`).join('');
 const commonsImage = file => file ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}` : '';
+const militaryLevelImages = {
+  police:'/images/military-prep/police.webp',
+  army:'/images/military-prep/army.webp',
+  navy:'/images/military-prep/navy.webp',
+  airforce:'/images/military-prep/airforce.webp'
+};
 
 const learningCardArt = {
   vocational: `
@@ -221,11 +227,13 @@ function renderArea(areaId) {
   practice?.destroy(); practice=null;
   if (!area.levels) return renderUnavailable(area.title, null);
   main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-home>← กลับประเภทการเรียน</button><span class="eyebrow">NATHOENG SCHOOL</span><h1>${esc(area.title)}</h1><p>${esc(area.description)} — เลือกระดับหรือสายการเรียนที่ต้องการ</p></section>
-  <section class="level-grid">${area.levels.map(([id,label])=>{
+  <section class="level-grid ${area.id==='military-prep'?'military-level-grid':''}">${area.levels.map(([id,label])=>{
     const hasContent = area.id === 'military-prep' && id === 'army';
     const hasSubmenu = area.id === 'secondary' && id === 'm6';
     const status = hasContent ? '<small class="level-status ready">พร้อมใช้งาน</small>' : hasSubmenu ? '<small class="level-status">มีหมวดย่อย</small>' : '<small class="level-status pending">อยู่ระหว่างการดำเนินงาน</small>';
-    return `<button type="button" class="level-card" data-level="${esc(id)}"><span><strong>${esc(label)}</strong>${status}</span><b aria-hidden="true">→</b></button>`;
+    const militaryImage = area.id === 'military-prep' ? militaryLevelImages[id] : '';
+    const imageStyle = militaryImage ? ` style="--level-bg:url('${esc(militaryImage)}')"` : '';
+    return `<button type="button" class="level-card ${militaryImage?'has-level-photo':''}" data-level="${esc(id)}"${imageStyle}><span><strong>${esc(label)}</strong>${status}</span><b aria-hidden="true">→</b></button>`;
   }).join('')}</section>`;
 }
 
