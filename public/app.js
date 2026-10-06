@@ -207,7 +207,8 @@ function areaCard(area) {
   const bg = area.backgroundUrl || commonsImage(area.backgroundFile);
   const art = area.art ? learningCardArt[area.art] : '';
   const bgStyle = bg ? ` style="--card-bg:url('${esc(bg)}')"` : '';
-  return `<button type="button" class="learning-card ${bg?'has-bg':''} ${art?'has-art art-'+esc(area.art):''}" data-area="${esc(area.id)}"${bgStyle}>${art?`<span class="learning-card-art">${art}</span>`:''}<span class="learning-card-kicker">หมวดการเรียน</span><strong>${esc(area.title)}</strong><small>${esc(area.description)}</small>${ready}<span class="learning-arrow" aria-hidden="true">→</span></button>`;
+  const mainTitle = String(area.title || '').replace(/^เรียน\s+/, '');
+  return `<button type="button" class="learning-card ${bg?'has-bg':''} ${art?'has-art art-'+esc(area.art):''}" data-area="${esc(area.id)}"${bgStyle}>${art?`<span class="learning-card-art">${art}</span>`:''}<span class="learning-card-kicker">หมวดการเรียน</span><strong class="learning-title"><span class="learning-title-prefix">เรียน</span><span class="learning-title-main">${esc(mainTitle)}</span></strong><small>${esc(area.description)}</small>${ready}<span class="learning-arrow" aria-hidden="true">→</span></button>`;
 }
 
 function renderLearningHome() {
