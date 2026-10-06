@@ -56,3 +56,82 @@
 .learning-card.has-bg .learning-muted{color:rgba(255,255,255,.82)}
 .learning-card.has-bg .learning-ready{color:#e4f7df}
 .learning-card.has-bg .learning-arrow{color:rgba(255,255,255,.78)}
+
+/* Coded Thai student illustrations for categories without suitable photos */
+.learning-card.has-art{
+  overflow:hidden;
+  min-height:190px;
+  border-color:rgba(255,255,255,.1);
+  color:#fff;
+  background:
+    radial-gradient(circle at 82% 12%,rgba(255,255,255,.12),transparent 28%),
+    linear-gradient(145deg,#163e35 0%,#245749 54%,#183f36 100%);
+}
+.learning-card.has-art::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(90deg,rgba(12,37,31,.92) 0%,rgba(12,37,31,.78) 46%,rgba(12,37,31,.15) 77%,rgba(12,37,31,.02) 100%);
+  pointer-events:none;
+}
+.learning-card.has-art:hover{
+  border-color:rgba(255,255,255,.25);
+  box-shadow:0 12px 28px rgba(25,62,53,.18);
+}
+.learning-card.has-art>.learning-card-kicker,
+.learning-card.has-art>strong,
+.learning-card.has-art>small,
+.learning-card.has-art>.learning-ready,
+.learning-card.has-art>.learning-muted,
+.learning-card.has-art>.learning-arrow{
+  position:relative;
+  z-index:2;
+}
+.learning-card.has-art .learning-card-kicker{color:#f2d8a7}
+.learning-card.has-art>strong{color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.32);max-width:58%}
+.learning-card.has-art>small{color:rgba(255,255,255,.87);max-width:58%}
+.learning-card.has-art .learning-muted{color:rgba(255,255,255,.78);max-width:58%}
+.learning-card.has-art .learning-ready{color:#e7f7df;max-width:58%}
+.learning-card.has-art .learning-arrow{color:rgba(255,255,255,.8)}
+.learning-card-art{
+  position:absolute;
+  z-index:1;
+  inset:auto -4px -2px auto;
+  width:62%;
+  height:96%;
+  pointer-events:none;
+}
+.learning-card-art svg{width:100%;height:100%;display:block;overflow:visible}
+.learning-card-art .art-person circle{fill:#c98b63}
+.learning-card-art .hair{fill:#151b19}
+.learning-card-art .shirt{fill:#f6f3e8}
+.learning-card-art .jacket{fill:#1f526b}
+.learning-card-art .pants{fill:#20384b}
+.learning-card-art .skirt{fill:#1e2933}
+.learning-card-art .belt{fill:#24362f}
+.learning-card-art .limb{stroke:#c98b63;stroke-width:10;stroke-linecap:round;fill:none}
+.learning-card-art .ground{stroke:rgba(255,255,255,.25);stroke-width:3;fill:none}
+.learning-card-art .tool{fill:#e1b46d}
+.learning-card-art .paper{fill:#f7f3e8}
+.learning-card-art .paper-line{stroke:#b7c2bd;stroke-width:2;fill:none}
+.learning-card-art .laptop{fill:#4c6770}
+.learning-card-art .laptop-line{stroke:#d2ddda;stroke-width:3;fill:none}
+.learning-card-art .blueprint{fill:#2d6d83}
+.learning-card-art .blueprint-line{stroke:#d8f0f2;stroke-width:2;fill:none}
+.learning-card-art .book{fill:#d9af68}
+.learning-card-art .book-line{stroke:#fff4dc;stroke-width:2;fill:none}
+.learning-card-art .tie{stroke:#30485b;stroke-width:5;fill:none}
+.learning-card-art .cap{fill:#65733d}
+.learning-card-art .uniform{fill:#74824e}
+.learning-card-art .uniform-dark{fill:#495637}
+.learning-card-art .uniform-line{stroke:#d9d1ad;stroke-width:3;fill:none}
+.learning-card-art .button{fill:#d9c58e}
+.learning-card-art .desk path{fill:#7a5a3c}
+.learning-card.art-higher-vocational{background:linear-gradient(145deg,#174353,#235d6c 55%,#183c47)}
+.learning-card.art-university{background:linear-gradient(145deg,#353b66,#4e5687 55%,#313758)}
+.learning-card.art-military{background:linear-gradient(145deg,#34472d,#556942 55%,#2d3d29)}
+.learning-card.art-recruitment{background:linear-gradient(145deg,#58472f,#756044 55%,#463926)}
+@media(max-width:640px){
+  .learning-card.has-art>strong,.learning-card.has-art>small,.learning-card.has-art .learning-muted,.learning-card.has-art .learning-ready{max-width:62%}
+  .learning-card-art{width:66%;height:92%;right:-10px}
+}
