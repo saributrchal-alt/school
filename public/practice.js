@@ -1,7 +1,7 @@
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 const pct = (correct, total) => total ? `${Number((100 * correct / total).toFixed(1)).toLocaleString('th-TH')}%` : '—';
 const stateLabel = { draft:'กำลังทำ', submitted:'รอตรวจ', graded:'ตรวจแล้ว' };
-const setLabel = set => Number.isInteger(Number(set?.set_no)) ? `ชุด ${Number(set.set_no)}` : (set?.display_label || set?.label || '');
+const setLabel = set => set?.source_type === 'original_exam' ? `ชุด ${Number(set.set_no)} · ข้อสอบจริง` : Number.isInteger(Number(set?.set_no)) ? `ชุด ${Number(set.set_no)}` : (set?.display_label || set?.label || '');
 const setText = (sets, no) => setLabel((sets || []).find(s => s.set_no === no));
 
 export function createPractice({ main, data, api, notice, rerender, getSubject, apiPath = '/api/practice' }) {
@@ -107,7 +107,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
 
   const editable = () => session?.attempt?.status === 'draft' && data.member.can_study && !viewingOther;
   function questionGrid() {
-    return `<details class="practice-grid-wrap" ${openGrid ? 'open' : ''}><summary>ไปยังหัวข้อ · เขียวหมายถึงบันทึกคำตอบแล้ว${session.attempt?.status === 'graded' ? ' · สีส้มควรทบทวน' : ''}</summary><div class="practice-question-grid">${session.questions.map((q, i) => {
+    return `<details class="practice-grid-wrap" ${openGrid ? 'open' : ''}><summary>ไปยังข้อ · เขียวหมายถึงบันทึกคำตอบแล้ว${session.attempt?.status === 'graded' ? ' · สีส้มควรทบทวน' : ''}</summary><div class="practice-question-grid">${session.questions.map((q, i) => {
       const a = saved.get(q.question_id), state = a ? session.attempt?.status === 'graded' && !a.is_correct ? 'incorrect' : 'answered' : '';
       return `<button type="button" class="${state} ${i === index ? 'current' : ''}" data-question-index="${i}" aria-label="ข้อ ${i + 1} ${esc(topicName(q.topic_id))}${a ? ', ตอบแล้ว' : ', ยังไม่ตอบ'}" ${busy ? 'disabled' : ''}>${i + 1}${a ? '<span aria-hidden="true">✓</span>' : ''}</button>`;
     }).join('')}</div></details>`;
