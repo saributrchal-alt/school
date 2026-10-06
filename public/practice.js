@@ -93,12 +93,21 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
         label='ใช้สิทธิ์ครบแล้ว'; disabled=true; status='สอบครบ '+own.length+' ครั้ง';
       }
       const scope=subjectName(s.subject_id);
-      return '<article class="real-exam-card'+tone+'">'+
-        '<div class="real-exam-card-main"><span class="practice-badge '+(a?.status==='submitted'?'answered':'')+'">'+esc(status)+'</span>'+
+      const activeNow=!disabled && a?.status!=='submitted';
+      const stripeLabel=a?.status==='draft'
+        ? 'กำลังสอบอยู่'
+        : a?.status==='submitted'
+          ? (a.result_visible?'ส่งข้อสอบแล้ว · เปิดผลแล้ว':'ส่งข้อสอบแล้ว')
+          : activeNow
+            ? 'เปิดสอบอยู่ในขณะนี้'
+            : status;
+      return '<article class="real-exam-card'+tone+(activeNow?' is-open':'')+'">'+
+        '<div class="real-exam-stripe">'+esc(stripeLabel)+'</div>'+
+        '<div class="real-exam-card-body"><div class="real-exam-card-main">'+
         '<h4>'+esc(s.title)+'</h4><p>'+esc(scope)+' · ชุด '+esc(String(s.set_no||2))+' · '+esc(String(s.duration_minutes))+' นาที</p>'+
         '<small>'+esc(examPolicyText(s))+'</small></div>'+
-        '<button type="button" class="practice-primary" data-real-exam-session="'+esc(s.session_id)+'" '+(disabled?'disabled':'')+'>'+esc(label)+'</button>'+
-      '</article>';
+        '<button type="button" class="real-exam-action '+(activeNow?'is-danger':'')+'" data-real-exam-session="'+esc(s.session_id)+'" '+(disabled?'disabled':'')+'>'+esc(label)+'</button>'+
+        '</div></article>';
     }).join('');
     return '<section class="real-exam-section"><div class="real-exam-section-head"><div><span class="eyebrow">REAL EXAM</span><h3>สอบจริง</h3><p>จับเวลาจริงจากฐานข้อมูล ปิดหน้าแล้วเวลาไม่หยุด</p></div></div><div class="real-exam-list">'+cards+'</div></section>';
   }
