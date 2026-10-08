@@ -15,6 +15,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   let busy = false, viewingOther = false, loading = false, requestNo = 0, openTopics = false, openGrid = false;
   let choices = new Map(), saved = new Map(), modalError = '';
   let staffResults = null, staffStudentId = null, resultsQuery = '', resultsFilter = 'all', returnView = null;
+  let staffPracticeResults = null, staffExamResults = null, resultsMode = null, resultsSessionId = '', examReportReturn = null;
   let examSessionsData = null, examEditingId = null, examMembersData = null;
   let realExam = null, realExamIndex = 0, realExamSaved = new Map(), realExamChoices = new Map();
   let realExamTimer = null, realExamClockOffset = 0, realExamSubmitting = false;
@@ -198,6 +199,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
                 '<div class="exam-session-stats"><span><b>'+Number(s.student_count||0)+'</b> นักเรียนเริ่มแล้ว</span><span><b>'+Number(s.submitted_count||0)+'</b> ส่งแล้ว</span><span><b>'+Number(s.attempt_count||0)+'</b> ครั้งสอบ</span></div>'+
               '</div>'+
               '<div class="exam-session-actions">'+
+                (Number(s.attempt_count||0)>0?'<button type="button" class="practice-primary" data-exam-results="'+esc(s.session_id)+'">ดูผลสอบ</button>':'')+
                 (canEdit?'<button type="button" class="secondary" data-exam-edit="'+esc(s.session_id)+'">แก้ไข</button>':'')+
                 (canEdit&&s.audience_mode==='selected'?'<button type="button" class="secondary" data-exam-members="'+esc(s.session_id)+'">รายชื่อนักเรียน</button>':'')+
                 (canSeeResults()&&Number(s.submitted_count||0)>0&&s.result_policy==='manual'?'<button type="button" class="secondary" data-exam-release-results="'+esc(s.session_id)+'">เปิดคะแนน</button>':'')+
@@ -604,7 +606,8 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   function realExamTimerHeader() {
     const a=realExam.attempt, n=realExam.questions.length;
     if(a.status!=='draft'){
-      return '<div class="real-exam-statusbar"><span>ส่งข้อสอบแล้ว '+esc(date(a.submitted_at))+'</span><span>ตอบ '+realExamSaved.size+' / '+n+' ข้อ</span></div>';
+      const context=realExam.staff_review?'<div class="practice-student-context"><button type="button" class="secondary" data-exam-review-back>← ผลสอบรายคน</button><div><strong>'+esc(realExam.student.member_name)+'</strong><small>'+esc(realExam.exam_session.title)+' · ครั้งที่ '+esc(a.attempt_no)+'</small></div></div>':'';
+      return context+'<div class="real-exam-statusbar"><span>ส่งข้อสอบแล้ว '+esc(date(a.submitted_at))+'</span><span>ตอบ '+realExamSaved.size+' / '+n+' ข้อ</span></div>';
     }
     return '<div class="real-exam-statusbar"><div class="real-exam-clock"><small>เวลาคงเหลือ</small><strong data-real-exam-clock>'+formatExamClock(realExamRemainingMs())+'</strong></div><div><b>ตอบแล้ว '+realExamSaved.size+' / '+n+' ข้อ</b><small>หมดเวลา '+esc(date(a.deadline_at))+'</small></div></div>';
   }
@@ -612,7 +615,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   function renderRealExam() {
     if(!realExam) return;
     const s=realExam.exam_session, a=realExam.attempt, n=realExam.questions.length;
-    document.querySelector('#practice-title').textContent='สอบจริง · '+s.title;
+    document.querySelector('#practice-title').textContent=realExam.staff_review?realExam.student.member_name+' · ผลสอบจริง':'สอบจริง · '+s.title;
     document.querySelector('#practice-close').disabled=realExamSubmitting;
 
     if(a.status==='submitted' && realExamIndex<0){
@@ -622,7 +625,8 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
       modalBody.innerHTML=realExamTimerHeader()+
         '<div class="real-exam-complete"><span class="eyebrow">EXAM SUBMITTED</span><h3>'+(a.timed_out?'หมดเวลา · ระบบส่งข้อสอบอัตโนมัติ':'ส่งข้อสอบเรียบร้อย')+'</h3>'+
         score+
-        '<p>'+esc(realExamAnswerText(s))+'</p>'+
+        '<p>'+esc(realExam.staff_review?'มุมมองครูและผู้ดูแล · คำตอบหลังส่งข้อสอบ':realExamAnswerText(s))+'</p>'+
+        realExamSubjectTable()+
         (realExam.can_review?'<button type="button" class="practice-primary" data-real-exam-review>ทบทวนคำตอบและเฉลย</button>':'')+
         '<button type="button" class="secondary" data-real-exam-close>ปิด</button></div>';
       return;
@@ -656,6 +660,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
       '<div class="practice-navigation"><button type="button" class="secondary" data-real-exam-back '+(realExamSubmitting||realExamIndex===0?'disabled':'')+'>← ย้อน</button>'+
       (a.status==='draft'?'<button type="button" class="secondary" data-real-exam-skip>ข้าม →</button>':'')+
       '<button type="button" class="practice-primary" data-real-exam-next '+(!canNext||realExamSubmitting?'disabled':'')+'>'+(realExamIndex===n-1?'สรุปข้อสอบ':'ยืนยันและไปข้อต่อไป →')+'</button></div>'+
+      (a.status==='submitted'?'<button type="button" class="secondary" data-real-exam-summary>กลับสรุปคะแนน</button>':'')+
       review+realExamGrid();
     updateRealExamClock();
   }
@@ -688,6 +693,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
       if(realExamHasResponse(q,value) && !await saveRealExamResponse(q,value)) return;
     }
     realExamIndex=Math.max(0,Math.min(to,realExam.questions.length));
+    if(realExam.attempt.status==='submitted'&&realExamIndex===realExam.questions.length) realExamIndex=-1;
     renderRealExam(); modal.scrollTop=0;
   }
 
@@ -905,11 +911,105 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
       drafts: attempts.filter(a => a.status === 'draft').length };
   }
 
+  function examScores(attempts) {
+    const latest=new Map();
+    for(const a of attempts.filter(x=>x.status==='submitted')) {
+      if(!latest.has(a.session_id)||Number(a.attempt_no)>Number(latest.get(a.session_id).attempt_no)) latest.set(a.session_id,a);
+    }
+    return {correct:[...latest.values()].reduce((n,a)=>n+Number(a.correct_count),0),
+      total:[...latest.values()].reduce((n,a)=>n+Number(a.total_count),0),
+      completed:latest.size,submitted:attempts.filter(a=>a.status==='submitted').length,drafts:attempts.filter(a=>a.status==='draft').length};
+  }
+
+  function reportAttempts(student) {
+    return (student.attempts||[]).filter(a=>!resultsSessionId||a.session_id===resultsSessionId);
+  }
+
+  function realExamSubjectTable() {
+    const scores=realExam?.subject_scores||[];
+    if(!scores.length) return '';
+    return '<div class="exam-subject-scores"><h4>คะแนนรายวิชา</h4><div class="exam-score-table-wrap"><table><thead><tr><th scope="col">วิชา</th><th scope="col">ถูก / ทั้งหมด</th><th scope="col">ตอบแล้ว</th><th scope="col">ความถูกต้อง</th></tr></thead><tbody>'+scores.map(r=>
+      '<tr><th scope="row">'+esc(subjectName(r.subject_id))+'</th><td>'+esc(r.correct_count)+' / '+esc(r.total_count)+'</td><td>'+esc(r.answered_count)+' / '+esc(r.total_count)+'</td><td>'+pct(r.correct_count,r.total_count)+'</td></tr>'
+    ).join('')+'</tbody></table></div><p class="practice-muted">คิดจากทุกข้อในวิชานั้น รวมข้อที่ไม่ได้ตอบ</p></div>';
+  }
+
+  function reportModeButtons() {
+    return '<nav class="practice-result-tabs" aria-label="รูปแบบผลสอบ"><button type="button" class="tab '+(resultsMode==='exam'?'active':'')+'" data-results-mode="exam" aria-pressed="'+(resultsMode==='exam')+'">สอบจริง</button><button type="button" class="tab '+(resultsMode==='practice'?'active':'')+'" data-results-mode="practice" aria-pressed="'+(resultsMode==='practice')+'">ชุดฝึก</button></nav>';
+  }
+
+  function renderExamResultsList() {
+    const query=resultsQuery.trim().toLocaleLowerCase('th');
+    const students=staffResults.students.filter(s=>{
+      if(query&&!`${s.member_name} ${s.member_id}`.toLocaleLowerCase('th').includes(query)) return false;
+      const attempts=reportAttempts(s);
+      if(resultsSessionId&&!attempts.length) return false;
+      return resultsFilter==='all'||(resultsFilter==='not_started'?!attempts.length:attempts.some(a=>a.status===resultsFilter));
+    }).sort((a,b)=>a.member_name.localeCompare(b.member_name,'th'));
+    modalBody.querySelector('#practice-results-count').textContent='พบ '+students.length+' จาก '+staffResults.students.length+' คน';
+    modalBody.querySelector('#practice-results-list').innerHTML=students.length?students.map(student=>{
+      const r=examScores(reportAttempts(student));
+      return `<article class="practice-student-row"><div class="practice-student-name"><strong>${esc(student.member_name)}</strong><small>รหัสสมาชิก ${esc(student.member_id)}</small>${!student.is_active?'<span class="practice-badge incorrect">ถอนสิทธิ์แล้ว · เก็บประวัติผลสอบ</span>':''}<span>${r.submitted||r.drafts?'ส่งแล้ว '+r.submitted+' ครั้ง · กำลังสอบ '+r.drafts:'ยังไม่เริ่มสอบจริงในชุดนี้'}</span></div><div class="practice-student-score"><strong>${pct(r.correct,r.total)}</strong><small>${r.total?'ถูก '+r.correct+' / '+r.total+' ข้อ':'ยังไม่มีผลสอบจริง'}</small></div><button type="button" class="secondary" data-student-id="${esc(student.member_id)}">ดูผลสอบรายคน ↗</button></article>`;
+    }).join(''):'<div class="empty">ไม่พบผู้สอบที่ตรงกับคำค้นหรือสถานะที่เลือก</div>';
+  }
+
+  function renderExamResults() {
+    session=null;realExam=null;viewingOther=false;returnView=null;staffStudentId=null;
+    document.querySelector('#practice-title').textContent='ผลสอบจริงนักเรียนรายคน';
+    const all=examScores(staffResults.students.flatMap(s=>reportAttempts(s).map(a=>({...a,session_id:s.member_id+'/'+a.session_id}))));
+    modalBody.innerHTML=resultsToolbar()+
+      (staffResults.exam_error?'<p class="practice-inline-error" role="alert">'+esc(staffResults.exam_error)+'</p>':'')+
+      '<p class="practice-muted">คะแนนสอบจริง · คะแนนรวมใช้ครั้งล่าสุดที่ส่งแล้วของแต่ละรอบ · ไม่รวมคะแนนชุดฝึก</p>'+
+      '<div class="practice-report-stats"><span><b>'+staffResults.students.filter(s=>reportAttempts(s).length).length+'</b> นักเรียนเข้าสอบ</span><span><b>'+all.submitted+'</b> ครั้งที่ส่งแล้ว</span><span><b>'+all.drafts+'</b> ครั้งที่กำลังสอบ</span></div>'+
+      '<div class="practice-report-filters"><input type="search" id="practice-results-search" aria-label="ค้นหาผู้สอบ" placeholder="ค้นหาชื่อนักเรียนหรือรหัสสมาชิก…" value="'+esc(resultsQuery)+'"><select id="practice-results-status" aria-label="กรองสถานะสอบจริง">'+[['all','ทุกสถานะ'],['submitted','สอบเสร็จแล้ว'],['draft','กำลังสอบ'],['not_started','ยังไม่เริ่มสอบ']].map(([value,label])=>'<option value="'+value+'" '+(resultsFilter===value?'selected':'')+'>'+label+'</option>').join('')+'</select></div><p id="practice-results-count" class="practice-muted" role="status" aria-live="polite"></p><div id="practice-results-list"></div>';
+    renderExamResultsList();modal.scrollTop=0;
+  }
+
+  function renderStudentExamResult(id) {
+    const student=staffResults.students.find(s=>s.member_id===id);
+    if(!student){renderResults();return;}
+    session=null;realExam=null;viewingOther=false;returnView=null;staffStudentId=id;
+    const attempts=reportAttempts(student).slice().sort((a,b)=>String(b.started_at||'').localeCompare(String(a.started_at||''))||Number(b.attempt_no)-Number(a.attempt_no));
+    const r=examScores(attempts);
+    document.querySelector('#practice-title').textContent=student.member_name+' · ผลสอบจริง';
+    modalBody.innerHTML='<button type="button" class="secondary" data-results-list>← รายชื่อนักเรียน</button>'+resultsToolbar()+
+      `<div class="practice-student-overview"><div><span class="eyebrow">REAL EXAM RESULTS</span><h3>${esc(student.member_name)}</h3><small>รหัสสมาชิก ${esc(student.member_id)}${student.is_active?'':' · ถอนสิทธิ์แล้ว'}</small><p>ส่งแล้ว ${r.submitted} ครั้ง · กำลังสอบ ${r.drafts}</p></div><div class="practice-student-score"><strong>${pct(r.correct,r.total)}</strong><small>${r.total?'ถูก '+r.correct+' / '+r.total+' ข้อ':'ยังไม่มีผลสอบจริง'}</small></div></div>`+
+      '<p class="practice-muted">คะแนนรวมใช้ครั้งล่าสุดที่ส่งแล้วของแต่ละรอบ · เปิดดูประวัติทุกครั้งได้ด้านล่าง</p>'+
+      '<div class="practice-student-subjects">'+(attempts.length?attempts.map(a=>
+        `<article class="practice-student-subject"><div><h4>${esc(a.title)}</h4><span class="practice-badge ${a.status==='submitted'?'correct':'answered'}">${a.status==='submitted'?'สอบเสร็จแล้ว':'กำลังสอบ'} · ครั้งที่ ${esc(a.attempt_no)}</span><small>${esc(subjectName(a.subject_id))} · ชุด ${esc(a.set_no)}</small><p>${a.status==='submitted'?'<b>'+pct(a.correct_count,a.total_count)+'</b> · ถูก '+a.correct_count+' / '+a.total_count+' ข้อ':a.total_count+' ข้อ · ยังไม่ส่งข้อสอบ'}</p><small>เริ่ม ${esc(date(a.started_at))}</small>${a.submitted_at?'<small>ส่ง '+esc(date(a.submitted_at))+(a.timed_out?' · หมดเวลาและส่งอัตโนมัติ':'')+'</small>':''}<small>${a.status==='submitted'?(a.result_visible?'เปิดคะแนนให้นักเรียนแล้ว':'ยังไม่เปิดคะแนนให้นักเรียน'):''}</small></div><div class="practice-report-actions">${a.status==='submitted'?'<button type="button" class="practice-primary" data-exam-review-attempt="'+esc(a.exam_attempt_id)+'">ดูคะแนนรายวิชา / คำตอบ</button>':''}</div></article>`
+      ).join(''):'<div class="empty">นักเรียนยังไม่เริ่มสอบจริงในชุดนี้</div>')+'</div>';
+    modal.scrollTop=0;
+  }
+
+  function switchResultsMode(mode) {
+    if(!['practice','exam'].includes(mode)) return;
+    const id=staffStudentId;
+    resultsMode=mode;resultsFilter='all';resultsSessionId='';
+    staffResults=mode==='exam'?staffExamResults:staffPracticeResults;
+    if(id) renderStudentResult(id);else renderResults();
+  }
+
+  async function openExamReview(id) {
+    if(busy||!canSeeResults()) return;
+    const ticket=++requestNo;
+    examReportReturn={set_no:staffResults.set_no,member_id:staffStudentId};
+    busy=true;document.querySelector('#practice-close').disabled=true;
+    modalBody.innerHTML='<p class="practice-muted" role="status">กำลังเปิดคะแนนและคำตอบสอบจริง…</p>';
+    try{
+      const result=await api(apiPath+'?route=exam-review&exam_attempt_id='+encodeURIComponent(id));
+      if(!modal.open||ticket!==requestNo) return;
+      loadRealExam(result);modal.scrollTop=0;
+    }catch(error){
+      if(modal.open&&ticket===requestNo) modalBody.innerHTML='<p class="practice-inline-error" role="alert">'+esc(error.message)+'</p><button type="button" class="secondary" data-exam-review-back>← ผลสอบรายคน</button>';
+    }finally{busy=false;document.querySelector('#practice-close').disabled=false;}
+  }
+
   function resultsToolbar() {
-    return `<div class="practice-report-toolbar"><label class="practice-set-label">ชุดฝึก <select id="practice-results-set">${staffResults.sets.map(s => `<option value="${s.set_no}" ${s.set_no === staffResults.set_no ? 'selected' : ''}>${esc(setLabel(s) || '—')}${s.is_active ? '' : ' · ปิดแล้ว'}</option>`).join('')}</select></label><button type="button" class="secondary" data-results-refresh>อัปเดตผลรายคน</button></div>`;
+    const sessionFilter=resultsMode==='exam'?'<label class="practice-set-label">รอบสอบ <select id="exam-results-session"><option value="">ทุกรอบสอบ</option>'+staffResults.sessions.map(s=>'<option value="'+esc(s.session_id)+'" '+(s.session_id===resultsSessionId?'selected':'')+'>'+esc(s.title)+'</option>').join('')+'</select></label>':'';
+    return reportModeButtons()+`<div class="practice-report-toolbar"><label class="practice-set-label">${resultsMode==='exam'?'ชุดข้อสอบ':'ชุดฝึก'} <select id="practice-results-set">${staffResults.sets.map(s => `<option value="${s.set_no}" ${s.set_no === staffResults.set_no ? 'selected' : ''}>${esc(setLabel(s) || '—')}${s.is_active ? '' : ' · ปิดแล้ว'}</option>`).join('')}</select></label>${sessionFilter}<button type="button" class="secondary" data-results-refresh>อัปเดตผลรายคน</button>${resultsMode==='exam'?'<button type="button" class="secondary" data-exam-manage>จัดการรอบสอบ</button>':''}</div>`;
   }
 
   function renderResultsList() {
+    if(resultsMode==='exam') {renderExamResultsList();return;}
     const query = resultsQuery.trim().toLocaleLowerCase('th');
     const students = staffResults.students.filter(s => {
       if (query && !`${s.member_name} ${s.member_id}`.toLocaleLowerCase('th').includes(query)) return false;
@@ -923,6 +1023,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   }
 
   function renderResults() {
+    if(resultsMode==='exam') {renderExamResults();return;}
     session = null; viewingOther = false; returnView = null; staffStudentId = null;
     document.querySelector('#practice-title').textContent = 'ผลตรวจนักเรียนรายคน';
     const all = scores(staffResults.students.flatMap(s => s.attempts));
@@ -931,6 +1032,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   }
 
   function renderStudentResult(id) {
+    if(resultsMode==='exam') {renderStudentExamResult(id);return;}
     const student = staffResults.students.find(s => s.member_id === id);
     if (!student) { renderResults(); return; }
     session = null; viewingOther = false; returnView = null; staffStudentId = id;
@@ -945,18 +1047,25 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     modal.scrollTop = 0;
   }
 
-  async function openResults(set = selectedSet, studentId = null) {
+  async function openResults(set = selectedSet, studentId = null, mode = resultsMode, sessionId = resultsSessionId) {
     if (busy || !canSeeResults()) return;
     const ticket = ++requestNo;
-    busy = true; session = null; returnView = null;
+    busy = true; session = null; realExam=null; returnView = null;
+    clearInterval(realExamTimer);realExamTimer=null;
     document.querySelector('#practice-title').textContent = 'ผลตรวจนักเรียนรายคน';
     document.querySelector('#practice-close').disabled = true;
     modalBody.innerHTML = '<p class="practice-muted" role="status">กำลังเปิดผลตรวจรายคน…</p>';
     if (!modal.open) modal.showModal();
     try {
-      const result = await api(`${apiPath}?route=results&set_no=${set}`);
+      const [practiceReport,examReport]=await Promise.all([
+        api(`${apiPath}?route=results&set_no=${set}`),
+        api(`${apiPath}?route=exam-results&set_no=${set}`).catch(error=>({set_no:set,sets:[],sessions:[],students:[],exam_error:error.message}))
+      ]);
       if (!modal.open || ticket !== requestNo) return;
-      staffResults = result;
+      staffPracticeResults=practiceReport;staffExamResults={...examReport,sets:practiceReport.sets};
+      resultsMode=mode||(examReport.students.some(s=>s.attempts.length)?'exam':'practice');
+      resultsSessionId=examReport.sessions.some(s=>s.session_id===sessionId)?sessionId:'';
+      staffResults=resultsMode==='exam'?staffExamResults:staffPracticeResults;
       if (studentId) renderStudentResult(studentId); else renderResults();
     } catch (error) {
       if (modal.open && ticket === requestNo) modalBody.innerHTML = `<p class="practice-inline-error" role="alert">${esc(error.message)}</p><button type="button" class="secondary" data-results-retry="${set}">ลองอีกครั้ง</button>`;
@@ -1001,7 +1110,12 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   const setChange = event => { if (event.target.id === 'practice-set') { selectedSet = Number(event.target.value); renderPanel(); rerender(); } };
   const modalClick = event => {
     const t = event.target.closest('button'); if (!t || busy) return;
-    if (t.dataset.realExamStart) beginRealExam(t.dataset.realExamStart);
+    if (t.dataset.resultsMode) switchResultsMode(t.dataset.resultsMode);
+    else if (t.dataset.examResults) {const s=(examSessionsData?.sessions||[]).find(x=>x.session_id===t.dataset.examResults);if(s){resultsFilter='all';openResults(s.set_no,null,'exam',s.session_id);}}
+    else if (t.dataset.examReviewAttempt) openExamReview(t.dataset.examReviewAttempt);
+    else if (t.hasAttribute('data-exam-review-back')&&examReportReturn) openResults(examReportReturn.set_no,examReportReturn.member_id,'exam');
+    else if (t.hasAttribute('data-real-exam-summary')) {realExamIndex=-1;renderRealExam();modal.scrollTop=0;}
+    else if (t.dataset.realExamStart) beginRealExam(t.dataset.realExamStart);
     else if (t.dataset.realExamIndex !== undefined) { realExamIndex=Number(t.dataset.realExamIndex); renderRealExam(); modal.scrollTop=0; }
     else if (t.hasAttribute('data-real-exam-back')) moveRealExam(realExamIndex-1);
     else if (t.hasAttribute('data-real-exam-next')) moveRealExam(realExamIndex+1);
@@ -1023,6 +1137,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     else if (t.hasAttribute('data-results-back') && returnView) openResults(returnView.set_no, returnView.member_id);
     else if (t.dataset.resultAttempt) { returnView = { set_no:staffResults.set_no, member_id:staffStudentId }; openSubject(t.dataset.resultSubject, null, t.dataset.resultAttempt, staffResults.set_no); }
     else if (t.dataset.reviewOpen) openSubject(t.dataset.reviewSubject, null, t.dataset.reviewOpen, Number(t.dataset.reviewSet));
+    else if (t.hasAttribute('data-exam-manage')) openExamManager();
     else if (t.hasAttribute('data-exam-list')) renderExamManager();
     else if (t.hasAttribute('data-exam-new')) renderExamForm();
     else if (t.dataset.examEdit) renderExamForm((examSessionsData?.sessions||[]).find(x=>x.session_id===t.dataset.examEdit));
@@ -1036,7 +1151,8 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     else if (t.dataset.grade) grade(t.dataset.grade, t);
   };
   const choiceChange = event => {
-    if (event.target.id === 'practice-results-set') { openResults(Number(event.target.value), staffStudentId); return; }
+    if (event.target.id === 'practice-results-set') { openResults(Number(event.target.value), staffStudentId,resultsMode,''); return; }
+    if (event.target.id === 'exam-results-session') {resultsSessionId=event.target.value;if(staffStudentId)renderStudentResult(staffStudentId);else renderResults();return;}
     if (realExam && realExam.attempt?.status==='draft' && event.target.name === 'real-exam-choice') { const q=realExam.questions[realExamIndex], value=Number(event.target.value); realExamChoices.set(q.question_id,value); saveRealExamResponse(q,value); return; }
     if (realExam && realExam.attempt?.status==='draft' && event.target.dataset.realExamPart) { const q=realExam.questions[realExamIndex], current=realExamChoices.get(q.question_id); const value=current&&typeof current==='object'&&!Array.isArray(current)?{...current}:{}; value[event.target.dataset.realExamPart]=Number(event.target.value); realExamChoices.set(q.question_id,value); if(realExamHasResponse(q,value)) saveRealExamResponse(q,value); else renderRealExam(); return; }
     if (realExam && realExam.attempt?.status==='draft' && event.target.id === 'real-exam-numeric') { const q=realExam.questions[realExamIndex]; realExamChoices.set(q.question_id,event.target.value); if(realExamHasResponse(q,event.target.value)) saveRealExamResponse(q,event.target.value); return; }

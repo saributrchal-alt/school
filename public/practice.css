@@ -170,3 +170,7 @@ progress{accent-color:#4a7d58}.practice-subject progress{display:block;width:100
     width:100%;
   }
 }
+
+
+.exam-subject-scores{text-align:left;margin:22px 0}.exam-subject-scores h4{font-size:15px;color:var(--green);margin:0 0 12px}.exam-score-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}.exam-subject-scores table{width:100%;border-collapse:collapse;font-size:12px;min-width:360px}.exam-subject-scores th,.exam-subject-scores td{padding:12px 10px;text-align:left;border-bottom:1px solid var(--line)}.exam-subject-scores thead{background:#f3f7ed}.exam-subject-scores tbody tr:last-child>*{border-bottom:0}.exam-subject-scores td{font-variant-numeric:tabular-nums;white-space:nowrap}.practice-report-toolbar .practice-set-label{min-width:0}.practice-report-toolbar select{max-width:320px;width:100%}
+@media(max-width:640px){.practice-report-toolbar .practice-set-label{max-width:100%}.practice-report-toolbar select{max-width:100%}.exam-subject-scores th,.exam-subject-scores td{padding:10px 8px;font-size:11px}}

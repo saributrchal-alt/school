@@ -287,3 +287,174 @@ test('real exam release permits teachers across creators and preserves exam cond
     }
   }finally{f.restore();}
 });
+
+function realExamFixture(track) {
+  const f=fixture(), prefix=track==='alevel'?'school_alevel':'school';
+  const id=crypto.randomUUID(), submittedId=crypto.randomUUID(), draftId=crypto.randomUUID();
+  const sid=track==='alevel'?'AL61':null;
+  const paper={session_id:id,title:'Synthetic timed exam',subject_id:sid,set_no:2,result_policy:'manual',answer_policy:'manual',created_by:'manager',is_published:true,audience_mode:'all_students'};
+  f.rows[prefix+'_practice_sets']=[{set_no:1,label:'Practice',is_active:true},{set_no:2,label:'Original',is_active:true}];
+  f.rows[prefix+'_exam_sessions']=[paper,{...paper,session_id:crypto.randomUUID(),set_no:1}];
+  const attempt={exam_attempt_id:submittedId,session_id:id,member_id:'student',attempt_no:1,status:'submitted',total_count:4,correct_count:2,started_at:'2026-10-08T05:00:00Z',deadline_at:'2026-10-08T09:00:00Z',submitted_at:'2026-10-08T08:00:00Z',timed_out:false};
+  f.rows[prefix+'_exam_attempts']=[attempt,{...attempt,exam_attempt_id:draftId,attempt_no:2,status:'draft',correct_count:999,submitted_at:null}];
+  f.rows[prefix+'_practice_questions']=[1,2,3,4].map(i=>({question_id:'synthetic-exam-'+i,set_no:2,topic_id:track==='alevel'?'AL61-01.01':i<=2?'ENG-01.01':'MATH-01.01',subject_id:track==='alevel'?'AL61':i<=2?'ENG':'MATH',sort_order:i,question_no:i,prompt:'Synthetic question '+i,choices:['A','B','C','D'],answer_key:2,answer_key_json:i===2?'3.14':i===3?{a:1,b:2}:2,question_type:i===2?'numeric':i===3?'complex':'choice',question_image_url:'https://images.invalid/synthetic.webp',explanation:'Synthetic teacher explanation',reasoning:'Synthetic teacher reasoning'}));
+  f.rows[prefix+'_exam_answers']=[{exam_attempt_id:submittedId,question_id:'synthetic-exam-1',selected_answer:2,response_value:2,is_correct:true},{exam_attempt_id:submittedId,question_id:'synthetic-exam-2',selected_answer:1,response_value:'0',is_correct:false},{exam_attempt_id:submittedId,question_id:'synthetic-exam-3',selected_answer:2,response_value:{a:1,b:2},is_correct:true}];
+  return {...f,prefix,id,submittedId,draftId,paper,attempt,track};
+}
+
+test('staff can read real-exam scores and answers without publishing or modifying an exam',async t=>{
+  for(const track of ['military','alevel']) await t.test(track,async t=>{
+    const f=realExamFixture(track), query={track,set_no:2};
+    try {
+      await t.test('students and anonymous sessions cannot enter staff reports, including forged roles',async()=>{
+        for(const actor of [null,'student']) {
+          assert.equal((await f.call('exam-results',actor,undefined,{...query,can_teach:true})).status,actor?403:401);
+          assert.equal((await f.call('exam-review',actor,undefined,{track,exam_attempt_id:f.submittedId,can_manage:true})).status,actor?403:401);
+        }
+      });
+      await t.test('teacher with no study permission sees submitted scores and all retained attempts, separate from practice',async()=>{
+        const r=await f.call('exam-results','teacher',undefined,query);
+        assert.equal(r.status,200);assert.equal(r.body.sessions.length,1);
+        const student=r.body.students.find(s=>s.member_id==='student');
+        assert.equal(student.attempts.length,2);
+        assert.equal(student.attempts.find(a=>a.status==='submitted').correct_count,2);
+        assert.equal(student.attempts.find(a=>a.status==='submitted').result_visible,false);
+        assert.equal('correct_count' in student.attempts.find(a=>a.status==='draft'),false);
+        assert.equal(r.body.students.some(s=>s.member_id==='teacher'),false);
+        assert.equal(JSON.stringify(r.body).includes('Synthetic teacher'),false);
+        assert.equal(JSON.stringify(r.body).includes('selected_answer'),false);
+        assert.equal(f.requests.some(r=>r.url.pathname.endsWith('_practice_attempts')),false);
+      });
+      await t.test('teachers review a submitted attempt with student identity and per-subject totals including unanswered questions',async()=>{
+        const r=await f.call('exam-review','teacher',undefined,{track,exam_attempt_id:f.submittedId,member_id:'manager'});
+        assert.equal(r.status,200);assert.equal(r.body.staff_review,true);
+        assert.deepEqual(r.body.student,{member_id:'student',member_name:'นักเรียนสมมติ'});
+        assert.equal(r.body.attempt.correct_count,2);assert.equal(r.body.attempt.result_visible,true);
+        assert.equal(r.body.questions.length,4);assert.equal(r.body.answers.length,3);
+        assert.equal(r.body.questions[0].question_image_url,'https://images.invalid/synthetic.webp');
+        assert.equal(r.body.questions[0].answer_key,2);assert.equal(r.body.answers[0].is_correct,true);
+        assert.equal(r.body.subject_scores.reduce((n,s)=>n+s.total_count,0),4);
+        assert.equal(r.body.subject_scores.reduce((n,s)=>n+s.correct_count,0),2);
+        assert.equal(r.body.subject_scores.reduce((n,s)=>n+s.answered_count,0),3);
+        if(track==='military') assert.deepEqual(r.body.subject_scores,[{subject_id:'ENG',total_count:2,answered_count:2,correct_count:1},{subject_id:'MATH',total_count:2,answered_count:1,correct_count:1}]);
+        else {
+          assert.equal(r.body.questions[1].response_mode,'numeric');assert.equal(r.body.answers[1].response,'0');
+          assert.equal(r.body.questions[2].response_mode,'complex');assert.deepEqual(r.body.answers[2].response,{a:1,b:2});
+          assert.deepEqual(r.body.questions[2].answer_key,{a:1,b:2});
+        }
+        assert.equal(f.paper.result_policy,'manual');assert.equal(f.paper.answer_policy,'manual');
+        assert.equal(f.requests.every(r=>r.method==='GET'),true);
+      });
+      await t.test('managers may read other creators, draft reviews do not submit or score the attempt',async()=>{
+        assert.equal((await f.call('exam-review','manager',undefined,{track,exam_attempt_id:f.submittedId})).status,200);
+        assert.equal((await f.call('exam-review','teacher',undefined,{track,exam_attempt_id:f.draftId})).status,409);
+        assert.equal(f.rows[f.prefix+'_exam_attempts'].find(a=>a.exam_attempt_id===f.draftId).status,'draft');
+        assert.equal(f.requests.every(r=>r.method==='GET'),true);
+      });
+      await t.test('released score totals do not expose unreleased student answers or other students',async()=>{
+        f.rows[f.prefix+'_exam_attempts']=f.rows[f.prefix+'_exam_attempts'].filter(a=>a.exam_attempt_id!==f.draftId);
+        let r=await f.call('exam-open','student',undefined,{track,session_id:f.id,exam_attempt_id:crypto.randomUUID()});
+        assert.equal(r.status,200);assert.equal('correct_count' in r.body.attempt,false);assert.deepEqual(r.body.subject_scores,[]);
+        assert.equal(r.body.can_review,false);assert.equal('staff_review' in r.body,false);
+        for(const q of r.body.questions) assert.equal('answer_key' in q,false);
+        for(const a of r.body.answers) assert.equal('is_correct' in a,false);
+        f.paper.result_policy='immediate';
+        r=await f.call('exam-open','student',undefined,{track,session_id:f.id});
+        assert.equal(r.status,200);assert.equal(r.body.attempt.correct_count,2);
+        assert.equal(r.body.subject_scores.reduce((n,s)=>n+s.correct_count,0),2);
+        assert.equal(r.body.can_review,false);
+        for(const q of r.body.questions) assert.equal('answer_key' in q,false);
+        for(const a of r.body.answers) assert.equal('is_correct' in a,false);
+        f.paper.result_policy='manual';
+      });
+      await t.test('closed students and more than 1000 attempts retain report history',async()=>{
+        for(let i=0;i<1001;i++) {
+          const member_id='exam-history-'+String(i).padStart(4,'0');
+          f.members.push({member_id,member_name:member_id,is_active:false,can_study:false});
+          f.rows[f.prefix+'_exam_attempts'].push({...f.attempt,member_id,exam_attempt_id:crypto.randomUUID()});
+        }
+        const r=await f.call('exam-results','manager',undefined,query);
+        assert.equal(r.status,200);assert.equal(r.body.students.length,1002);
+        assert.equal(r.body.students.flatMap(s=>s.attempts).length,1002);
+        assert.ok(f.requests.some(r=>r.url.pathname.endsWith('_exam_attempts')&&r.url.searchParams.get('offset')==='1000'));
+        assert.ok(f.requests.some(r=>r.url.pathname.endsWith('school_members')&&r.url.searchParams.get('offset')==='1000'));
+      });
+      await t.test('set, session, attempt and current permissions are validated on every read',async()=>{
+        assert.equal((await f.call('exam-results','teacher',undefined,{...query,set_no:'2&select=*'})).status,400);
+        assert.equal((await f.call('exam-results','teacher',undefined,{...query,session_id:crypto.randomUUID()})).status,404);
+        assert.equal((await f.call('exam-review','teacher',undefined,{track,exam_attempt_id:'bad-id'})).status,400);
+        assert.equal((await f.call('exam-review','teacher',undefined,{track,exam_attempt_id:crypto.randomUUID()})).status,404);
+        f.members.find(m=>m.member_id==='teacher').can_teach=false;
+        assert.equal((await f.call('exam-results','teacher',undefined,query)).status,403);
+        assert.equal((await f.call('exam-review','teacher',undefined,{track,exam_attempt_id:f.submittedId})).status,403);
+        f.members.find(m=>m.member_id==='teacher').can_teach=true;f.setSource(false);
+        assert.equal((await f.call('exam-review','teacher',undefined,{track,exam_attempt_id:f.submittedId})).status,403);
+      });
+    }finally{f.restore();}
+  });
+});
+
+test('report rendering links real exams from both entry points and keeps practice separate',async t=>{
+  const {createPractice}=await import('../public/practice.js');
+  for(const track of ['military','alevel']) await t.test(track,async()=>{
+    const f=realExamFixture(track), previousDocument=globalThis.document;
+    class TestElement {
+      constructor(){this.innerHTML='';this.textContent='';this.listeners=new Map();this.children=new Map();this.open=false;}
+      addEventListener(name,fn){this.listeners.set(name,fn);}
+      removeEventListener(name){this.listeners.delete(name);}
+      querySelector(selector){if(!this.children.has(selector))this.children.set(selector,new TestElement());return this.children.get(selector);}
+      removeAttribute(){}
+      showModal(){this.open=true;}
+      close(){this.open=false;}
+    }
+    const documentRoot=new TestElement();globalThis.document=documentRoot;
+    const main=new TestElement(),modal=documentRoot.querySelector('#practice-dialog'),body=documentRoot.querySelector('#practice-body'),title=documentRoot.querySelector('#practice-title');
+    let controller;
+    const emit=async(root,name,dataset={},id='',value='')=>{
+      const element={dataset,id,value,closest(){return this;},hasAttribute(attr){const key=attr.replace(/^data-/,'').replace(/-([a-z])/g,(_,c)=>c.toUpperCase());return key in dataset;}};
+      root.listeners.get(name)({target:element});
+      // Flush async handler / API promises without relying on a browser or wall-clock sleeps.
+      for(let i=0;i<5;i++)await new Promise(setImmediate);
+    };
+    try {
+      f.rows[f.prefix+'_practice_attempts']=[];f.rows[f.prefix+'_practice_answers']=[];
+      const data={member:{member_id:'teacher',can_teach:true,can_manage:false,can_study:false},subjects:track==='alevel'?[{subject_id:'AL61',subject_name_th:'คณิตศาสตร์ A-Level'}]:[{subject_id:'ENG',subject_name_th:'ภาษาอังกฤษ'},{subject_id:'MATH',subject_name_th:'คณิตศาสตร์'}],topics:[]};
+      const api=async(url,options)=>{
+        const params=Object.fromEntries(new URL(url,'https://school.nathoeng.com').searchParams);
+        const r=await f.call(params.route,'teacher',options?.body?JSON.parse(options.body):undefined,{...params,track});
+        if(r.status!==200)throw Error(r.body.message);return r.body;
+      };
+      controller=createPractice({main,data,api,notice(){},rerender(){},getSubject:()=>data.subjects[0].subject_id,apiPath:track==='alevel'?'/api/alevel':'/api/practice'});
+      await controller.refresh();
+      await emit(main,'change',{},'practice-set','2');
+      await emit(main,'click',{studentResults:''});
+      assert.match(title.textContent,/ผลสอบจริง/);
+      assert.match(body.querySelector('#practice-results-list').innerHTML,/50%/);
+      await emit(body,'click',{studentId:'student'});
+      assert.match(body.innerHTML,/กำลังสอบ 1/);assert.match(body.innerHTML,/data-exam-review-attempt/);
+      await emit(body,'click',{examReviewAttempt:f.submittedId});
+      assert.match(title.textContent,/นักเรียนสมมติ/);assert.match(body.innerHTML,/50%/);assert.match(body.innerHTML,/คะแนนรายวิชา/);
+      assert.match(body.innerHTML,/ตอบ 3 \/ 4 ข้อ/);
+      await emit(body,'click',{realExamReview:''});
+      assert.match(body.innerHTML,/Synthetic teacher explanation/);assert.match(body.innerHTML,/disabled/);
+      await emit(body,'click',{realExamIndex:'3'});
+      await emit(body,'click',{realExamNext:''});
+      assert.match(body.innerHTML,/คะแนนรายวิชา/);assert.match(body.innerHTML,/50%/);
+      await emit(body,'click',{examReviewBack:''});
+      assert.match(title.textContent,/ผลสอบจริง/);assert.match(body.innerHTML,/data-results-mode/);
+      await emit(body,'click',{resultsMode:'practice'});
+      assert.match(title.textContent,/ผลตรวจ/);assert.doesNotMatch(body.innerHTML,/data-exam-review-attempt/);
+      await emit(body,'click',{resultsMode:'exam'});
+      await emit(body,'click',{resultsList:''});
+      await emit(body,'click',{examManage:''});
+      assert.match(body.innerHTML,/data-exam-results/);
+      await emit(body,'click',{examResults:f.id});
+      assert.match(title.textContent,/ผลสอบจริง/);assert.match(body.innerHTML,new RegExp('value="'+f.id+'" selected'));
+      await emit(body,'input',{},'practice-results-search','missing learner');
+      assert.doesNotMatch(body.querySelector('#practice-results-list').innerHTML,/data-student-id/);
+      await emit(body,'input',{},'practice-results-search','');
+      assert.match(body.querySelector('#practice-results-list').innerHTML,/data-student-id/);
+      assert.equal(f.requests.every(r=>r.method==='GET'),true);
+    }finally{controller?.destroy();globalThis.document=previousDocument;f.restore();}
+  });
+});

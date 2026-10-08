@@ -1,5 +1,6 @@
+import { examResults } from '../lib/practice.js';
 import { body, requireMember, sameOrigin, fail, sendError } from '../lib/school.js';
-import { releaseALevelExamResults, alevelCatalog, alevelQuestions, saveALevelProgress, alevelPracticeSummary, alevelPracticeSubject, alevelStudentResults, alevelReviewQueue, alevelPracticeTransaction, alevelExamSessions, alevelExamMembers, saveALevelExamSession, saveALevelExamMembers, deleteALevelExamSession, alevelExamOpen, alevelExamStart, alevelExamSave, alevelExamSubmit } from '../lib/alevel.js';
+import { alevelExamReview, releaseALevelExamResults, alevelCatalog, alevelQuestions, saveALevelProgress, alevelPracticeSummary, alevelPracticeSubject, alevelStudentResults, alevelReviewQueue, alevelPracticeTransaction, alevelExamSessions, alevelExamMembers, saveALevelExamSession, saveALevelExamMembers, deleteALevelExamSession, alevelExamOpen, alevelExamStart, alevelExamSave, alevelExamSubmit } from '../lib/alevel.js';
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control','no-store');
@@ -38,6 +39,8 @@ export default async function handler(req, res) {
       }
       if (route === 'exam-sessions') return res.status(200).json({ success:true, ...await alevelExamSessions(member) });
       if (route === 'exam-members') return res.status(200).json({ success:true, ...await alevelExamMembers(member,req.query) });
+      if (route === 'exam-results') return res.status(200).json({ success:true, ...await examResults(member,req.query,'school_alevel') });
+      if (route === 'exam-review') return res.status(200).json({ success:true, ...await alevelExamReview(member,req.query) });
       if (route === 'exam-open') return res.status(200).json({ success:true, ...await alevelExamOpen(member,req.query) });
       fail('ไม่พบรายการ A-Level',404);
     }
