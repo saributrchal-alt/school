@@ -12,13 +12,22 @@ export function learningBadge(status, ready = true, pending = 'เลือก�
   const state = learningLabels[status] ? status : 'not_started';
   return `<span class="learning-badge ${ready ? state : 'unavailable'}"><span class="learning-circle" aria-hidden="true">${ready && state === 'completed' ? '✓' : ready ? '●' : '…'}</span>${esc(ready ? learningLabels[state] : pending)}</span>`;
 }
-export function learningSteps(status) {
-  const current = Math.max(0, Object.keys(learningLabels).indexOf(status));
-  return `<ol class="learning-steps" aria-label="ขั้นตอนการเรียน">${Object.entries(learningLabels).map(([key, label], i) => `<li class="${i < current || status === 'completed' ? 'done' : ''} ${i === current ? 'current' : ''}"${i === current ? ' aria-current="step"' : ''}><span class="learning-step-circle" aria-hidden="true">${i < current || status === 'completed' ? '✓' : i + 1}</span><span>${label}</span></li>`).join('')}</ol>`;
+export function learningSteps(status, { compact = false, ready = true } = {}) {
+  const current = ready ? Math.max(0, Object.keys(learningLabels).indexOf(status)) : -1;
+  const tag = compact ? 'span' : 'ol', stepTag = compact ? 'span' : 'li';
+  return `<${tag} class="learning-steps learning-road${compact ? ' compact' : ''}"${compact ? ' role="list"' : ''} data-learning-current="${esc(ready ? status : '')}" aria-label="เส้นทางการเรียนทั้ง 4 ขั้น">${Object.entries(learningLabels).map(([key, label], i) => {
+    const done = ready && (i < current || status === 'completed');
+    return `<${stepTag} class="learning-step ${done ? 'done' : ''} ${i === current ? 'current' : ''}" data-learning-step="${key}"${compact ? ' role="listitem"' : ''}${i === current ? ' aria-current="step"' : ''}><span class="learning-step-circle" aria-hidden="true">${done ? '✓' : i + 1}</span><span class="learning-step-label">${label}</span></${stepTag}>`;
+  }).join('')}</${tag}>`;
 }
 export function topicLearningBadge(data, topicId) {
   const item = (data.viewedProgress || data.progress || []).find(p => p.topic_id === topicId);
   return learningBadge(item?.status || 'not_started', Boolean(data.viewedStudent || data.member.can_study) && !data.learning_error, data.learning_error ? 'เปิดสถานะไม่สำเร็จ' : 'เลือกนักเรียน');
+}
+export function topicLearningRoad(data, topicId) {
+  const item = (data.viewedProgress || data.progress || []).find(p => p.topic_id === topicId);
+  const ready = Boolean(data.viewedStudent || data.member.can_study) && !data.learning_error;
+  return learningSteps(item?.status || 'not_started', { compact:true, ready }) + (ready ? '' : `<small class="learning-road-note">${esc(data.learning_error ? 'เปิดสถานะไม่สำเร็จ' : 'เลือกนักเรียนเพื่อดูสถานะ')}</small>`);
 }
 export async function recordLearningProgress(data, api, path, topicId, status) {
   const result = await api(`${path}?route=progress`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({topic_id:topicId,status}) });
@@ -132,7 +141,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     if (!q || !data.topics.some(t => t.topic_id === q.topic_id)) return;
     const label = title.querySelector('.learning-paper-title')?.textContent || title.textContent;
     const item = paper.learning?.progress.find(p => p.topic_id === q.topic_id);
-    title.innerHTML = `<span class="learning-paper-title">${esc(label)}</span><span class="learning-sticky-topic"><span>${esc(q.topic_id)} · ${esc(topicName(q.topic_id))}</span>${learningBadge(item?.status || 'not_started', Boolean(paper.learning) && !paper.learning_error, paper.learning_error ? 'เปิดสถานะไม่สำเร็จ' : 'เลือกนักเรียน')}</span>`;
+    title.innerHTML = `<span class="learning-paper-title">${esc(label)}</span><span class="learning-sticky-topic"><span>${esc(q.topic_id)} · ${esc(topicName(q.topic_id))}</span>${learningSteps(item?.status || 'not_started', { compact:true, ready:Boolean(paper.learning) && !paper.learning_error })}</span>`;
   }
 
   async function changeLearning(topicId, status) {
