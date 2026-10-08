@@ -7,6 +7,31 @@ const stateLabel = { draft:'กำลังทำ', submitted:'รอตรว�
 const setLabel = set => set?.source_type === 'original_exam' ? `ชุด ${Number(set.set_no)} · ข้อสอบจริง` : Number.isInteger(Number(set?.set_no)) ? `ชุด ${Number(set.set_no)}` : (set?.display_label || set?.label || '');
 const setText = (sets, no) => setLabel((sets || []).find(s => s.set_no === no));
 
+export const learningLabels = { not_started:'ยังไม่เริ่ม', in_progress:'กำลังเรียน', review:'ทบทวน', completed:'เรียนแล้ว' };
+export function learningBadge(status, ready = true, pending = 'เลือกนักเรียน') {
+  const state = learningLabels[status] ? status : 'not_started';
+  return `<span class="learning-badge ${ready ? state : 'unavailable'}"><span class="learning-circle" aria-hidden="true">${ready && state === 'completed' ? '✓' : ready ? '●' : '…'}</span>${esc(ready ? learningLabels[state] : pending)}</span>`;
+}
+export function learningSteps(status) {
+  const current = Math.max(0, Object.keys(learningLabels).indexOf(status));
+  return `<ol class="learning-steps" aria-label="ขั้นตอนการเรียน">${Object.entries(learningLabels).map(([key, label], i) => `<li class="${i < current || status === 'completed' ? 'done' : ''} ${i === current ? 'current' : ''}"${i === current ? ' aria-current="step"' : ''}><span class="learning-step-circle" aria-hidden="true">${i < current || status === 'completed' ? '✓' : i + 1}</span><span>${label}</span></li>`).join('')}</ol>`;
+}
+export function topicLearningBadge(data, topicId) {
+  const item = (data.viewedProgress || data.progress || []).find(p => p.topic_id === topicId);
+  return learningBadge(item?.status || 'not_started', Boolean(data.viewedStudent || data.member.can_study) && !data.learning_error, data.learning_error ? 'เปิดสถานะไม่สำเร็จ' : 'เลือกนักเรียน');
+}
+export async function recordLearningProgress(data, api, path, topicId, status) {
+  const result = await api(`${path}?route=progress`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({topic_id:topicId,status}) });
+  const item = result.item;
+  if (!item || item.topic_id !== topicId || !learningLabels[item.status]) throw new Error('บันทึกสถานะการเรียนไม่สำเร็จ');
+  data.progress ||= [];
+  const previous = data.progress.find(p => p.topic_id === topicId);
+  if (previous) Object.assign(previous, item); else data.progress.push(item);
+  data.learning_error = '';
+  if (data.viewedStudent?.member_id === data.member.member_id) data.viewedProgress = data.progress;
+  return item;
+}
+
 export function createPractice({ main, data, api, notice, rerender, getSubject, apiPath = '/api/practice' }) {
   const panel = document.querySelector('#practice-dashboard');
   const modal = document.querySelector('#practice-dialog');
@@ -22,7 +47,11 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   const realExamWarnings = new Set();
   let understandingData = null, understandingFilter = 'needs_help', understandingQuery = '', understandingReturn = false;
   let understandingSaving = false;
+  let learningRoster = null, learningReport = null, learningQuery = '', learningFilter = 'all', learningSubject = 'all';
+  let learningView = false, learningSaving = false, learningRequest = 0, learningTimer = null;
+  let disposed = false, learningReportRequest = 0;
   const isALevel = apiPath === '/api/alevel';
+  const learningPath = isALevel ? '/api/alevel' : '/api/school';
   const examTrack = isALevel ? 'A-Level' : 'เตรียมทหาร';
   const subjectName = id => id === 'ALL' ? 'ข้อสอบทั้งชุด · ทุกวิชา' : (data.subjects.find(s => s.subject_id === id)?.subject_name_th || id);
   const topicName = id => data.topics.find(t => t.topic_id === id)?.topic_name_th || id;
@@ -31,7 +60,164 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   const resultButton = () => canSeeResults() ? '<button type="button" class="secondary" data-student-results>ผลตรวจรายคน</button>' : '';
   const examManageButton = () => canSeeResults() ? '<button type="button" class="secondary" data-exam-manage>จัดการสอบจริง</button>' : '';
   const understandingButton = () => '<button type="button" class="secondary" data-understanding-list>' + (canSeeResults() ? 'ติดตามความเข้าใจ' : 'ทบทวนข้อที่ยังไม่เข้าใจ') + '</button>';
+  const learningButton = () => '<button type="button" class="secondary" data-learning-report>สถานะหัวข้อเรียน</button>';
   const post = (route, value) => api(`${apiPath}?route=${route}`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(value) });
+
+  function renderLearningPicker() {
+    const picker = main.querySelector('#learning-member-picker');
+    if (!picker || !canSeeResults()) return;
+    picker.innerHTML = `<label class="learning-member-label">แสดงสถานะการเรียนของ <select id="learning-member" aria-label="เลือกนักเรียนเพื่อแสดงสถานะรายหัวข้อ"><option value="">${data.member.can_study ? 'การเรียนของฉัน' : 'เลือกนักเรียน…'}</option>${(learningRoster?.students || []).map(s => `<option value="${esc(s.member_id)}" ${s.member_id === data.viewedStudent?.member_id ? 'selected' : ''}>${esc(s.member_name)} · ${esc(s.member_id)}${s.is_active && s.can_study ? '' : ' · ถอนสิทธิ์แล้ว'}</option>`).join('')}</select></label>${data.learning_error ? `<span role="alert">${esc(data.learning_error)}</span>` : ''}<button type="button" class="secondary" data-learning-refresh>อัปเดตสถานะ</button>`;
+  }
+
+  async function refreshLearning() {
+    if (disposed || !data.topics.length) return;
+    const ticket = ++learningRequest;
+    try {
+      if (canSeeResults() && !learningRoster) learningRoster = await api(learningPath + '?route=learning-results');
+      if (disposed || ticket !== learningRequest) return;
+      const id = data.viewedStudent?.member_id;
+      if (id || data.member.can_study) {
+        const result = await api(`${learningPath}?route=progress${id ? '&member_id=' + encodeURIComponent(id) : ''}`);
+        if (disposed || ticket !== learningRequest) return;
+        if (id) { data.viewedStudent = result.student; data.viewedProgress = result.progress; }
+        else data.progress = result.progress;
+      }
+      data.learning_error = '';
+    } catch (error) { if (disposed || ticket !== learningRequest) return; data.learning_error = error.message; }
+    renderLearningPicker();
+  }
+
+  async function selectLearningMember(id) {
+    if (disposed) return;
+    const ticket = ++learningRequest;
+    const select = main.querySelector('#learning-member');
+    if (select) select.disabled = true;
+    try {
+      if (!id) { data.viewedStudent = null; data.viewedProgress = null; }
+      else {
+        const result = await api(`${learningPath}?route=progress&member_id=${encodeURIComponent(id)}`);
+        if (ticket !== learningRequest) return;
+        data.viewedStudent = result.student; data.viewedProgress = result.progress;
+      }
+      data.learning_error = '';
+    } catch (error) { data.learning_error = error.message; notice(error.message); }
+    if (ticket === learningRequest) { renderLearningPicker(); rerender(); renderPanel(); }
+  }
+
+  async function attachLearning(paper, other = false) {
+    if (!paper.questions?.some(q => data.topics.some(t => t.topic_id === q.topic_id))) return;
+    const id = paper.student?.member_id || (other ? null : !data.member.can_study ? data.viewedStudent?.member_id : data.member.member_id);
+    if (!id) return;
+    try {
+      const result = await api(`${learningPath}?route=progress&member_id=${encodeURIComponent(id)}`);
+      paper.learning = result;
+      paper.learning_error = '';
+      if (id === data.member.member_id) data.progress = result.progress;
+    } catch (error) { paper.learning_error = error.message; }
+  }
+
+  function learningMarkup(paper, q, mode) {
+    if (!q || !data.topics.some(t => t.topic_id === q.topic_id)) return '';
+    const item = paper.learning?.progress.find(p => p.topic_id === q.topic_id);
+    const ready = Boolean(paper.learning) && !paper.learning_error;
+    const status = item?.status || 'not_started';
+    const canEdit = ready && paper.learning.can_edit;
+    return `<section class="learning-card" aria-label="สถานะการเรียนหัวข้อนี้"><div class="learning-card-heading"><span>${paper.learning ? esc(paper.learning.student.member_name) + ' · ' : ''}สถานะหัวข้อนี้</span>${learningBadge(status, ready, paper.learning_error ? 'เปิดสถานะไม่สำเร็จ' : 'เลือกนักเรียน')}</div>${ready ? learningSteps(status) : ''}${canEdit ? `<label class="learning-control">บันทึกสถานะ <select data-learning-status="${esc(q.topic_id)}" aria-label="สถานะการเรียน ${esc(topicName(q.topic_id))}" ${learningSaving ? 'disabled' : ''}>${Object.entries(learningLabels).map(([key, label]) => `<option value="${key}" ${key === status ? 'selected' : ''}>${label}</option>`).join('')}</select></label>` : !paper.learning && !paper.learning_error ? '<button type="button" class="secondary" data-learning-report>เลือกนักเรียนเพื่อดูสถานะ</button>' : ''}${item?.updated_at ? `<small>บันทึกล่าสุด ${esc(date(item.updated_at))}</small>` : ready ? '<small>ยังไม่มีการบันทึกสถานะหัวข้อนี้</small>' : ''}${paper.learning_error ? `<p role="alert">${esc(paper.learning_error)}</p><button type="button" class="secondary" data-learning-retry="${mode}">ลองเปิดสถานะอีกครั้ง</button>` : ''}</section>`;
+  }
+
+  function updateLearningHeading(paper, q, mode) {
+    const title = document.querySelector('#practice-title');
+    const old = modalBody.querySelector('.learning-card');
+    if (old) old.outerHTML = learningMarkup(paper, q, mode);
+    if (!q || !data.topics.some(t => t.topic_id === q.topic_id)) return;
+    const label = title.querySelector('.learning-paper-title')?.textContent || title.textContent;
+    const item = paper.learning?.progress.find(p => p.topic_id === q.topic_id);
+    title.innerHTML = `<span class="learning-paper-title">${esc(label)}</span><span class="learning-sticky-topic"><span>${esc(q.topic_id)} · ${esc(topicName(q.topic_id))}</span>${learningBadge(item?.status || 'not_started', Boolean(paper.learning) && !paper.learning_error, paper.learning_error ? 'เปิดสถานะไม่สำเร็จ' : 'เลือกนักเรียน')}</span>`;
+  }
+
+  async function changeLearning(topicId, status) {
+    if (learningSaving || !data.member.can_study) return;
+    learningSaving = true;
+    learningRequest++; learningReportRequest++;
+    modalBody.querySelectorAll('[data-learning-status]').forEach(el => { el.disabled = true; });
+    try {
+      await recordLearningProgress(data, api, learningPath, topicId, status);
+      for (const paper of [session, realExam]) if (paper?.learning?.can_edit) paper.learning.progress = data.progress;
+      if (learningReport?.can_edit) learningReport.progress = data.progress;
+      if (data.viewedStudent?.member_id === data.member.member_id) data.viewedProgress = data.progress;
+      notice('บันทึกสถานะหัวข้อแล้ว');
+    } catch (error) { notice(error.message); }
+    finally {
+      learningSaving = false;
+      if (disposed) return;
+      rerender(); renderPanel();
+      if (learningView && learningReport) renderLearningRows();
+      else if (realExam) updateLearningHeading(realExam, realExam.questions[realExamIndex], 'exam');
+      else if (session) updateLearningHeading(session, session.questions[index], 'practice');
+    }
+  }
+
+  function renderLearningRosterRows() {
+    const root = modalBody.querySelector('#learning-roster');
+    if (!root) return;
+    const query = learningQuery.trim().toLocaleLowerCase('th');
+    const students = (learningRoster?.students || []).filter(s => !query || `${s.member_name} ${s.member_id}`.toLocaleLowerCase('th').includes(query));
+    root.innerHTML = students.length ? students.map(s => `<article class="learning-student-row"><div><strong>${esc(s.member_name)}</strong><small>รหัสสมาชิก ${esc(s.member_id)}${s.is_active && s.can_study ? '' : ' · ถอนสิทธิ์แล้ว · เก็บประวัติการเรียน'}</small></div><button type="button" class="secondary" data-learning-student="${esc(s.member_id)}">ดูสถานะรายหัวข้อ ↗</button></article>`).join('') : '<p class="practice-muted">ไม่พบนักเรียน</p>';
+  }
+
+  function renderLearningRows() {
+    const root = modalBody.querySelector('#learning-rows');
+    if (!root || !learningReport) return;
+    const progress = new Map(learningReport.progress.map(p => [p.topic_id, p]));
+    const query = learningQuery.trim().toLocaleLowerCase('th');
+    const topics = data.topics.filter(t => (learningSubject === 'all' || t.subject_id === learningSubject) && (learningFilter === 'all' || (progress.get(t.topic_id)?.status || 'not_started') === learningFilter) && (!query || `${t.topic_id} ${t.topic_name_th} ${subjectName(t.subject_id)}`.toLocaleLowerCase('th').includes(query)));
+    modalBody.querySelector('#learning-count').textContent = `พบ ${topics.length} / ${data.topics.length} หัวข้อ`;
+    root.innerHTML = topics.length ? topics.map(t => {
+      const item = progress.get(t.topic_id), status = item?.status || 'not_started';
+      return `<article class="learning-topic-row"><div class="topic-head"><span class="topic-code">${esc(t.topic_id)}</span><strong class="topic-name">${esc(t.topic_name_th)}</strong>${learningBadge(status)}</div><small>${esc(subjectName(t.subject_id))}</small>${learningSteps(status)}${learningReport.can_edit ? `<label class="learning-control">บันทึกสถานะ <select data-learning-status="${esc(t.topic_id)}" aria-label="สถานะ ${esc(t.topic_name_th)}" ${learningSaving ? 'disabled' : ''}>${Object.entries(learningLabels).map(([key, label]) => `<option value="${key}" ${key === status ? 'selected' : ''}>${label}</option>`).join('')}</select></label>` : ''}<small>${item?.updated_at ? 'บันทึกล่าสุด ' + esc(date(item.updated_at)) : 'ยังไม่มีการบันทึกสถานะหัวข้อนี้'}</small></article>`;
+    }).join('') : '<p class="practice-muted">ไม่พบหัวข้อที่ตรงกับตัวกรอง</p>';
+    const counts = Object.keys(learningLabels).map(key => [key, data.topics.filter(t => (progress.get(t.topic_id)?.status || 'not_started') === key).length]);
+    modalBody.querySelector('#learning-summary').innerHTML = counts.map(([key, n]) => `<span>${learningBadge(key)} <b>${n}</b> หัวข้อ</span>`).join('');
+  }
+
+  async function openLearningReport(id) {
+    if (busy || learningSaving || realExamSubmitting) return;
+    const ticket = ++requestNo;
+    busy = true; learningView = true; learningReport = null; session = null; realExam = null;
+    understandingReturn = false; clearInterval(realExamTimer); realExamTimer = null;
+    modalBody.innerHTML = '<p class="practice-muted" role="status">กำลังเปิดสถานะการเรียน…</p>';
+    document.querySelector('#practice-title').textContent = 'สถานะหัวข้อเรียน · ' + examTrack;
+    if (!modal.open) modal.showModal();
+    try {
+      if (canSeeResults() && !id) {
+        learningRoster = await api(learningPath + '?route=learning-results');
+        if (!modal.open || ticket !== requestNo) return;
+        learningQuery = '';
+        modalBody.innerHTML = '<p class="practice-muted">เลือกนักเรียนเพื่อดูสถานะล่าสุดประจำหัวข้อ · นักเรียนเป็นผู้บันทึกสถานะของตนเอง</p><input type="search" id="learning-roster-search" class="learning-search" aria-label="ค้นหานักเรียน" placeholder="ค้นหาชื่อนักเรียนหรือรหัสสมาชิก…"><div id="learning-roster"></div>';
+        renderLearningRosterRows();
+      } else {
+        const result = await api(`${learningPath}?route=progress${id ? '&member_id=' + encodeURIComponent(id) : ''}`);
+        if (!modal.open || ticket !== requestNo) return;
+        learningReport = result; learningQuery = ''; learningFilter = 'all'; learningSubject = 'all';
+        document.querySelector('#practice-title').textContent = result.student.member_name + ' · สถานะหัวข้อเรียน';
+        modalBody.innerHTML = `${canSeeResults() ? '<button type="button" class="secondary" data-learning-report>← รายชื่อนักเรียน</button>' : ''}<div class="learning-report-head"><div><h3>${esc(result.student.member_name)}</h3><small>รหัสสมาชิก ${esc(result.student.member_id)}${result.student.is_active && result.student.can_study ? '' : ' · ถอนสิทธิ์แล้ว'}</small></div><button type="button" class="secondary" data-learning-update>อัปเดตสถานะ</button></div><p class="practice-muted">สถานะการเรียนล่าสุดของแต่ละหัวข้อ · นักเรียนบันทึกด้วยตนเอง</p><div id="learning-summary" class="learning-summary"></div><div class="learning-filters"><input type="search" id="learning-topic-search" aria-label="ค้นหาหัวข้อ" placeholder="ค้นหาชื่อหรือรหัสหัวข้อ…"><select id="learning-subject-filter" aria-label="กรองวิชา"><option value="all">ทุกวิชา</option>${data.subjects.map(s => `<option value="${esc(s.subject_id)}">${esc(s.subject_name_th)}</option>`).join('')}</select><select id="learning-status-filter" aria-label="กรองสถานะการเรียน"><option value="all">ทุกสถานะ</option>${Object.entries(learningLabels).map(([key, label]) => `<option value="${key}">${label}</option>`).join('')}</select></div><p id="learning-count" class="practice-muted" role="status" aria-live="polite"></p><div id="learning-rows"></div><p id="learning-refresh-note" class="practice-muted" role="status">อัปเดตอัตโนมัติขณะเปิดหน้านี้</p>`;
+        renderLearningRows();
+      }
+      modal.scrollTop = 0;
+    } catch (error) { if (ticket === requestNo) modalBody.innerHTML = `<p class="practice-inline-error" role="alert">${esc(error.message)}</p><button type="button" class="secondary" data-learning-report>ลองอีกครั้ง</button>`; }
+    finally { busy = false; }
+  }
+
+  async function updateLearningReport() {
+    if (!learningView || !learningReport || !modal.open || busy || learningSaving) return;
+    const id = learningReport.student.member_id, ticket = requestNo, update = ++learningReportRequest;
+    try {
+      const result = await api(`${learningPath}?route=progress&member_id=${encodeURIComponent(id)}`);
+      if (disposed || update !== learningReportRequest || learningSaving || !learningView || !modal.open || ticket !== requestNo || learningReport?.student.member_id !== id) return;
+      learningReport = result; renderLearningRows();
+      modalBody.querySelector('#learning-refresh-note').textContent = 'อัปเดตล่าสุด ' + date(new Date().toISOString());
+    } catch (error) { const note = modalBody.querySelector('#learning-refresh-note'); if (!disposed && update === learningReportRequest && ticket === requestNo && note) note.textContent = 'อัปเดตสถานะไม่สำเร็จ · ' + error.message; }
+  }
 
   async function attachUnderstanding(paper, mode) {
     const id = mode === 'exam' ? paper.attempt?.exam_attempt_id : paper.attempt?.attempt_id;
@@ -108,6 +294,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   }
 
   async function openUnderstandingList() {
+    learningView = false;
     if (busy) return;
     const ticket = ++requestNo; busy = true; session = null; realExam = null; understandingReturn = false; returnView = null; examReportReturn = null;
     clearInterval(realExamTimer); realExamTimer = null;
@@ -230,14 +417,14 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   function renderPanel() {
     if (!bank) { panel.innerHTML = '<p class="practice-muted" role="status">กำลังเปิดผลการฝึก…</p>'; return; }
     if (!bank.ready) {
-      panel.innerHTML = `<div class="practice-heading"><div><span class="eyebrow">PRACTICE</span><h2>กำลังเตรียมชุดฝึกใหม่</h2><p>กำลังเตรียมโจทย์และเฉลยสำหรับแต่ละหัวข้อ</p></div><div class="practice-toolbar"><button type="button" class="secondary" data-practice-refresh>ตรวจอีกครั้ง</button>${resultButton()}${understandingButton()}</div></div>`;
+      panel.innerHTML = `<div class="practice-heading"><div><span class="eyebrow">PRACTICE</span><h2>กำลังเตรียมชุดฝึกใหม่</h2><p>กำลังเตรียมโจทย์และเฉลยสำหรับแต่ละหัวข้อ</p></div><div class="practice-toolbar"><button type="button" class="secondary" data-practice-refresh>ตรวจอีกครั้ง</button>${resultButton()}${understandingButton()}${learningButton()}</div></div>`;
       return;
     }
     const graded = bank.attempts.filter(a => a.set_no === selectedSet && a.status === 'graded');
     const total = graded.reduce((n, a) => n + a.total_count, 0), correct = graded.reduce((n, a) => n + a.correct_count, 0);
     const availableSubjects = data.subjects.filter(s => bank.counts.some(c => c.set_no === selectedSet && c.subject_id === s.subject_id));
     const percent = total ? 100 * correct / total : 0;
-    panel.innerHTML = `<div class="practice-heading"><div><span class="eyebrow">MY PRACTICE</span><h2>ผลการฝึกของฉัน</h2><p>เห็นพัฒนาการทีละหัวข้อ · คะแนนเปิดเมื่อผู้ดูแลตรวจแล้ว</p></div><div class="practice-toolbar"><label class="practice-set-label">ชุดฝึก <select id="practice-set">${bank.sets.map(s => `<option value="${s.set_no}" ${s.set_no === selectedSet ? 'selected' : ''}>${esc(setLabel(s) || '—')}</option>`).join('')}</select></label><button type="button" class="secondary" data-practice-refresh ${loading ? 'disabled' : ''}>อัปเดตผล</button>${resultButton()}${examManageButton()}${understandingButton()}${data.member.can_manage ? '<button type="button" class="secondary" data-review>ตรวจคำตอบนักเรียน</button>' : ''}</div></div>
+    panel.innerHTML = `<div class="practice-heading"><div><span class="eyebrow">MY PRACTICE</span><h2>ผลการฝึกของฉัน</h2><p>เห็นพัฒนาการทีละหัวข้อ · คะแนนเปิดเมื่อผู้ดูแลตรวจแล้ว</p></div><div class="practice-toolbar"><label class="practice-set-label">ชุดฝึก <select id="practice-set">${bank.sets.map(s => `<option value="${s.set_no}" ${s.set_no === selectedSet ? 'selected' : ''}>${esc(setLabel(s) || '—')}</option>`).join('')}</select></label><button type="button" class="secondary" data-practice-refresh ${loading ? 'disabled' : ''}>อัปเดตผล</button>${resultButton()}${examManageButton()}${understandingButton()}${learningButton()}${data.member.can_manage ? '<button type="button" class="secondary" data-review>ตรวจคำตอบนักเรียน</button>' : ''}</div></div>
       ${studentExamSection()}
       <div class="practice-overview"><div class="practice-score-ring" style="--score:${percent}%"><strong>${pct(correct, total)}</strong><span>ความถูกต้องรวม</span></div><div class="practice-overview-text"><h3>${total ? `ทำถูก ${correct} จาก ${total} ข้อที่ตรวจแล้ว` : 'เริ่มจากหนึ่งหัวข้อ แล้วค่อย ๆ ก้าวหน้า'}</h3><p>ตรวจแล้ว <b>${graded.length} / ${availableSubjects.length}</b> วิชา${bank.attempts.some(a => a.set_no === selectedSet && a.status === 'submitted') ? ' · มีคำตอบรอตรวจ' : ''}</p><small>คำนวณจากจำนวนข้อที่ถูก ÷ จำนวนข้อที่ตรวจแล้วทั้งหมด</small><small>วิชาที่ยังไม่ตรวจจะแสดงสถานะและยังไม่รวมในเปอร์เซ็นต์</small></div></div>
       <div class="practice-subjects">${availableSubjects.map(s => {
@@ -248,7 +435,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
       <details class="practice-topic-results" ${openTopics ? 'open' : ''}><summary>ผลรายหัวข้อ · รวมชุดที่ตรวจแล้ว</summary><div class="practice-result-tabs">${data.subjects.map(s => `<button type="button" class="tab ${s.subject_id === resultSubject ? 'active' : ''}" data-result-subject="${s.subject_id}" aria-pressed="${s.subject_id === resultSubject}">${esc(s.subject_name_th)}</button>`).join('')}</div><div class="practice-result-list">${data.topics.filter(t => t.subject_id === resultSubject).map(t => {
         const r = topicResult(t.topic_id);
         const hasQuestion = bank.topics.some(q => q.set_no === selectedSet && q.topic_id === t.topic_id);
-        return `<div class="practice-result-row"><span><small>${esc(t.topic_id)}</small>${esc(t.topic_name_th)}</span><b class="${r.total ? r.correct === r.total ? 'correct-text' : 'review-text' : ''}">${pct(r.correct, r.total)}</b><small>${r.total ? `ถูก ${r.correct}/${r.total} ชุด` : 'ยังไม่มีผลตรวจ'}</small>${hasQuestion ? `<button type="button" data-practice="${esc(t.topic_id)}">${ownAttempt(t.subject_id)?.status === 'graded' ? 'ดูเฉลย' : 'เปิดโจทย์'} ↗</button>` : ''}</div>`;
+        return `<div class="practice-result-row"><span><small>${esc(t.topic_id)}</small>${esc(t.topic_name_th)} ${topicLearningBadge(data, t.topic_id)}</span><b class="${r.total ? r.correct === r.total ? 'correct-text' : 'review-text' : ''}">${pct(r.correct, r.total)}</b><small>${r.total ? `ถูก ${r.correct}/${r.total} ชุด` : 'ยังไม่มีผลตรวจ'}</small>${hasQuestion ? `<button type="button" data-practice="${esc(t.topic_id)}">${ownAttempt(t.subject_id)?.status === 'graded' ? 'ดูเฉลย' : 'เปิดโจทย์'} ↗</button>` : ''}</div>`;
       }).join('')}</div></details>
       ${bank.sets.length > 1 ? `<div class="practice-set-history"><h3>ความถูกต้องรวมแต่ละชุด</h3>${bank.sets.map(s => { const a = bank.attempts.filter(x => x.set_no === s.set_no && x.status === 'graded'); return `<span>${esc(setLabel(s) || '—')} <b>${pct(a.reduce((n, x) => n + x.correct_count, 0), a.reduce((n, x) => n + x.total_count, 0))}</b> <small>ตรวจแล้ว ${a.length} วิชา</small></span>`; }).join('')}</div>` : ''}`;
     panel.querySelector('.practice-topic-results').addEventListener('toggle', event => { openTopics = event.target.open; });
@@ -262,7 +449,8 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
         api(apiPath+'?route=summary'),
         data.member.can_study
           ? api(apiPath+'?route=exam-sessions').catch(error=>({sessions:[],attempts:[],exam_error:error.message}))
-          : Promise.resolve(examSessionsData)
+          : Promise.resolve(examSessionsData),
+        refreshLearning()
       ]);
       bank=results[0];
       if(results[1]) examSessionsData=results[1];
@@ -564,6 +752,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   }
 
   async function openRealExamIntro(id) {
+    learningView = false;
     if(busy) return;
     const s=(examSessionsData?.sessions||[]).find(x=>x.session_id===id);
     if(!s) return notice('ไม่พบรอบสอบนี้');
@@ -594,6 +783,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
 
   async function loadRealExam(result) {
     await attachUnderstanding(result, 'exam');
+    await attachLearning(result, Boolean(result.staff_review));
     realExam=result;
     realExamSaved=new Map((result.answers||[]).map(a=>[a.question_id,a]));
     realExamChoices=new Map((result.answers||[]).map(a=>[a.question_id,realExamResponseOf(a)]));
@@ -778,7 +968,8 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
       (a.status==='draft'?'<button type="button" class="secondary" data-real-exam-skip>ข้าม →</button>':'')+
       '<button type="button" class="practice-primary" data-real-exam-next '+(!canNext||realExamSubmitting?'disabled':'')+'>'+(realExamIndex===n-1?'สรุปข้อสอบ':'ยืนยันและไปข้อต่อไป →')+'</button></div>'+
       (a.status==='submitted'?'<button type="button" class="secondary" data-real-exam-summary>กลับสรุปคะแนน</button>':'')+
-      review+understandingMarkup(realExam,q,'exam',Boolean(realExam.staff_review))+realExamGrid();
+      review+understandingMarkup(realExam,q,'exam',Boolean(realExam.staff_review))+learningMarkup(realExam,q,'exam')+realExamGrid();
+    updateLearningHeading(realExam,q,'exam');
     updateRealExamClock();
   }
 
@@ -839,6 +1030,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
 
   async function openSubject(sid, topicId, otherAttempt, set = selectedSet) {
     if (busy) return;
+    learningView = false;
     const ticket = ++requestNo;
     busy = true; viewingOther = Boolean(otherAttempt); session = null; modalError = ''; openGrid = false;
     document.querySelector('#practice-close').disabled = true;
@@ -850,6 +1042,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
       const result = await api(`${apiPath}?route=subject&set_no=${set}&subject_id=${sid}${otherAttempt ? `&attempt_id=${encodeURIComponent(otherAttempt)}` : ''}`);
       if (!modal.open || ticket !== requestNo) return;
       await attachUnderstanding(result, 'practice');
+      await attachLearning(result, Boolean(otherAttempt));
       if (!modal.open || ticket !== requestNo) return;
       session = result; saved = new Map(result.answers.map(a => [a.question_id, a]));
       choices = new Map(result.answers.map(a => [a.question_id, a.response ?? a.selected_answer]));
@@ -932,7 +1125,8 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     const q = session.questions[index], answer = saved.get(q.question_id), selected = choices.get(q.question_id);
     const explanation = session.can_review && q.answer_key != null ? `<section class="practice-explanation"><span class="eyebrow">${status === 'graded' ? 'REVIEW & LEARN' : 'TEACHER NOTES'}</span>${answerKeyText(q)}<h4>วิธีทำ / การพิจารณา</h4><p>${esc(q.explanation)}</p><h4>เหตุผลและจุดที่ควรระวัง</h4><p>${esc(q.reasoning)}</p><small>${q.source_title ? esc(q.source_title) : 'โจทย์ฝึกตามหัวข้อต้นฉบับ'}${q.source_year ? ` · พ.ศ. ${esc(q.source_year)}` : ''}</small></section>` : '';
     const canNext=hasResponse(q,selected);
-    modalBody.innerHTML = `${header}<div class="practice-question-heading"><span>${index + 1} / ${n} · ${esc(q.topic_id)}</span>${answer ? `<span class="practice-badge ${status === 'graded' ? answer.is_correct ? 'correct' : 'incorrect' : 'answered'}">${status === 'graded' ? answer.is_correct ? '✓ ตอบถูก' : 'ควรทบทวน' : '✓ บันทึกแล้ว'}</span>` : ''}<h3>${esc(topicName(q.topic_id))}</h3></div><p class="practice-prompt">${esc(q.prompt)}</p>${q.question_image_url ? `<figure class="practice-source-figure"><img src="${esc(freshQuestionImage(q.question_image_url))}" alt="ภาพประกอบข้อ ${esc(q.question_no || index + 1)}" loading="lazy"><figcaption>ภาพประกอบจากข้อสอบต้นฉบับ${q.question_no ? ` · ข้อ ${esc(q.question_no)}` : ''}</figcaption></figure>` : ''}${responseControl(q,selected)}<p class="practice-save-status" role="status">${busy ? 'กำลังบันทึกคำตอบ…' : editable() ? q.response_mode==='numeric' ? 'กรอกคำตอบแล้วกดยืนยันเพื่อบันทึกและไปข้อต่อไป' : q.response_mode==='complex' ? 'ตอบ ใช่ / ไม่ใช่ ให้ครบทุกข้อความ แล้วระบบจะบันทึกให้' : 'เลือกคำตอบแล้วระบบบันทึกให้ · กดยืนยันเพื่อไปข้อต่อไป' : status === 'submitted' ? 'ส่งแล้ว · คำตอบถูกล็อกระหว่างรอตรวจ' : status === 'graded' ? 'ดูคำตอบที่บันทึกและเฉลยด้านล่าง' : 'มุมมองครู · ดูโจทย์และเฉลยได้'}</p>${error}<div class="practice-navigation"><button type="button" class="secondary" data-back ${busy || index === 0 ? 'disabled' : ''}>← ย้อน</button>${editable() ? `<button type="button" class="secondary" data-skip ${busy ? 'disabled' : ''}>ข้าม →</button><button type="button" class="practice-primary" data-next ${busy || !canNext ? 'disabled' : ''}>${index === n - 1 ? 'ยืนยันคำตอบและสรุปวิชา' : 'ยืนยันคำตอบและไปข้อต่อไป →'}</button>` : `<button type="button" class="practice-primary" data-next ${busy ? 'disabled' : ''}>${index === n - 1 ? 'สรุปวิชา' : 'ข้อถัดไป →'}</button>`}</div>${explanation}${understandingMarkup(session,q,'practice',viewingOther)}${questionGrid()}${viewingOther && data.member.can_manage && status === 'submitted' ? `<div class="practice-grade-action"><p>ตรวจอัตโนมัติตามเฉลยและเปิดผลให้นักเรียนพร้อมกัน</p><button type="button" class="practice-primary" data-grade="${esc(a.attempt_id)}" ${busy ? 'disabled' : ''}>ตรวจและเปิดผล</button></div>` : ''}`;
+    modalBody.innerHTML = `${header}<div class="practice-question-heading"><span>${index + 1} / ${n} · ${esc(q.topic_id)}</span>${answer ? `<span class="practice-badge ${status === 'graded' ? answer.is_correct ? 'correct' : 'incorrect' : 'answered'}">${status === 'graded' ? answer.is_correct ? '✓ ตอบถูก' : 'ควรทบทวน' : '✓ บันทึกแล้ว'}</span>` : ''}<h3>${esc(topicName(q.topic_id))}</h3></div><p class="practice-prompt">${esc(q.prompt)}</p>${q.question_image_url ? `<figure class="practice-source-figure"><img src="${esc(freshQuestionImage(q.question_image_url))}" alt="ภาพประกอบข้อ ${esc(q.question_no || index + 1)}" loading="lazy"><figcaption>ภาพประกอบจากข้อสอบต้นฉบับ${q.question_no ? ` · ข้อ ${esc(q.question_no)}` : ''}</figcaption></figure>` : ''}${responseControl(q,selected)}<p class="practice-save-status" role="status">${busy ? 'กำลังบันทึกคำตอบ…' : editable() ? q.response_mode==='numeric' ? 'กรอกคำตอบแล้วกดยืนยันเพื่อบันทึกและไปข้อต่อไป' : q.response_mode==='complex' ? 'ตอบ ใช่ / ไม่ใช่ ให้ครบทุกข้อความ แล้วระบบจะบันทึกให้' : 'เลือกคำตอบแล้วระบบบันทึกให้ · กดยืนยันเพื่อไปข้อต่อไป' : status === 'submitted' ? 'ส่งแล้ว · คำตอบถูกล็อกระหว่างรอตรวจ' : status === 'graded' ? 'ดูคำตอบที่บันทึกและเฉลยด้านล่าง' : 'มุมมองครู · ดูโจทย์และเฉลยได้'}</p>${error}<div class="practice-navigation"><button type="button" class="secondary" data-back ${busy || index === 0 ? 'disabled' : ''}>← ย้อน</button>${editable() ? `<button type="button" class="secondary" data-skip ${busy ? 'disabled' : ''}>ข้าม →</button><button type="button" class="practice-primary" data-next ${busy || !canNext ? 'disabled' : ''}>${index === n - 1 ? 'ยืนยันคำตอบและสรุปวิชา' : 'ยืนยันคำตอบและไปข้อต่อไป →'}</button>` : `<button type="button" class="practice-primary" data-next ${busy ? 'disabled' : ''}>${index === n - 1 ? 'สรุปวิชา' : 'ข้อถัดไป →'}</button>`}</div>${explanation}${understandingMarkup(session,q,'practice',viewingOther)}${learningMarkup(session,q,'practice')}${questionGrid()}${viewingOther && data.member.can_manage && status === 'submitted' ? `<div class="practice-grade-action"><p>ตรวจอัตโนมัติตามเฉลยและเปิดผลให้นักเรียนพร้อมกัน</p><button type="button" class="practice-primary" data-grade="${esc(a.attempt_id)}" ${busy ? 'disabled' : ''}>ตรวจและเปิดผล</button></div>` : ''}`;
+    updateLearningHeading(session, q, 'practice');
     if (focusChoice) modalBody.querySelector(`#practice-choice-${focusChoice}`)?.focus();
     else modalBody.querySelector('.practice-question-heading h3')?.setAttribute('tabindex', '-1');
     bindGrid();
@@ -997,11 +1191,13 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     requestNo++; modal.close(); session = null; returnView = null; understandingReturn=false;
   }
   async function updateSubject() {
+    learningView = false;
     if (!session || busy) return;
     busy = true; const previousIndex = index;
     try {
       session = await api(`${apiPath}?route=subject&set_no=${session.set_no}&subject_id=${session.subject_id}${viewingOther ? `&attempt_id=${session.attempt.attempt_id}` : ''}`);
       await attachUnderstanding(session, 'practice');
+      await attachLearning(session, viewingOther);
       saved = new Map(session.answers.map(a => [a.question_id, a])); choices = new Map(session.answers.map(a => [a.question_id, a.response ?? a.selected_answer]));
       index = previousIndex; await refresh(); modalError = '';
     } catch (error) { modalError = error.message; }
@@ -1091,7 +1287,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     const attempts=reportAttempts(student).slice().sort((a,b)=>String(b.started_at||'').localeCompare(String(a.started_at||''))||Number(b.attempt_no)-Number(a.attempt_no));
     const r=examScores(attempts);
     document.querySelector('#practice-title').textContent=student.member_name+' · ผลสอบจริง';
-    modalBody.innerHTML='<button type="button" class="secondary" data-results-list>← รายชื่อนักเรียน</button>'+resultsToolbar()+
+    modalBody.innerHTML='<button type="button" class="secondary" data-results-list>← รายชื่อนักเรียน</button><button type="button" class="secondary" data-learning-student="'+esc(id)+'">สถานะหัวข้อเรียน</button>'+resultsToolbar()+
       `<div class="practice-student-overview"><div><span class="eyebrow">REAL EXAM RESULTS</span><h3>${esc(student.member_name)}</h3><small>รหัสสมาชิก ${esc(student.member_id)}${student.is_active?'':' · ถอนสิทธิ์แล้ว'}</small><p>ส่งแล้ว ${r.submitted} ครั้ง · กำลังสอบ ${r.drafts}</p></div><div class="practice-student-score"><strong>${pct(r.correct,r.total)}</strong><small>${r.total?'ถูก '+r.correct+' / '+r.total+' ข้อ':'ยังไม่มีผลสอบจริง'}</small></div></div>`+
       '<p class="practice-muted">คะแนนรวมใช้ครั้งล่าสุดที่ส่งแล้วของแต่ละรอบ · เปิดดูประวัติทุกครั้งได้ด้านล่าง</p>'+
       '<div class="practice-student-subjects">'+(attempts.length?attempts.map(a=>
@@ -1109,6 +1305,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   }
 
   async function openExamReview(id) {
+    learningView = false;
     if(busy||!canSeeResults()) return;
     const ticket=++requestNo;
     understandingReturn=false;
@@ -1160,7 +1357,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     document.querySelector('#practice-title').textContent = `${student.member_name} · ผลตรวจ`;
     const r = scores(student.attempts);
     const subjects = data.subjects.filter(s => staffResults.counts.some(c => c.subject_id === s.subject_id));
-    modalBody.innerHTML = `<button type="button" class="secondary" data-results-list>← รายชื่อนักเรียน</button>${resultsToolbar()}<div class="practice-student-overview"><div><span class="eyebrow">STUDENT RESULTS</span><h3>${esc(student.member_name)}</h3><small>รหัสสมาชิก ${esc(student.member_id)}${student.is_active ? '' : ' · ถอนสิทธิ์แล้ว'}</small><p>ตรวจแล้ว ${r.graded} / ${subjects.length} วิชา · รอตรวจ ${r.pending} · กำลังทำ ${r.drafts}</p></div><div class="practice-student-score"><strong>${pct(r.correct, r.total)}</strong><small>${r.total ? `ถูก ${r.correct} / ${r.total} ข้อที่ตรวจแล้ว` : 'ยังไม่มีผลตรวจ'}</small></div></div><p class="practice-muted">ความถูกต้องรวม = ข้อที่ถูก ÷ ข้อที่ตรวจแล้วทั้งหมด · วิชาที่ยังไม่ตรวจยังไม่รวมในคะแนน</p><div class="practice-student-subjects">${subjects.map(s => {
+    modalBody.innerHTML = `<button type="button" class="secondary" data-results-list>← รายชื่อนักเรียน</button><button type="button" class="secondary" data-learning-student="${esc(id)}">สถานะหัวข้อเรียน</button>${resultsToolbar()}<div class="practice-student-overview"><div><span class="eyebrow">STUDENT RESULTS</span><h3>${esc(student.member_name)}</h3><small>รหัสสมาชิก ${esc(student.member_id)}${student.is_active ? '' : ' · ถอนสิทธิ์แล้ว'}</small><p>ตรวจแล้ว ${r.graded} / ${subjects.length} วิชา · รอตรวจ ${r.pending} · กำลังทำ ${r.drafts}</p></div><div class="practice-student-score"><strong>${pct(r.correct, r.total)}</strong><small>${r.total ? `ถูก ${r.correct} / ${r.total} ข้อที่ตรวจแล้ว` : 'ยังไม่มีผลตรวจ'}</small></div></div><p class="practice-muted">ความถูกต้องรวม = ข้อที่ถูก ÷ ข้อที่ตรวจแล้วทั้งหมด · วิชาที่ยังไม่ตรวจยังไม่รวมในคะแนน</p><div class="practice-student-subjects">${subjects.map(s => {
       const a = student.attempts.find(x => x.subject_id === s.subject_id);
       const count = staffResults.counts.find(c => c.subject_id === s.subject_id).total_count;
       return `<article class="practice-student-subject"><div><h4>${esc(s.subject_name_th)}</h4><span class="practice-badge ${a?.status === 'graded' ? 'correct' : a?.status === 'submitted' ? 'incorrect' : ''}">${a ? stateLabel[a.status] : 'ยังไม่เริ่ม'}</span><p>${a?.status === 'graded' ? `<b>${pct(a.correct_count, a.total_count)}</b> · ถูก ${a.correct_count} / ${a.total_count} ข้อ` : `${a?.total_count || count} ข้อ · ยังไม่มีคะแนน`}</p>${a?.submitted_at ? `<small>ส่ง ${esc(date(a.submitted_at))}</small>` : ''}${a?.status === 'graded' ? `<small>ตรวจโดย ${esc(a.graded_by_name || '—')}</small><small>ตรวจ ${esc(date(a.graded_at))}</small>` : ''}</div><div class="practice-report-actions">${a && (a.status === 'graded' || a.status === 'submitted' && data.member.can_manage) ? `<button type="button" class="secondary" data-result-attempt="${esc(a.attempt_id)}" data-result-subject="${esc(s.subject_id)}">${a.status === 'graded' ? 'ดูคำตอบ / เฉลยรายข้อ' : 'ดูคำตอบ'}</button>` : ''}${a?.status === 'submitted' && data.member.can_manage ? `<button type="button" class="practice-primary" data-grade="${esc(a.attempt_id)}">ตรวจและเปิดผล</button>` : ''}</div></article>`;
@@ -1169,6 +1366,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   }
 
   async function openResults(set = selectedSet, studentId = null, mode = resultsMode, sessionId = resultsSessionId) {
+    learningView = false;
     if (busy || !canSeeResults()) return;
     const ticket = ++requestNo;
     busy = true; session = null; realExam=null; returnView = null;
@@ -1226,13 +1424,25 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     else if (target.dataset.realExamSession) openRealExamIntro(target.dataset.realExamSession);
     else if (target.hasAttribute('data-exam-manage')) openExamManager();
     else if (target.hasAttribute('data-understanding-list')) { understandingFilter = 'needs_help'; understandingQuery = ''; openUnderstandingList(); }
+    else if (target.hasAttribute('data-learning-report')) openLearningReport();
+    else if (target.hasAttribute('data-learning-refresh')) refreshLearning().then(() => { rerender(); renderPanel(); });
     else if (target.hasAttribute('data-review')) openReview();
     else if (target.dataset.resultSubject) { resultSubject = target.dataset.resultSubject; renderPanel(); }
   };
-  const setChange = event => { if (event.target.id === 'practice-set') { selectedSet = Number(event.target.value); renderPanel(); rerender(); } };
+  const setChange = event => {
+    if (event.target.id === 'learning-member') { selectLearningMember(event.target.value); return; }
+    if (event.target.id === 'practice-set') { selectedSet = Number(event.target.value); renderPanel(); rerender(); }
+  };
   const modalClick = event => {
     const t = event.target.closest('button'); if (!t || busy) return;
-    if (t.hasAttribute('data-understanding-list')) openUnderstandingList();
+    if (t.hasAttribute('data-learning-report')) openLearningReport();
+    else if (t.dataset.learningStudent) openLearningReport(t.dataset.learningStudent);
+    else if (t.hasAttribute('data-learning-update')) updateLearningReport();
+    else if (t.dataset.learningRetry) {
+      const paper = t.dataset.learningRetry === 'exam' ? realExam : session;
+      if (paper) attachLearning(paper, Boolean(paper.staff_review || viewingOther)).then(() => updateLearningHeading(paper, paper.questions[t.dataset.learningRetry === 'exam' ? realExamIndex : index], t.dataset.learningRetry));
+    }
+    else if (t.hasAttribute('data-understanding-list')) openUnderstandingList();
     else if (t.dataset.understandingOpen !== undefined) openUnderstandingQuestion(Number(t.dataset.understandingOpen));
     else if (t.dataset.understandingStatus) saveUnderstandingStatus(t.dataset.understandingStatus, t.dataset.understandingMode);
     else if (t.dataset.understandingReload) reloadUnderstanding(t.dataset.understandingReload);
@@ -1277,6 +1487,9 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     else if (t.dataset.grade) grade(t.dataset.grade, t);
   };
   const choiceChange = event => {
+    if (event.target.dataset.learningStatus) { changeLearning(event.target.dataset.learningStatus, event.target.value); return; }
+    if (event.target.id === 'learning-status-filter') { learningFilter = event.target.value; renderLearningRows(); return; }
+    if (event.target.id === 'learning-subject-filter') { learningSubject = event.target.value; renderLearningRows(); return; }
     if (event.target.id === 'understanding-filter') { understandingFilter = event.target.value; renderUnderstandingRows(); return; }
     if (event.target.id === 'practice-results-set') { openResults(Number(event.target.value), staffStudentId,resultsMode,''); return; }
     if (event.target.id === 'exam-results-session') {resultsSessionId=event.target.value;if(staffStudentId)renderStudentResult(staffStudentId);else renderResults();return;}
@@ -1298,6 +1511,8 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     }
   };
   const resultsSearch = event => {
+    if (event.target.id === 'learning-roster-search') { learningQuery = event.target.value; renderLearningRosterRows(); return; }
+    if (event.target.id === 'learning-topic-search') { learningQuery = event.target.value; renderLearningRows(); return; }
     if (event.target.id === 'understanding-search') { understandingQuery = event.target.value; renderUnderstandingRows(); return; }
     if (event.target.id === 'practice-results-search') { resultsQuery = event.target.value; renderResultsList(); return; }
     if (event.target.id === 'exam-member-search') { const q=event.target.value.trim().toLowerCase(); modalBody.querySelectorAll('.exam-member-row').forEach(row=>{row.style.display=!q||row.dataset.memberText.includes(q)?'':'none';}); return; }
@@ -1312,8 +1527,20 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   modalBody.addEventListener('click', modalClick); modalBody.addEventListener('change', choiceChange);
   modalBody.addEventListener('input', resultsSearch);
   modal.addEventListener('cancel', cancel); document.querySelector('#practice-close').addEventListener('click', closeModal);
+  learningTimer = setInterval(() => {
+    if (document.visibilityState === 'hidden' || busy || learningSaving) return;
+    if (learningView && learningReport && modal.open) updateLearningReport();
+    else if (!modal.open && (data.member.can_study || data.viewedStudent)) refreshLearning().then(() => { if (!disposed) { rerender(); renderPanel(); } });
+  }, 30000);
   renderPanel();
-  return { refresh, topicAction, openExamManager, subjectChanged() { resultSubject = getSubject(); if (bank?.ready) renderPanel(); }, destroy() {
+  return { refresh, topicAction, openExamManager, beginLearningSave() {
+    learningSaving = true; learningRequest++; learningReportRequest++;
+  }, learningChanged() {
+    learningSaving = false;
+    for (const paper of [session, realExam]) if (paper?.learning?.can_edit) paper.learning.progress = data.progress;
+    renderPanel();
+  }, subjectChanged() { resultSubject = getSubject(); if (bank?.ready) renderPanel(); }, destroy() {
+    disposed = true; clearInterval(learningTimer); learningRequest++; learningReportRequest++;
     requestNo++; main.removeEventListener('click', mainClick); main.removeEventListener('change', setChange);
     modalBody.removeEventListener('click', modalClick); modalBody.removeEventListener('change', choiceChange);
     modalBody.removeEventListener('input', resultsSearch);

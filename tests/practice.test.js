@@ -3,7 +3,87 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import practice from '../api/practice.js';
 import alevel from '../api/alevel.js';
+import school from '../api/school.js';
 import { COOKIE, signToken } from '../lib/school.js';
+
+test('topic learning states persist per owner and teachers can follow every topic', async t => {
+  for (const track of ['military', 'alevel']) await t.test(track, async t => {
+    const f = fixture(), tables = track === 'alevel' ? { topics:'school_alevel_topics', progress:'school_alevel_topic_progress', id:'AL61-01.01' } : { topics:'exam_topics', progress:'school_topic_progress', id:'ENG-01.01' };
+    const query = { track, school:true };
+    f.rows[tables.topics] = [{topic_id:tables.id}];
+    f.members.push({member_id:'other-student',member_name:'นักเรียนอีกคน',is_active:true,can_study:true});
+    f.rows[tables.progress] = [{member_id:'other-student',topic_id:tables.id,status:'completed',notes:'private-note',updated_at:'2026-01-01T00:00:00Z'}];
+    const beforeAnswers = structuredClone(f.rows.school_practice_answers);
+    try {
+      await t.test('unstarted topics are not fabricated and reads never expose another student', async () => {
+        const r = await f.call('progress','student',undefined,query);
+        assert.equal(r.status,200); assert.deepEqual(r.body.progress,[]); assert.equal(r.body.can_edit,true);
+        assert.equal(f.rows[tables.progress].length,1);
+        assert.equal((await f.call('progress','student',undefined,{...query,member_id:'other-student'})).status,403);
+        assert.equal((await f.call('learning-results','student',undefined,query)).status,403);
+        assert.equal((await f.call('progress',null,undefined,query)).status,401);
+      });
+      await t.test('all four states and a later review save only for the cookie owner', async () => {
+        for (const status of ['not_started','in_progress','review','completed','review']) {
+          const r = await f.call('progress','student',{topic_id:tables.id,status,member_id:'other-student',can_teach:true},query);
+          assert.equal(r.status,200); assert.equal(r.body.item.status,status); assert.ok(Date.parse(r.body.item.updated_at));
+          assert.equal(f.rows[tables.progress].find(p=>p.member_id==='student').status,status);
+        }
+        assert.equal(f.rows[tables.progress].length,2);
+        assert.equal(f.rows[tables.progress].find(p=>p.member_id==='other-student').status,'completed');
+        assert.deepEqual(f.rows.school_practice_answers,beforeAnswers);
+        assert.deepEqual(f.rows.school_question_understanding,[]);
+        const r = await f.call('progress','student',undefined,query);
+        assert.equal(r.body.progress[0].status,'review');
+        assert.equal('notes' in r.body.progress[0],false);
+      });
+      await t.test('staff read the selected learner and roster without changing that state', async () => {
+        for (const actor of ['teacher','manager']) {
+          const r = await f.call('progress',actor,undefined,{...query,member_id:'other-student'});
+          assert.equal(r.status,200); assert.equal(r.body.student.member_id,'other-student'); assert.equal(r.body.can_edit,false);
+          assert.equal(r.body.progress[0].status,'completed'); assert.equal('notes' in r.body.progress[0],false);
+          assert.equal((await f.call('progress',actor,{topic_id:tables.id,status:'not_started',member_id:'other-student'},query)).status,403);
+          const roster = await f.call('learning-results',actor,undefined,query);
+          assert.equal(roster.status,200); assert.deepEqual(roster.body.students.map(s=>s.member_id).sort(),['other-student','student']);
+        }
+        assert.equal((await f.call('progress','teacher',undefined,{...query,member_id:'missing-member'})).status,404);
+        assert.equal((await f.call('progress','teacher',undefined,{...query,member_id:'id&select=*'})).status,400);
+      });
+      await t.test('invalid states, foreign topics and cross-site writes do not mutate progress', async () => {
+        const before = structuredClone(f.rows[tables.progress]);
+        const invalid = [
+          {topic_id:tables.id,status:'done'},
+          {topic_id:tables.id+'&member_id=other-student',status:'completed'},
+          {topic_id:track==='alevel'?'ENG-01.01':'AL61-01.01',status:'completed'},
+          {topic_id:tables.id.replace('01.01','99.99'),status:'completed'}
+        ];
+        for (const p of invalid) assert.ok([400,404].includes((await f.call('progress','student',p,query)).status));
+        assert.equal((await f.call('progress','student',{topic_id:tables.id,status:'completed'},{...query,origin:'https://evil.invalid'})).status,403);
+        assert.equal((await f.call('progress','student',{topic_id:tables.id,status:'completed'},{...query,method:'PUT'})).status,405);
+        assert.deepEqual(f.rows[tables.progress],before);
+      });
+      await t.test('large rosters and topic lists paginate and retain former learner history', async () => {
+        for (let i=0;i<1001;i++) {
+          f.members.push({member_id:'former-'+i,member_name:'นักเรียนเก่า '+i,is_active:false,can_study:false,can_teach:false,can_manage:false});
+          f.rows[tables.progress].push({member_id:'other-student',topic_id:'synthetic-'+i,status:'in_progress',updated_at:'2026-01-01T00:00:00Z'});
+        }
+        const roster = await f.call('learning-results','teacher',undefined,query);
+        assert.equal(roster.body.students.length,1003);
+        assert.equal((await f.call('progress','teacher',undefined,{...query,member_id:'other-student'})).body.progress.length,1002);
+        assert.ok(f.requests.some(r=>r.url.pathname.endsWith('school_members')&&r.url.searchParams.get('offset')==='1000'));
+        assert.ok(f.requests.some(r=>r.url.pathname.endsWith(tables.progress)&&r.url.searchParams.get('offset')==='1000'));
+      });
+      await t.test('current permission withdrawal and Temple cancellation override existing sessions', async () => {
+        f.members.find(m=>m.member_id==='teacher').can_teach=false;
+        assert.equal((await f.call('progress','teacher',undefined,{...query,member_id:'student'})).status,403);
+        f.members.find(m=>m.member_id==='teacher').can_teach=true;
+        f.setSource(false);
+        assert.equal((await f.call('learning-results','teacher',undefined,query)).status,403);
+        assert.equal((await f.call('progress','student',{topic_id:tables.id,status:'completed'},query)).status,403);
+      });
+    } finally { f.restore(); }
+  });
+});
 
 // Synthetic content only. The real set and its answer bank must stay out of this public repo.
 function fixture() {
@@ -39,6 +119,12 @@ function fixture() {
     if (table === 'school_question_understanding' && !rows[table]) return new Response('{"code":"PGRST205"}',{status:404});
     if (schemaMissing && table.startsWith('school_practice_')) return new Response('{"code":"PGRST205"}',{status:404});
     assert.ok(rows[table],table);
+    if (method === 'POST' && table.endsWith('_topic_progress')) {
+      const payload = JSON.parse(options.body);
+      const old = rows[table].find(r => r.member_id === payload.member_id && r.topic_id === payload.topic_id);
+      if (old) Object.assign(old, payload); else rows[table].push(payload);
+      return new Response(JSON.stringify([old || payload]));
+    }
     if(method==='PATCH'){
       const row=rows[table].find(r=>r.session_id===url.searchParams.get('session_id').slice(3));
       Object.assign(row,JSON.parse(options.body));
@@ -72,7 +158,7 @@ function fixture() {
     const res = {setHeader(k,v){result.headers[k]=v;},status(n){result.status=n;return this;},json(value){result.body=value;return this;}};
     if (query.origin) req.headers.origin=query.origin;
     if (query.method) req.method=query.method;
-    await (query.track==='alevel'?alevel:practice)(req,res); return result;
+    await (query.track==='alevel'?alevel:query.school?school:practice)(req,res); return result;
   }
   return {rows,requests,members,call,setRPC(fn){rpcReply=fn;},setSource(active){sourceActive=active;},setMissing(value){schemaMissing=value;},restore(){
     globalThis.fetch=originalFetch; console.error=originalError;

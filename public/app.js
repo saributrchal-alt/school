@@ -1,9 +1,9 @@
-import { createPractice } from './practice.js';
+import { createPractice, learningLabels, topicLearningBadge, recordLearningProgress } from './practice.js';
 
 const main = document.querySelector('#main');
 const account = document.querySelector('#account');
 const dialog = document.querySelector('#detail');
-const labels = { not_started:'ยังไม่เริ่ม', in_progress:'กำลังเรียน', review:'ทบทวน', completed:'เรียนแล้ว' };
+const labels = learningLabels;
 const learningAreas = [
   {
     id:'primary',
@@ -329,13 +329,13 @@ async function renderALevelCatalog(subjectId) {
   const source = alevelData.sources.find(x=>x.subject_id===subjectId);
   const chapters = alevelData.chapters.filter(x=>x.subject_id===subjectId);
   const topics = alevelData.topics.filter(x=>x.subject_id===subjectId);
-  const progress = new Map(alevelData.progress.map(p=>[p.topic_id,p.status]));
+  const progress = new Map((alevelData.viewedProgress || alevelData.progress).map(p=>[p.topic_id,p.status]));
   const completed = topics.filter(t=>progress.get(t.topic_id)==='completed').length;
   main.innerHTML = `<section id="practice-dashboard" class="practice-dashboard" aria-label="ผลการฝึก A-Level ของฉัน"></section>
   <section class="hero"><button type="button" class="hero-back" data-university-exam="alevel">← A-Level</button><span class="eyebrow">A-LEVEL · ${esc(String(s.subject_code))}</span><h1>${esc(s.subject_name_th)}</h1><p>ข้อสอบจริง พ.ศ. 2568 · ${esc(String(source?.question_count || s.source_question_count_2568))} ข้อ · ${esc(String(s.duration_minutes))} นาที<br>ชุด 1 ฝึกตาม Topic · ชุด 2 ทำข้อสอบจริงเต็มวิชาตามลำดับต้นฉบับ</p>${data.member.can_teach||data.member.can_manage?'<button type="button" class="secondary hero-exam-button" data-open-real-exam>จัดการสอบจริง</button>':''}</section>
   <section class="stats"><div class="stat"><strong>${chapters.length}</strong><span>หมวด</span></div><div class="stat"><strong>${topics.length}</strong><span>หัวข้อ</span></div><div class="stat"><strong>${s.imported_question_count || 0}</strong><span>ข้อที่นำเข้ารายข้อแล้ว</span></div><div class="stat"><strong>${completed}</strong><span>หัวข้อที่เรียนแล้ว</span></div></section>
   <section><div class="section-title"><div><h2>รายการหัวข้อเรียน</h2><p>ดูข้อสอบจริงรายหัวข้อ หรือเลือกชุด 1 เพื่อฝึกตาม Topic และชุด 2 เพื่อทำข้อสอบจริงทั้งวิชา ส่งให้ผู้ดูแลตรวจได้</p></div></div>
-  <div class="search-row"><input type="search" id="alevel-search" aria-label="ค้นหาหัวข้อ A-Level" placeholder="ค้นหาชื่อหัวข้อ หรือรหัสหัวข้อ…"><select id="alevel-status-filter" aria-label="กรองสถานะ A-Level"><option value="all">ทุกสถานะ</option>${Object.entries(labels).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div>
+  <div id="learning-member-picker" class="learning-member-picker"></div><div class="search-row"><input type="search" id="alevel-search" aria-label="ค้นหาหัวข้อ A-Level" placeholder="ค้นหาชื่อหัวข้อ หรือรหัสหัวข้อ…"><select id="alevel-status-filter" aria-label="กรองสถานะ A-Level"><option value="all">ทุกสถานะ</option>${Object.entries(labels).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div>
   <p class="progress-note" id="alevel-progress-note"></p><div id="alevel-chapters"></div></section>`;
   document.querySelector('#alevel-search').addEventListener('input',e=>{alevelQuery=e.target.value;renderALevelTopics();});
   document.querySelector('#alevel-status-filter').addEventListener('change',e=>{alevelFilter=e.target.value;renderALevelTopics();});
@@ -358,11 +358,13 @@ function renderALevelTopics() {
   const existingChapters = [...root.querySelectorAll('[data-alevel-chapter]')];
   const openChapters = new Set(existingChapters.filter(c=>c.open).map(c=>c.dataset.alevelChapter));
   const hadChapters = existingChapters.length > 0;
-  const progress = new Map(alevelData.progress.map(p=>[p.topic_id,p.status]));
+  const progress = new Map((alevelData.viewedProgress || alevelData.progress).map(p=>[p.topic_id,p.status]));
   const allTopics = alevelData.topics.filter(t=>t.subject_id===alevelSubject);
   const completed = allTopics.filter(t=>progress.get(t.topic_id)==='completed').length;
   const note = document.querySelector('#alevel-progress-note');
-  if (note) note.innerHTML = `บันทึกว่าเรียนแล้ว <strong>${completed} / ${allTopics.length}</strong> หัวข้อ · ข้อสอบจริง A-Level 2568 ครบแล้ว · ชุด 1 ฝึกครบทุก Topic · ชุด 2 เป็นข้อสอบจริงเต็มวิชา`;
+  if (note) note.innerHTML = !alevelData.viewedStudent && !data.member.can_study ? 'เลือกนักเรียนด้านบนเพื่อดูสถานะล่าสุดประจำหัวข้อ' : `${esc(alevelData.viewedStudent?.member_name || data.member.member_name)} · เรียนแล้ว <strong>${completed} / ${allTopics.length}</strong> หัวข้อ · นักเรียนเป็นผู้บันทึกสถานะ`;
+  const completedStat = main.querySelector('.stats .stat:last-child strong');
+  if (completedStat) completedStat.textContent = !alevelData.viewedStudent && !data.member.can_study ? '—' : String(completed);
   const search = alevelQuery.trim().toLocaleLowerCase('th');
   const chapters = alevelData.chapters.filter(c=>c.subject_id===alevelSubject).map(c=>{
     const topics = allTopics.filter(t=>t.chapter_id===c.chapter_id
@@ -373,13 +375,13 @@ function renderALevelTopics() {
   root.innerHTML = chapters.length ? chapters.map((c,index)=>`<details class="chapter" data-alevel-chapter="${esc(c.chapter_id)}" ${search||openChapters.has(c.chapter_id)||(!hadChapters&&index===0)?'open':''}><summary><span class="chapter-code">${esc(c.chapter_id)}</span><span class="chapter-name">${esc(c.chapter_name_th)}</span><small>${c.topics.length} หัวข้อ</small></summary>${c.topics.map(t=>{
     const status = progress.get(t.topic_id)||'not_started';
     const q = Number(t.question_count || 0);
-    return `<article class="topic"><div><div class="topic-head"><span class="topic-code">${esc(t.topic_id)}</span><span class="topic-name">${esc(t.topic_name_th)}</span></div><div class="topic-meta">${q ? `นำเข้าข้อสอบจริงแล้ว ${q} ข้อ <button type="button" data-alevel-topic="${esc(t.topic_id)}">ดูข้อสอบจริง</button>` : 'ยังไม่มีข้อสอบจริงในหัวข้อนี้'}</div>${practice?.topicAction(t)||''}</div>${data.member.can_study?`<select aria-label="สถานะ ${esc(t.topic_name_th)}" data-alevel-progress="${esc(t.topic_id)}">${Object.entries(labels).map(([k,v])=>`<option value="${k}" ${k===status?'selected':''}>${v}</option>`).join('')}</select>`:`<span class="status">${labels[status]}</span>`}</article>`;
+    return `<article class="topic"><div><div class="topic-head"><span class="topic-code">${esc(t.topic_id)}</span><span class="topic-name">${esc(t.topic_name_th)}</span>${topicLearningBadge(alevelData, t.topic_id)}</div><div class="topic-meta">${q ? `นำเข้าข้อสอบจริงแล้ว ${q} ข้อ <button type="button" data-alevel-topic="${esc(t.topic_id)}">ดูข้อสอบจริง</button>` : 'ยังไม่มีข้อสอบจริงในหัวข้อนี้'}</div>${practice?.topicAction(t)||''}</div>${data.member.can_study&&(!alevelData.viewedStudent||alevelData.viewedStudent.member_id===data.member.member_id)?`<select aria-label="สถานะ ${esc(t.topic_name_th)}" data-alevel-progress="${esc(t.topic_id)}">${Object.entries(labels).map(([k,v])=>`<option value="${k}" ${k===status?'selected':''}>${v}</option>`).join('')}</select>`:''}</article>`;
   }).join('')}</details>`).join('') : '<div class="empty">ไม่พบหัวข้อที่ตรงกับคำค้นหรือสถานะที่เลือก</div>';
 }
 
 async function showALevelQuestions(id) {
   const topic = alevelData?.topics.find(t=>t.topic_id===id);
-  document.querySelector('#detail-title').textContent = topic?.topic_name_th || 'ข้อสอบ A-Level';
+  document.querySelector('#detail-title').innerHTML = `<span>${esc(topic?.topic_name_th || 'ข้อสอบ A-Level')}</span> ${topicLearningBadge(alevelData, id)}`;
   document.querySelector('#detail-body').textContent = 'กำลังเปิดรายการ…';
   dialog.showModal();
   try {
@@ -402,7 +404,7 @@ function renderCatalogShell(areaTitle, levelLabel) {
   main.innerHTML = `<section id="practice-dashboard" class="practice-dashboard" aria-label="ผลการฝึกของฉัน"></section>
   <section class="hero"><button type="button" class="hero-back" data-back-area>← ${esc(areaTitle)}</button><span class="eyebrow">YOUR LEARNING SPACE</span><h1>${esc(levelLabel)}</h1><p>เลือกวิชา สำรวจหัวข้อ แล้วค่อย ๆ บันทึกการเรียนของตนเอง<br>รายการเนื้อหาจากข้อสอบเตรียมทหารในส่วนของกองทัพบก พ.ศ. 2562–2563</p>${data.member.can_teach||data.member.can_manage?'<button type="button" class="secondary hero-exam-button" data-open-real-exam>จัดการสอบจริง</button>':''}</section>
   <section class="stats" aria-label="ภาพรวมรายการเนื้อหา"><div class="stat"><strong>${data.subjects.length}</strong><span>วิชา</span></div><div class="stat"><strong>${data.chapters.length}</strong><span>หมวด</span></div><div class="stat"><strong>${data.topics.length}</strong><span>หัวข้อ</span></div><div class="stat"><strong>${data.question_count}</strong><span>ข้อในต้นฉบับ</span></div></section>
-  <section><div class="section-title"><div><h2>รายการหัวข้อเรียน</h2><p>เริ่มจากวิชาที่สนใจ แล้วเลือกหมวดหรือค้นหาหัวข้อ</p></div>${data.member.can_manage?'<button type="button" class="secondary" id="members">สมาชิก School</button>':''}</div><nav class="tabs" aria-label="เลือกวิชา" id="subjects"></nav><div class="search-row"><input type="search" id="search" aria-label="ค้นหาหัวข้อเรียน" placeholder="ค้นหาชื่อหัวข้อ หรือรหัสหัวข้อ…"><select id="status-filter" aria-label="กรองสถานะการเรียน"><option value="all">ทุกสถานะ</option>${Object.entries(labels).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div><p class="progress-note" id="progress-note"></p><div id="chapters"></div></section>`;
+  <section><div class="section-title"><div><h2>รายการหัวข้อเรียน</h2><p>เริ่มจากวิชาที่สนใจ แล้วเลือกหมวดหรือค้นหาหัวข้อ</p></div>${data.member.can_manage?'<button type="button" class="secondary" id="members">สมาชิก School</button>':''}</div><nav class="tabs" aria-label="เลือกวิชา" id="subjects"></nav><div id="learning-member-picker" class="learning-member-picker"></div><div class="search-row"><input type="search" id="search" aria-label="ค้นหาหัวข้อเรียน" placeholder="ค้นหาชื่อหัวข้อ หรือรหัสหัวข้อ…"><select id="status-filter" aria-label="กรองสถานะการเรียน"><option value="all">ทุกสถานะ</option>${Object.entries(labels).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div><p class="progress-note" id="progress-note"></p><div id="chapters"></div></section>`;
   document.querySelector('#search').addEventListener('input',event=>{query=event.target.value;renderCatalog();});
   document.querySelector('#status-filter').addEventListener('change',event=>{filter=event.target.value;renderCatalog();});
   document.querySelector('#members')?.addEventListener('click',showMembers);
@@ -418,9 +420,9 @@ function renderCatalog() {
   const openChapters = new Set(existingChapters.filter(c=>c.open).map(c=>c.dataset.chapter));
   const hadSubject = existingChapters.some(c=>c.dataset.chapter.startsWith(subject+"-"));
   document.querySelector('#subjects').innerHTML = data.subjects.map(s=>`<button type="button" class="tab ${s.subject_id===subject?'active':''}" aria-pressed="${s.subject_id===subject}" data-subject="${esc(s.subject_id)}">${esc(s.subject_name_th)}</button>`).join('');
-  const progress = new Map(data.progress.map(p=>[p.topic_id,p.status]));
-  const completed = data.progress.filter(p=>p.status==='completed').length;
-  document.querySelector('#progress-note').innerHTML = `บันทึกว่าเรียนแล้ว <strong>${completed} / ${data.topics.length}</strong> หัวข้อ · สถานะนี้เป็นบันทึกของตนเอง`;
+  const progress = new Map((data.viewedProgress || data.progress).map(p=>[p.topic_id,p.status]));
+  const completed = (data.viewedProgress || data.progress).filter(p=>p.status==='completed').length;
+  document.querySelector('#progress-note').innerHTML = !data.viewedStudent && !data.member.can_study ? 'เลือกนักเรียนด้านบนเพื่อดูสถานะล่าสุดประจำหัวข้อ' : `${esc(data.viewedStudent?.member_name || data.member.member_name)} · เรียนแล้ว <strong>${completed} / ${data.topics.length}</strong> หัวข้อ · นักเรียนเป็นผู้บันทึกสถานะ`;
   const search = query.trim().toLocaleLowerCase('th');
   const chapters = data.chapters.filter(c=>c.subject_id===subject).map(c=>{
     const topics = data.topics.filter(t=>t.chapter_id===c.chapter_id && (!search || `${t.topic_id} ${t.topic_name_th} ${c.chapter_name_th}`.toLocaleLowerCase('th').includes(search)) && (filter==='all'||(progress.get(t.topic_id)||'not_started')===filter));
@@ -428,7 +430,7 @@ function renderCatalog() {
   }).filter(c=>c.topics.length);
   chaptersRoot.innerHTML = chapters.length ? chapters.map((c,index)=>`<details class="chapter" data-chapter="${esc(c.chapter_id)}" ${search||openChapters.has(c.chapter_id)||(!hadSubject&&index===0)?'open':''}><summary><span class="chapter-code">${esc(c.chapter_id)}</span><span class="chapter-name">${esc(c.chapter_name_th)}</span><small>${c.topics.length} หัวข้อ</small></summary>${c.topics.map(t=>{
     const status = progress.get(t.topic_id)||'not_started';
-    return `<article class="topic"><div><div class="topic-head"><span class="topic-code">${esc(t.topic_id)}</span><span class="topic-name">${esc(t.topic_name_th)}</span></div><div class="topic-meta">${t.counts.total?`พบเป็นหัวข้อหลัก ${t.counts.total} ข้อ · 2562: ${t.counts.year_2562} · 2563: ${t.counts.year_2563}<button type="button" data-topic="${esc(t.topic_id)}">ดูหน้าอ้างอิง</button>`:'ไม่พบเป็นหัวข้อหลักในสองชุดนี้'}</div>${practice?.topicAction(t)||''}</div>${data.member.can_study?`<select aria-label="สถานะ ${esc(t.topic_name_th)}" data-progress="${esc(t.topic_id)}">${Object.entries(labels).map(([k,v])=>`<option value="${k}" ${k===status?'selected':''}>${v}</option>`).join('')}</select>`:`<span class="status">${labels[status]}</span>`}</article>`;
+    return `<article class="topic"><div><div class="topic-head"><span class="topic-code">${esc(t.topic_id)}</span><span class="topic-name">${esc(t.topic_name_th)}</span>${topicLearningBadge(data, t.topic_id)}</div><div class="topic-meta">${t.counts.total?`พบเป็นหัวข้อหลัก ${t.counts.total} ข้อ · 2562: ${t.counts.year_2562} · 2563: ${t.counts.year_2563}<button type="button" data-topic="${esc(t.topic_id)}">ดูหน้าอ้างอิง</button>`:'ไม่พบเป็นหัวข้อหลักในสองชุดนี้'}</div>${practice?.topicAction(t)||''}</div>${data.member.can_study&&(!data.viewedStudent||data.viewedStudent.member_id===data.member.member_id)?`<select aria-label="สถานะ ${esc(t.topic_name_th)}" data-progress="${esc(t.topic_id)}">${Object.entries(labels).map(([k,v])=>`<option value="${k}" ${k===status?'selected':''}>${v}</option>`).join('')}</select>`:''}</article>`;
   }).join('')}</details>`).join('') : '<div class="empty">ไม่พบหัวข้อที่ตรงกับคำค้นหรือสถานะที่เลือก</div>';
 }
 
@@ -459,30 +461,33 @@ main.addEventListener('change',async event=>{
   const alevelSelect=event.target.closest('[data-alevel-progress]');
   if(alevelSelect){
     const id=alevelSelect.dataset.alevelProgress, status=alevelSelect.value;
-    alevelSelect.disabled=true;
+    main.querySelectorAll('[data-alevel-progress]').forEach(el=>{el.disabled=true;});
+    practice?.beginLearningSave();
     try{
-      await api('/api/alevel?route=progress',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic_id:id,status})});
-      const existing=alevelData?.progress.find(p=>p.topic_id===id);
-      if(existing) existing.status=status; else alevelData?.progress.push({topic_id:id,status});
+      await recordLearningProgress(alevelData, api, '/api/alevel', id, status);
+      if(alevelData.viewedStudent?.member_id===data.member.member_id) alevelData.viewedProgress=alevelData.progress;
       renderALevelTopics();
       notice('บันทึกสถานะ A-Level แล้ว');
-    }catch(error){notice(error.message);alevelSelect.disabled=false;}
+    }catch(error){notice(error.message);renderALevelTopics();}
+    finally{practice?.learningChanged();}
     return;
   }
   const select=event.target.closest('[data-progress]'); if(!select)return;
   const id=select.dataset.progress, status=select.value;
-  select.disabled=true;
+  main.querySelectorAll('[data-progress]').forEach(el=>{el.disabled=true;});
+  practice?.beginLearningSave();
   try {
-    await api('/api/school?route=progress',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic_id:id,status})});
-    const existing=data.progress.find(p=>p.topic_id===id); if(existing)existing.status=status;else data.progress.push({topic_id:id,status});
+    await recordLearningProgress(data, api, '/api/school', id, status);
+    if(data.viewedStudent?.member_id===data.member.member_id) data.viewedProgress=data.progress;
     notice('บันทึกการเรียนแล้ว');
   } catch(error){notice(error.message);}
+  finally{practice?.learningChanged();}
   renderCatalog();
 });
 
 async function showQuestions(id) {
   const topic=data.topics.find(t=>t.topic_id===id);
-  document.querySelector('#detail-title').textContent=topic.topic_name_th;
+  document.querySelector('#detail-title').innerHTML=`<span>${esc(topic.topic_name_th)}</span> ${topicLearningBadge(data, id)}`;
   document.querySelector('#detail-body').textContent='กำลังเปิดรายการ…';
   dialog.showModal();
   try {

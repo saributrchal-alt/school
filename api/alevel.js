@@ -1,5 +1,5 @@
 import { examResults } from '../lib/practice.js';
-import { body, requireMember, sameOrigin, fail, sendError, understanding, saveUnderstanding } from '../lib/school.js';
+import { body, requireMember, sameOrigin, fail, sendError, understanding, saveUnderstanding, topicProgress, learningStudents } from '../lib/school.js';
 import { alevelExamReview, releaseALevelExamResults, alevelCatalog, alevelQuestions, saveALevelProgress, alevelPracticeSummary, alevelPracticeSubject, alevelStudentResults, alevelReviewQueue, alevelPracticeTransaction, alevelExamSessions, alevelExamMembers, saveALevelExamSession, saveALevelExamMembers, deleteALevelExamSession, alevelExamOpen, alevelExamStart, alevelExamSave, alevelExamSubmit } from '../lib/alevel.js';
 
 export default async function handler(req, res) {
@@ -9,6 +9,8 @@ export default async function handler(req, res) {
     const route = req.query?.route || 'catalog';
 
     if (req.method === 'GET') {
+      if (route === 'progress') return res.status(200).json({ success: true, ...await topicProgress(member, req.query, 'alevel') });
+      if (route === 'learning-results') return res.status(200).json({ success: true, ...await learningStudents(member, 'alevel') });
       if (route === 'understanding') return res.status(200).json({ success: true, ...await understanding(member, req.query, 'alevel') });
       if (route === 'catalog') {
         try {

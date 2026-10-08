@@ -1,4 +1,4 @@
-import { body, db, verifyBridge, memberId, findMember, requireMember, sameOrigin, fail, sendError, bridgeHealth, MEMBER_FIELDS } from '../lib/school.js';
+import { body, db, verifyBridge, memberId, findMember, requireMember, sameOrigin, fail, sendError, bridgeHealth, MEMBER_FIELDS, topicProgress, learningStudents, saveTopicProgress } from '../lib/school.js';
 
 async function importMember(req, res) {
   const p = body(req);
@@ -62,16 +62,11 @@ export default async function handler(req, res) {
     const member = await requireMember(req);
     if (route === 'progress' && req.method === 'POST') {
       sameOrigin(req);
-      if (!member.can_study) fail('บัญชีนี้ไม่มีสิทธิ์บันทึกการเรียน', 403);
-      const p = body(req);
-      if (!/^[A-Z]+-\d{2}\.\d{2}$/.test(p.topic_id || '') || !['not_started','in_progress','review','completed'].includes(p.status)) fail('ข้อมูลการเรียนไม่ถูกต้อง');
-      if (!(await db(`exam_topics?topic_id=eq.${encodeURIComponent(p.topic_id)}&select=topic_id&limit=1`))[0]) fail('ไม่พบหัวข้อเรียน', 404);
-      const rows = await db('school_topic_progress?on_conflict=member_id,topic_id', 'POST', {
-        member_id: member.member_id, topic_id: p.topic_id, status: p.status, updated_at: new Date().toISOString()
-      }, 'resolution=merge-duplicates,return=representation');
-      return res.status(200).json({ success: true, item: rows[0] });
+      return res.status(200).json({ success: true, item: await saveTopicProgress(member, body(req)) });
     }
     if (req.method !== 'GET') fail('Method not allowed', 405);
+    if (route === 'progress') return res.status(200).json({ success: true, ...await topicProgress(member, req.query) });
+    if (route === 'learning-results') return res.status(200).json({ success: true, ...await learningStudents(member) });
     if (route === 'members') {
       if (!member.can_manage) fail('เฉพาะผู้ดูแล School', 403);
       return res.status(200).json({ success: true, members: await db(`school_members?select=${MEMBER_FIELDS}&order=assigned_at.desc&limit=1000`) });
@@ -88,7 +83,7 @@ export default async function handler(req, res) {
       db('exam_chapters?select=*&order=sort_order.asc&limit=1000'),
       db('exam_topics?select=*&order=sort_order.asc&limit=1000'),
       db('exam_questions?source_id=eq.EX62_63&select=primary_topic_id,year_be&limit=1000'),
-      db(`school_topic_progress?member_id=eq.${encodeURIComponent(member.member_id)}&select=topic_id,status&limit=1000`)
+      db(`school_topic_progress?member_id=eq.${encodeURIComponent(member.member_id)}&select=topic_id,status,updated_at&limit=1000`)
     ]);
     const counts = {};
     for (const q of questions) { const t = counts[q.primary_topic_id] ||= { total: 0, year_2562: 0, year_2563: 0 }; t.total++; if (q.year_be === 2562) t.year_2562++; if (q.year_be === 2563) t.year_2563++; }
