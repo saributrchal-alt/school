@@ -21,7 +21,7 @@ function fixture() {
   ];
   const rows = { school_members:members, school_practice_sets:[{set_no:1,label:'ชุดทดสอบ',is_active:true}],
     school_practice_questions:[1,2].map(i => ({question_id:`P01-ENG-01.0${i}`,topic_id:`ENG-01.0${i}`,set_no:1,subject_id:'ENG',sort_order:i,prompt:'Synthetic question',choices:['A','B','C','D','E'],answer_key:2,explanation:'teacher-only explanation',reasoning:'teacher-only reasoning',source_question_ids:[]})),
-    school_practice_attempts:[], school_practice_answers:[] };
+    school_practice_attempts:[], school_practice_answers:[], school_question_understanding:[] };
   const requests = []; let sourceActive = true, schemaMissing = false;
   let rpcReply = () => { throw new Error('Unconfigured fixture RPC'); };
   globalThis.fetch = async (input, options={}) => {
@@ -36,6 +36,7 @@ function fixture() {
     requests.push({url,method,payload:options.body ? JSON.parse(options.body) : null});
     if (url.pathname.includes('/rpc/')) return new Response(JSON.stringify(rpcReply(url.pathname.split('/').pop(),JSON.parse(options.body))));
     const table = url.pathname.split('/').pop();
+    if (table === 'school_question_understanding' && !rows[table]) return new Response('{"code":"PGRST205"}',{status:404});
     if (schemaMissing && table.startsWith('school_practice_')) return new Response('{"code":"PGRST205"}',{status:404});
     assert.ok(rows[table],table);
     if(method==='PATCH'){
@@ -456,5 +457,85 @@ test('report rendering links real exams from both entry points and keeps practic
       assert.match(body.querySelector('#practice-results-list').innerHTML,/data-student-id/);
       assert.equal(f.requests.every(r=>r.method==='GET'),true);
     }finally{controller?.destroy();globalThis.document=previousDocument;f.restore();}
+  });
+});
+
+test('understanding flags belong to the student and stay independent of results', async t => {
+  for (const track of ['military','alevel']) await t.test(track, async t => {
+    const f = realExamFixture(track), practiceId = crypto.randomUUID(), otherId = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const own = {track,mode:'practice',attempt_id:practiceId,question_id:'synthetic-exam-1',member_id:'student',status:'needs_help',set_no:2,subject_id:track==='alevel'?'AL61':'ENG',topic_id:track==='alevel'?'AL61-01.01':'ENG-01.01',question_no:1,updated_at:now,first_reviewed_at:now};
+    f.rows.school_question_understanding = [own,{...own,attempt_id:otherId,member_id:'manager',status:'understood'},{...own,track:track==='alevel'?'military':'alevel',attempt_id:crypto.randomUUID()}];
+    f.rows[f.prefix+'_practice_attempts'] = [{attempt_id:practiceId,member_id:'student',set_no:2,subject_id:own.subject_id,status:'graded',correct_count:1,total_count:4}];
+    try {
+      await t.test('students see only their track and their own flags without keys or scores', async () => {
+        const r = await f.call('understanding','student',undefined,{track,member_id:'manager',can_teach:true});
+        assert.equal(r.status,200); assert.equal(r.body.ready,true); assert.equal(r.body.can_review,false);
+        assert.equal(r.body.items.length,1); assert.equal(r.body.items[0].member_name,'นักเรียนสมมติ');
+        assert.doesNotMatch(JSON.stringify(r.body),/answer_key|is_correct|correct_count|Synthetic teacher/);
+        assert.equal((await f.call('understanding','student',undefined,{track,scope:'all'})).status,403);
+        assert.equal((await f.call('understanding',null,undefined,{track})).status,401);
+      });
+      await t.test('teacher sees the correct names and states but cannot write for a student', async () => {
+        const r = await f.call('understanding','teacher',undefined,{track,scope:'all'});
+        assert.equal(r.status,200);assert.equal(r.body.can_review,true);assert.equal(r.body.items.length,2);
+        assert.equal(r.body.items.find(x=>x.member_id==='manager').member_name,'ผู้ดูแลสมมติ');
+        assert.equal((await f.call('understanding-save','teacher',{...own},{track})).status,403);
+        assert.equal((await f.call('understanding','teacher',undefined,{track,scope:'mine'})).body.items.length,0);
+      });
+      await t.test('attempt flags validate ownership and completed status on reads', async () => {
+        const query = {track,mode:'practice',attempt_id:practiceId};
+        assert.equal((await f.call('understanding','student',undefined,query)).body.items.length,1);
+        f.rows[f.prefix+'_practice_attempts'][0].member_id='manager';
+        assert.equal((await f.call('understanding','student',undefined,query)).status,404);
+        assert.equal((await f.call('understanding','teacher',undefined,query)).status,200);
+        f.rows[f.prefix+'_practice_attempts'][0].member_id='student';
+        f.rows[f.prefix+'_practice_attempts'][0].status='draft';
+        assert.equal((await f.call('understanding','student',undefined,query)).status,409);
+        f.rows[f.prefix+'_practice_attempts'][0].status='graded';
+        assert.equal((await f.call('understanding','student',undefined,{...query,mode:'invalid'})).status,400);
+        assert.equal((await f.call('understanding','student',undefined,{...query,attempt_id:'bad'})).status,400);
+      });
+      await t.test('saving passes cookie identity to an ownership-checking transaction', async () => {
+        f.setRPC((name,p)=>{
+          assert.equal(name,'school_understanding_save');
+          assert.deepEqual(p,{p_member_id:'student',p_track:track,p_mode:'practice',p_attempt_id:practiceId,p_question_id:own.question_id,p_status:'understood'});
+          own.status=p.p_status;return {...own};
+        });
+        const before = structuredClone(f.rows[f.prefix+'_practice_attempts']);
+        const r = await f.call('understanding-save','student',{...own,status:'understood',member_id:'manager',can_manage:true},{track});
+        assert.equal(r.status,200); assert.equal(r.body.item.status,'understood');
+        assert.equal((await f.call('understanding','teacher',undefined,{track})).body.items.find(x=>x.attempt_id===practiceId).status,'understood');
+        assert.deepEqual(f.rows[f.prefix+'_practice_attempts'],before);
+        for (const patch of [{status:'unknown'},{mode:'unknown'},{question_id:'x&select=*'},{attempt_id:'bad'}]) {
+          assert.equal((await f.call('understanding-save','student',{...own,...patch},{track})).status,400);
+        }
+        assert.equal((await f.call('understanding-save','student',own,{track,origin:'https://unrelated.invalid'})).status,403);
+      });
+      await t.test('schema not installed leaves scores and solutions available', async () => {
+        delete f.rows.school_question_understanding;
+        const r=await f.call('understanding','student',undefined,{track});
+        assert.equal(r.status,200);assert.deepEqual(r.body,{success:true,ready:false,setup_required:true,items:[]});
+        assert.equal((await f.call('exam-review','teacher',undefined,{track,exam_attempt_id:f.submittedId})).status,200);
+        f.rows.school_question_understanding=[own];
+      });
+      await t.test('student can revisit the specific earlier exam and cannot select another student', async () => {
+        f.paper.result_policy='immediate';f.paper.answer_policy='with_result';
+        const query={track,session_id:f.id,review_attempt_id:f.submittedId};
+        const r=await f.call('exam-open','student',undefined,query);
+        assert.equal(r.status,200);assert.equal(r.body.attempt.exam_attempt_id,f.submittedId);assert.equal(r.body.can_review,true);
+        f.rows[f.prefix+'_exam_attempts'].find(x=>x.exam_attempt_id===f.submittedId).member_id='manager';
+        assert.notEqual((await f.call('exam-open','student',undefined,query)).status,200);
+        assert.equal((await f.call('exam-open','student',undefined,{...query,review_attempt_id:'bad'})).status,400);
+      });
+      await t.test('large feedback lists paginate and current revocations apply', async () => {
+        f.rows.school_question_understanding.push(...Array.from({length:1001},(_,i)=>({...own,question_id:'synthetic-feedback-'+i,status:'needs_help'})));
+        const r=await f.call('understanding','teacher',undefined,{track});
+        assert.equal(r.body.items.length,1002);assert.ok(f.requests.some(x=>x.url.pathname.endsWith('school_question_understanding')&&x.url.searchParams.get('offset')==='1000'));
+        f.members.find(x=>x.member_id==='teacher').can_teach=false;
+        assert.equal((await f.call('understanding','teacher',undefined,{track,scope:'all'})).status,403);
+        f.setSource(false);assert.equal((await f.call('understanding','student',undefined,{track})).status,403);
+      });
+    } finally { f.restore(); }
   });
 });

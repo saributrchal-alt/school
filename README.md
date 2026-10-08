@@ -29,7 +29,7 @@ The seeded content is a topic catalog and question references from the scanned s
 
 `npm test` exercises the sender, receiver, handoff, current permissions, stale/forged requests, revocation, source membership cancellation and student answer-key access using an in-memory REST fixture. No real member records are created by tests.
 
-There are three Vercel Node functions (`api/session.js`, `api/school.js`, `api/practice.js`). The project has ten JavaScript files in total, including libraries, browser modules and tests.
+There are four Vercel Node functions (`api/session.js`, `api/school.js`, `api/practice.js`, `api/alevel.js`). The project has twelve JavaScript files in total, including libraries, browser modules and tests.
 
 ## Practice sets
 
@@ -56,3 +56,13 @@ Opaque Supabase secret keys use the `apikey` header. Legacy service-role JWTs ad
 `SUPABASE_URL` can be the Project URL or a copied HTTPS Data API URL ending in `/rest/v1` (or a table path below it). The server normalizes that path and removes copied query parameters before adding its own table route, preventing duplicated `/rest/v1` paths and `PGRST125` errors.
 
 Temple membership checks and member-portal links use `watt.nathoeng.com`, the domain attached to the `nathoeng-temple` project. The apex `nathoeng.com` redirects to a different site and must not be used for this server callback. Central media storage remains `media.nathoeng.com`; member transfer itself contains no media uploads.
+
+## Understanding after reviewing a solution
+
+Run `supabase/School_Question_Understanding.sql` once in the existing SCHOOL project's SQL Editor. The migration is safe to rerun. It adds a separate feedback table and an ownership-checking RPC; existing questions, answers and grades are preserved. Before installation, existing scores and solutions still open, while feedback is shown as awaiting setup.
+
+For both military preparation and A-Level, students can select **เข้าใจแล้ว** or **ยังไม่เข้าใจ** below a released solution, in graded practice sets and submitted real exams. Unmarked questions remain unmarked; correctness never selects a status automatically. Students can change their own status later. Exam feedback respects the session's answer release policy, including scheduled release; publishing a score alone does not permit feedback on an unreleased solution.
+
+The student dashboard links **ทบทวนข้อที่ยังไม่เข้าใจ**. Teachers and managers instead see **ติดตามความเข้าใจ**, with student names, question/topic references, practice or exam context, timestamps, search, status filters and links to read the specific question and solution. Teachers read the student's self-report and cannot change it for them. An earlier real-exam attempt is opened by its owned ID, so retaking an exam does not replace the context of an earlier flag.
+
+Feedback endpoints (`understanding`, `understanding-save`) use the existing School cookie and current membership checks. Only the backend can read feedback; writes use `school_understanding_save`, which rechecks active study permission, attempt ownership, completed status, released answers and question membership. The API tests cover isolation between students and tracks, roles, current revocations, pagination, CSRF, unavailable schema and earlier exam review using synthetic data.

@@ -1,4 +1,4 @@
-import { body, requireMember, sameOrigin, fail, sendError } from '../lib/school.js';
+import { body, requireMember, sameOrigin, fail, sendError, understanding, saveUnderstanding } from '../lib/school.js';
 import { examResults, examReview, releaseExamResults, summary, subject, reviewQueue, studentResults, transaction, examSessions, examMembers, saveExamSession, saveExamMembers, deleteExamSession, examOpen, examStart, examSave, examSubmit } from '../lib/practice.js';
 
 export default async function handler(req, res) {
@@ -7,6 +7,7 @@ export default async function handler(req, res) {
     const member = await requireMember(req);
     const route = req.query?.route || 'summary';
     if (req.method === 'GET') {
+      if (route === 'understanding') return res.status(200).json({ success: true, ...await understanding(member, req.query) });
       if (route === 'summary') {
         try { return res.status(200).json({ success: true, ...await summary(member) }); }
         catch (error) {
@@ -31,6 +32,7 @@ export default async function handler(req, res) {
     }
     if (req.method !== 'POST') fail('Method not allowed', 405);
     sameOrigin(req);
+    if (route === 'understanding-save') return res.status(200).json({ success: true, item: await saveUnderstanding(member, body(req)) });
     if (['start','save','submit','grade'].includes(route)) return res.status(200).json({ success:true, item:await transaction(route,member,body(req)) });
     if (route === 'exam-release-results') return res.status(200).json({ success:true, item:await releaseExamResults(member,body(req)) });
     if (route === 'exam-session-save') return res.status(200).json({ success:true, item:await saveExamSession(member,body(req)) });
