@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import practice from '../api/practice.js';
+import alevel from '../api/alevel.js';
 import { COOKIE, signToken } from '../lib/school.js';
 
 // Synthetic content only. The real set and its answer bank must stay out of this public repo.
@@ -36,7 +37,13 @@ function fixture() {
     if (url.pathname.includes('/rpc/')) return new Response(JSON.stringify(rpcReply(url.pathname.split('/').pop(),JSON.parse(options.body))));
     const table = url.pathname.split('/').pop();
     if (schemaMissing && table.startsWith('school_practice_')) return new Response('{"code":"PGRST205"}',{status:404});
-    assert.equal(method,'GET'); assert.ok(rows[table],table);
+    assert.ok(rows[table],table);
+    if(method==='PATCH'){
+      const row=rows[table].find(r=>r.session_id===url.searchParams.get('session_id').slice(3));
+      Object.assign(row,JSON.parse(options.body));
+      return new Response(JSON.stringify([row]));
+    }
+    assert.equal(method,'GET');
     const reserved = new Set(['select','order','limit','offset']);
     let result = rows[table].filter(row => [...url.searchParams].every(([key,value]) => {
       if (reserved.has(key)) return true;
@@ -64,7 +71,7 @@ function fixture() {
     const res = {setHeader(k,v){result.headers[k]=v;},status(n){result.status=n;return this;},json(value){result.body=value;return this;}};
     if (query.origin) req.headers.origin=query.origin;
     if (query.method) req.method=query.method;
-    await practice(req,res); return result;
+    await (query.track==='alevel'?alevel:practice)(req,res); return result;
   }
   return {rows,requests,members,call,setRPC(fn){rpcReply=fn;},setSource(active){sourceActive=active;},setMissing(value){schemaMissing=value;},restore(){
     globalThis.fetch=originalFetch; console.error=originalError;
@@ -258,4 +265,25 @@ test('staff results retain individual history and protect unpublished answers', 
       f.setSource(true);
     });
   } finally { f.restore(); }
+});
+
+
+
+test('real exam release permits teachers across creators and preserves exam conditions',async()=>{
+  const f=fixture(), id=crypto.randomUUID();
+  try {
+    for(const [table,track] of [['school_exam_sessions','military'],['school_alevel_exam_sessions','alevel']]) {
+      const row={session_id:id,title:'Synthetic exam',created_by:'manager',subject_id:'ENG',set_no:2,duration_minutes:240,opens_at:'2026-10-08T05:00:00Z',result_policy:'manual',answer_policy:'manual',answer_release_at:null};
+      f.rows[table]=[row];
+      const denied=await f.call('exam-release-results','student',{session_id:id,can_teach:true,with_answers:true},{track});
+      assert.equal(denied.status,403);assert.equal(row.result_policy,'manual');
+      const result=await f.call('exam-release-results','teacher',{session_id:id,duration_minutes:1,answer_policy:'with_result'},{track});
+      assert.equal(result.status,200);assert.equal(row.result_policy,'immediate');assert.equal(row.answer_policy,'manual');
+      assert.equal(row.duration_minutes,240);assert.equal(row.created_by,'manager');assert.equal(row.updated_by,'teacher');
+      const answers=await f.call('exam-release-results','manager',{session_id:id,with_answers:true},{track});
+      assert.equal(answers.status,200);assert.equal(row.answer_policy,'with_result');assert.equal(row.answer_release_at,null);
+      const missing=await f.call('exam-release-results','teacher',{session_id:crypto.randomUUID()},{track});
+      assert.equal(missing.status,404);
+    }
+  }finally{f.restore();}
 });

@@ -1,5 +1,5 @@
 import { body, requireMember, sameOrigin, fail, sendError } from '../lib/school.js';
-import { alevelCatalog, alevelQuestions, saveALevelProgress, alevelPracticeSummary, alevelPracticeSubject, alevelStudentResults, alevelReviewQueue, alevelPracticeTransaction, alevelExamSessions, alevelExamMembers, saveALevelExamSession, saveALevelExamMembers, deleteALevelExamSession, alevelExamOpen, alevelExamStart, alevelExamSave, alevelExamSubmit } from '../lib/alevel.js';
+import { releaseALevelExamResults, alevelCatalog, alevelQuestions, saveALevelProgress, alevelPracticeSummary, alevelPracticeSubject, alevelStudentResults, alevelReviewQueue, alevelPracticeTransaction, alevelExamSessions, alevelExamMembers, saveALevelExamSession, saveALevelExamMembers, deleteALevelExamSession, alevelExamOpen, alevelExamStart, alevelExamSave, alevelExamSubmit } from '../lib/alevel.js';
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control','no-store');
@@ -51,6 +51,7 @@ export default async function handler(req, res) {
     if (['start','save','submit','grade'].includes(route)) {
       return res.status(200).json({ success:true, item:await alevelPracticeTransaction(route,member,body(req)) });
     }
+    if (route === 'exam-release-results') return res.status(200).json({ success:true, item:await releaseALevelExamResults(member,body(req)) });
     if (route === 'exam-session-save') return res.status(200).json({ success:true, item:await saveALevelExamSession(member,body(req)) });
     if (route === 'exam-members-save') return res.status(200).json({ success:true, item:await saveALevelExamMembers(member,body(req)) });
     if (route === 'exam-session-delete') return res.status(200).json({ success:true, item:await deleteALevelExamSession(member,body(req)) });
@@ -62,3 +63,4 @@ export default async function handler(req, res) {
     return sendError(res,error);
   }
 }
+

@@ -200,8 +200,8 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
               '<div class="exam-session-actions">'+
                 (canEdit?'<button type="button" class="secondary" data-exam-edit="'+esc(s.session_id)+'">แก้ไข</button>':'')+
                 (canEdit&&s.audience_mode==='selected'?'<button type="button" class="secondary" data-exam-members="'+esc(s.session_id)+'">รายชื่อนักเรียน</button>':'')+
-                (canEdit&&Number(s.submitted_count||0)>0&&s.result_policy==='manual'?'<button type="button" class="secondary" data-exam-release-results="'+esc(s.session_id)+'">เปิดคะแนน</button>':'')+
-                (canEdit&&Number(s.submitted_count||0)>0&&s.answer_policy==='manual'?'<button type="button" class="secondary" data-exam-release-answers="'+esc(s.session_id)+'">เปิดคะแนน + เฉลย</button>':'')+
+                (canSeeResults()&&Number(s.submitted_count||0)>0&&s.result_policy==='manual'?'<button type="button" class="secondary" data-exam-release-results="'+esc(s.session_id)+'">เปิดคะแนน</button>':'')+
+                (canSeeResults()&&Number(s.submitted_count||0)>0&&s.answer_policy==='manual'?'<button type="button" class="secondary" data-exam-release-answers="'+esc(s.session_id)+'">เปิดคะแนน + เฉลย</button>':'')+
                 (canEdit&&Number(s.attempt_count||0)===0?'<button type="button" class="secondary danger" data-exam-delete="'+esc(s.session_id)+'">ลบ</button>':'')+
               '</div>'+
             '</article>';
@@ -338,17 +338,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     if(!confirm(message)) return;
     busy=true;
     try{
-      const payload={
-        session_id:s.session_id,title:s.title,instructions:s.instructions||'',subject_id:s.subject_id,
-        set_no:s.set_no,duration_minutes:s.duration_minutes,max_attempts:s.max_attempts,
-        opens_at:s.opens_at,closes_at:s.closes_at,start_policy:s.start_policy,fixed_start_at:s.fixed_start_at,
-        audience_mode:s.audience_mode,allow_submit_early:s.allow_submit_early,require_all_answers:s.require_all_answers,
-        allow_resume:s.allow_resume,is_published:s.is_published,
-        result_policy:'immediate',result_release_at:null,
-        answer_policy:withAnswers?'with_result':s.answer_policy,
-        answer_release_at:withAnswers?null:s.answer_release_at
-      };
-      await post('exam-session-save',payload);
+      await post('exam-release-results',{session_id:s.session_id,with_answers:withAnswers});
       notice(withAnswers?'เปิดคะแนนและเฉลยแล้ว':'เปิดคะแนนแล้ว');
       examSessionsData=await api(apiPath+'?route=exam-sessions');
       renderExamManager();
@@ -1087,3 +1077,4 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     clearInterval(realExamTimer); realExamTimer=null; realExam=null; modal.close(); session = null;
   } };
 }
+
