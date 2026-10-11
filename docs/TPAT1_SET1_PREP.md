@@ -70,3 +70,22 @@ Before any merge, SQL execution or production deploy:
 - [ ] Review TPAT13 custom response/grading.
 - [ ] Stage and test isolated migrations privately.
 - [ ] Import or deploy to production **only when safe and approved**.
+
+## SmartMathPro aptitude review (additional source, 2026-10-11)
+
+Reference: https://www.smartmathpro.com/article/mathtpat1/ — *แจกแนวข้อสอบ TPAT1 เชาวน์ปัญญา และเฉลย พร้อมสอบปี 70*. Article posted 2023, with retrospective descriptions through 2569 and projected 2570 trends; **tutor analysis, not an official กสพท. blueprint**.
+
+The article groups the aptitude paper into four teaching clusters:
+1. **Mathematical word problems:** percentages, ratios, work rate, speed, basic statistics and probability, interpretation before computing.
+2. **Passages, tables and graphs:** extracting relevant data, comparing, calculating and checking claims.
+3. **Logic and statement analysis:** conditional propositions, necessary conclusions and inference from stated definitions.
+4. **Thai verbal aptitude:** reading comprehension, author's purpose, analogies and vocabulary.
+
+Year-to-year observations attributed to the article:
+- 2566: graph/table/diagram questions frequently grouped around a shared stimulus.
+- 2567: more percent/ratio problems; fewer graph questions and no spatial questions reported that year.
+- 2568: largely lower-secondary arithmetic, some sets/probability; logic, spatial series and nets reappeared.
+- 2569: broadly similar to 2568 but with harder preliminary interpretation, more conditions and distractors; Thai verbal comprehension prominent.
+- 2570 predictions are inherently uncertain; article explicitly says no published Thai aptitude blueprint.
+
+**Implications for original authoring:** draft practice questions requiring reading and choosing data before calculation, grouped stimulus items, independently drawn WebP diagrams and charts, and concise step-by-step explanations with alternative shortcuts. Track exact skill and estimated time/item, but do not assert fixed official topic weights. Do not reproduce commercial example questions or their answer keys in the public repository.
