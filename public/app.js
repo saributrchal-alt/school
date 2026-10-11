@@ -52,6 +52,14 @@ const learningAreas = [
     backgroundUrl:'https://media.nathoeng.com/uploads/school/bg/univer.png'
   },
   {
+    id:'university-prep',
+    title:'เตรียมสอบเข้ามหาวิทยาลัย',
+    description:'TGAT1–3 · TPAT1–5 · A-Level',
+    backgroundUrl:'https://media.nathoeng.com/uploads/school/bg/hischool.png',
+    titlePrefix:'เตรียมสอบ',
+    cardTitle:'เข้ามหาวิทยาลัย'
+  },
+  {
     id:'military-prep',
     title:'เรียน เตรียมทหาร',
     description:'เลือกสายการสอบเตรียมทหาร',
@@ -79,6 +87,17 @@ const learningAreas = [
       ['government','บรรจุข้าราชการทั่วไป']
     ]
   }
+];
+
+const universityExams = [
+  {code:'TGAT1', name:'การสื่อสารภาษาอังกฤษ', source:'https://www.mytcas.com/blueprint/tgat1-91/'},
+  {code:'TGAT2', name:'การคิดอย่างมีเหตุผล', source:'https://www.mytcas.com/blueprint/tgat2-92/'},
+  {code:'TGAT3', name:'สมรรถนะการทำงาน', source:'https://www.mytcas.com/blueprint/tgat3-93/'},
+  {code:'TPAT1', name:'วิชาเฉพาะ กสพท (ความถนัดแพทย์)', source:'https://www9.si.mahidol.ac.th/'},
+  {code:'TPAT2', name:'ความถนัดศิลปกรรมศาสตร์', source:'https://www.mytcas.com/blueprint/tpat2-20/'},
+  {code:'TPAT3', name:'ความถนัดด้านวิทยาศาสตร์ เทคโนโลยี และวิศวกรรมศาสตร์', source:'https://www.mytcas.com/blueprint/tpat3-30/'},
+  {code:'TPAT4', name:'ความถนัดทางสถาปัตยกรรม', source:'https://www.mytcas.com/blueprint/tpat4-40/'},
+  {code:'TPAT5', name:'ความถนัดครุศาสตร์-ศึกษาศาสตร์', source:'https://www.mytcas.com/blueprint/tpat5-50/'}
 ];
 
 let data, subject = 'ENG', query = '', filter = 'all', noticeTimer, practice, currentArea = null;
@@ -207,14 +226,14 @@ function renderAccount() {
 function areaCard(area) {
   const ready = area.id === 'military-prep'
     ? '<span class="learning-ready">มีคลังข้อสอบแล้ว: ทหารบก (จปร.)</span>'
-    : area.id === 'secondary'
+    : area.id === 'secondary' || area.id === 'university-prep'
       ? '<span class="learning-ready">มีคลังข้อสอบแล้ว: A-Level 2568</span>'
       : '<span class="learning-muted">อยู่ระหว่างการดำเนินงาน</span>';
   const bg = area.backgroundUrl || commonsImage(area.backgroundFile);
   const art = area.art ? learningCardArt[area.art] : '';
   const bgStyle = bg ? ` style="--card-bg:url('${esc(bg)}')"` : '';
-  const mainTitle = String(area.title || '').replace(/^เรียน\s+/, '');
-  return `<button type="button" class="learning-card ${bg?'has-bg':''} ${art?'has-art art-'+esc(area.art):''}" data-area="${esc(area.id)}"${bgStyle}>${art?`<span class="learning-card-art">${art}</span>`:''}<span class="learning-card-kicker">หมวดการเรียน</span><strong class="learning-title"><span class="learning-title-prefix">เรียน</span><span class="learning-title-main">${esc(mainTitle)}</span></strong><small>${esc(area.description)}</small>${ready}<span class="learning-arrow" aria-hidden="true">→</span></button>`;
+  const mainTitle = area.cardTitle || String(area.title || '').replace(/^เรียน\s+/, '');
+  return `<button type="button" class="learning-card ${bg?'has-bg':''} ${art?'has-art art-'+esc(area.art):''}" data-area="${esc(area.id)}"${bgStyle}>${art?`<span class="learning-card-art">${art}</span>`:''}<span class="learning-card-kicker">หมวดการเรียน</span><strong class="learning-title"><span class="learning-title-prefix">${esc(area.titlePrefix || 'เรียน')}</span><span class="learning-title-main">${esc(mainTitle)}</span></strong><small>${esc(area.description)}</small>${ready}<span class="learning-arrow" aria-hidden="true">→</span></button>`;
 }
 
 function renderLearningHome() {
@@ -232,6 +251,7 @@ function renderArea(areaId) {
   if (!area) return renderLearningHome();
   currentArea = area;
   practice?.destroy(); practice=null;
+  if (area.id === 'university-prep') return renderUniversityPrep();
   if (!area.levels) return renderUnavailable(area.title, null);
   main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-home>← กลับประเภทการเรียน</button><span class="eyebrow">NATHOENG SCHOOL</span><h1>${esc(area.title)}</h1><p>${esc(area.description)} — เลือกระดับหรือสายการเรียนที่ต้องการ</p></section>
   <section class="level-grid ${area.id==='military-prep'?'military-level-grid':''}">${area.levels.map(([id,label])=>{
@@ -280,12 +300,20 @@ function renderM6() {
 
 function renderUniversityPrep() {
   practice?.destroy(); practice=null;
-  main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-m6>← กลับ ม.6</button><span class="eyebrow">NATHOENG SCHOOL</span><h1>เตรียมสอบเข้ามหาวิทยาลัย</h1><p>เลือกประเภทข้อสอบที่ต้องการฝึกฝนและทดสอบ</p></section>
-  <section class="level-grid">
+  const fromM6 = currentArea?.id === 'secondary';
+  main.innerHTML = `<section class="page-head"><button type="button" class="back-link" ${fromM6?'data-m6':'data-home'}>← ${fromM6?'กลับ ม.6':'กลับประเภทการเรียน'}</button><span class="eyebrow">NATHOENG SCHOOL</span><h1>เตรียมสอบเข้ามหาวิทยาลัย</h1><p>เลือกหัวข้อ TGAT1–3, TPAT1–5 หรือข้อสอบ A-Level</p></section>
+  ${[['TGAT','ความถนัดทั่วไป'],['TPAT','ความถนัดทางวิชาการและวิชาชีพ']].map(([group,label])=>`<section class="university-exam-section" aria-labelledby="exam-heading-${group}"><div class="section-title"><div><h2 id="exam-heading-${group}">${group}</h2><p>${label}</p></div></div><div class="level-grid">${universityExams.filter(exam=>exam.code.startsWith(group)).map(exam=>`<button type="button" class="level-card university-exam-card" data-university-exam="${esc(exam.code)}"><span><strong>${esc(exam.code)}</strong><span class="university-exam-name">${esc(exam.name)}</span><small class="level-status pending">อยู่ระหว่างการดำเนินการ</small></span><b aria-hidden="true">→</b></button>`).join('')}</div></section>`).join('')}
+  <section class="university-exam-section" aria-labelledby="exam-heading-alevel"><div class="section-title"><div><h2 id="exam-heading-alevel">A-Level</h2><p>ความรู้รายวิชา · เปิดคลังข้อสอบและติดตามการเรียน</p></div></div><div class="level-grid">
     <button type="button" class="level-card" data-university-exam="alevel"><span><strong>A-Level</strong><small class="level-status ready">พร้อมใช้งาน · ปี 2568 · 315 ข้อ</small></span><b aria-hidden="true">→</b></button>
-    <button type="button" class="level-card" data-university-exam="tgat"><span><strong>TGAT</strong><small class="level-status pending">อยู่ระหว่างการดำเนินงาน</small></span><b aria-hidden="true">→</b></button>
-    <button type="button" class="level-card" data-university-exam="tpat"><span><strong>TPAT</strong><small class="level-status pending">อยู่ระหว่างการดำเนินงาน</small></span><b aria-hidden="true">→</b></button>
-  </section>`;
+  </div></section>`;
+}
+
+function renderUniversityExam(code) {
+  const exam = universityExams.find(item=>item.code===code);
+  if (!exam) return renderUniversityPrep();
+  practice?.destroy(); practice=null;
+  main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-university-prep>← กลับเตรียมสอบเข้ามหาวิทยาลัย</button><span class="eyebrow">เตรียมสอบเข้ามหาวิทยาลัย</span><h1>${esc(exam.code)}</h1><p>${esc(exam.name)}</p></section>
+  <section class="empty-state"><strong>อยู่ระหว่างการดำเนินการ</strong><p>หัวข้อ ${esc(exam.code)} เตรียมไว้แล้ว ขณะนี้ยังไม่มีบทเรียนหรือชุดข้อสอบในหัวข้อนี้</p><a class="secondary" href="${esc(exam.source)}" target="_blank" rel="noopener noreferrer">${exam.code==='TPAT1'?'ดูข้อมูลวิชาเฉพาะจาก กสพท':'ดูโครงสร้างข้อสอบจาก MyTCAS'} ↗</a></section>`;
 }
 
 async function renderALevelSubjects() {
@@ -448,7 +476,7 @@ main.addEventListener('click',event=>{
   }
   const universityExam=event.target.closest('[data-university-exam]'); if(universityExam){
     if(universityExam.dataset.universityExam==='alevel') renderALevelSubjects();
-    else renderUnavailable('เตรียมสอบเข้ามหาวิทยาลัย', universityExam.dataset.universityExam.toUpperCase());
+    else renderUniversityExam(universityExam.dataset.universityExam);
     return;
   }
   const realExam=event.target.closest('[data-open-real-exam]'); if(realExam){practice?.openExamManager();return;}

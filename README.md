@@ -31,6 +31,12 @@ The seeded content is a topic catalog and question references from the scanned s
 
 There are four Vercel Node functions (`api/session.js`, `api/school.js`, `api/practice.js`, `api/alevel.js`). The project has twelve JavaScript files in total, including libraries, browser modules and tests.
 
+## University entrance exam navigation
+
+The home page has a **เตรียมสอบเข้ามหาวิทยาลัย** category. The existing **ชั้นมัธยม → ม.6 → เตรียมสอบเข้ามหาวิทยาลัย** path opens the same page. It lists TGAT1–3 and TPAT1–5 separately with their Thai subject names, and links to the existing A-Level catalog. Back navigation returns to the entry path used.
+
+Each TGAT/TPAT heading opens its own preparation page with **อยู่ระหว่างการดำเนินการ** and a link to its official MyTCAS blueprint (or กสพท for TPAT1). These are navigation placeholders with no lessons or question bank yet. No SQL migration, database rows, new JavaScript file or environment variable is required. Names were checked against the TCAS70 blueprint at `https://www.mytcas.com/blueprint/` and the TPAT1 information linked by MyTCAS.
+
 ## Practice sets
 
 The new practice bank is independent of the 2562–2563 source references and self-recorded study status. Set 1 has one newly authored five-choice question per topic: ENG 38, MATH 67, SCI 77, THAI 39, SOC 40 (261 total). The schema supports sets 1–10; only set 1 is supplied initially.
