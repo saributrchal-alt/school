@@ -398,7 +398,8 @@ BEGIN
     WHERE set_no=2
     GROUP BY subject_id
   ) x USING(subject_id)
-  WHERE COALESCE(x.n,0)<>s.source_question_count_2568;
+  WHERE s.subject_id ~ '^AL[0-9]{2}$'
+    AND COALESCE(x.n,0)<>s.source_question_count_2568;
 
   IF source_total<>315 THEN
     RAISE EXCEPTION 'Expected 315 imported A-Level 2568 source questions, found %',source_total;

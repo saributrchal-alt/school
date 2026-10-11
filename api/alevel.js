@@ -1,6 +1,6 @@
 import { examResults } from '../lib/practice.js';
 import { body, requireMember, sameOrigin, fail, sendError, understanding, saveUnderstanding, topicProgress, learningStudents } from '../lib/school.js';
-import { alevelExamReview, releaseALevelExamResults, alevelCatalog, alevelQuestions, saveALevelProgress, alevelPracticeSummary, alevelPracticeSubject, alevelStudentResults, alevelReviewQueue, alevelPracticeTransaction, alevelExamSessions, alevelExamMembers, saveALevelExamSession, saveALevelExamMembers, deleteALevelExamSession, alevelExamOpen, alevelExamStart, alevelExamSave, alevelExamSubmit } from '../lib/alevel.js';
+import { installTPAT3Image, tpat3Status, alevelExamReview, releaseALevelExamResults, alevelCatalog, alevelQuestions, saveALevelProgress, alevelPracticeSummary, alevelPracticeSubject, alevelStudentResults, alevelReviewQueue, alevelPracticeTransaction, alevelExamSessions, alevelExamMembers, saveALevelExamSession, saveALevelExamMembers, deleteALevelExamSession, alevelExamOpen, alevelExamStart, alevelExamSave, alevelExamSubmit } from '../lib/alevel.js';
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control','no-store');
@@ -9,6 +9,7 @@ export default async function handler(req, res) {
     const route = req.query?.route || 'catalog';
 
     if (req.method === 'GET') {
+      if (route === 'tpat3-status') return res.status(200).json({success:true,...await tpat3Status()});
       if (route === 'progress') return res.status(200).json({ success: true, ...await topicProgress(member, req.query, 'alevel') });
       if (route === 'learning-results') return res.status(200).json({ success: true, ...await learningStudents(member, 'alevel') });
       if (route === 'understanding') return res.status(200).json({ success: true, ...await understanding(member, req.query, 'alevel') });
@@ -26,7 +27,7 @@ export default async function handler(req, res) {
         return res.status(200).json({ success:true, ...await alevelQuestions(member, req.query) });
       }
       if (route === 'summary') {
-        try { return res.status(200).json({ success:true, ...await alevelPracticeSummary(member) }); }
+        try { return res.status(200).json({ success:true, ...await alevelPracticeSummary(member,req.query) }); }
         catch (error) {
           if (error.code === 'school_schema_missing' && error.table?.startsWith('school_alevel_practice_')) {
             return res.status(200).json({ success:true, ready:false, setup_required:true });
@@ -38,9 +39,9 @@ export default async function handler(req, res) {
       if (route === 'results') return res.status(200).json({ success:true, ...await alevelStudentResults(member, req.query) });
       if (route === 'review') {
         if (!member.can_manage) fail('เฉพาะผู้ดูแล School',403);
-        return res.status(200).json({ success:true, attempts:await alevelReviewQueue() });
+        return res.status(200).json({ success:true, attempts:await alevelReviewQueue(req.query) });
       }
-      if (route === 'exam-sessions') return res.status(200).json({ success:true, ...await alevelExamSessions(member) });
+      if (route === 'exam-sessions') return res.status(200).json({ success:true, ...await alevelExamSessions(member,req.query) });
       if (route === 'exam-members') return res.status(200).json({ success:true, ...await alevelExamMembers(member,req.query) });
       if (route === 'exam-results') return res.status(200).json({ success:true, ...await examResults(member,req.query,'school_alevel') });
       if (route === 'exam-review') return res.status(200).json({ success:true, ...await alevelExamReview(member,req.query) });
@@ -50,6 +51,7 @@ export default async function handler(req, res) {
 
     if (req.method !== 'POST') fail('Method not allowed',405);
     sameOrigin(req);
+    if (route === 'tpat3-install-image') return res.status(200).json({success:true,item:await installTPAT3Image(member,body(req))});
     if (route === 'understanding-save') return res.status(200).json({ success: true, item: await saveUnderstanding(member, body(req), 'alevel') });
 
     if (route === 'progress') {

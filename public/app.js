@@ -302,16 +302,31 @@ function renderUniversityPrep() {
   practice?.destroy(); practice=null;
   const fromM6 = currentArea?.id === 'secondary';
   main.innerHTML = `<section class="page-head"><button type="button" class="back-link" ${fromM6?'data-m6':'data-home'}>← ${fromM6?'กลับ ม.6':'กลับประเภทการเรียน'}</button><span class="eyebrow">NATHOENG SCHOOL</span><h1>เตรียมสอบเข้ามหาวิทยาลัย</h1><p>เลือกหัวข้อ TGAT1–3, TPAT1–5 หรือข้อสอบ A-Level</p></section>
-  ${[['TGAT','ความถนัดทั่วไป'],['TPAT','ความถนัดทางวิชาการและวิชาชีพ']].map(([group,label])=>`<section class="university-exam-section" aria-labelledby="exam-heading-${group}"><div class="section-title"><div><h2 id="exam-heading-${group}">${group}</h2><p>${label}</p></div></div><div class="level-grid">${universityExams.filter(exam=>exam.code.startsWith(group)).map(exam=>`<button type="button" class="level-card university-exam-card" data-university-exam="${esc(exam.code)}"><span><strong>${esc(exam.code)}</strong><span class="university-exam-name">${esc(exam.name)}</span><small class="level-status pending">อยู่ระหว่างการดำเนินการ</small></span><b aria-hidden="true">→</b></button>`).join('')}</div></section>`).join('')}
+  ${[['TGAT','ความถนัดทั่วไป'],['TPAT','ความถนัดทางวิชาการและวิชาชีพ']].map(([group,label])=>`<section class="university-exam-section" aria-labelledby="exam-heading-${group}"><div class="section-title"><div><h2 id="exam-heading-${group}">${group}</h2><p>${label}</p></div></div><div class="level-grid">${universityExams.filter(exam=>exam.code.startsWith(group)).map(exam=>`<button type="button" class="level-card university-exam-card" data-university-exam="${esc(exam.code)}"><span><strong>${esc(exam.code)}</strong><span class="university-exam-name">${esc(exam.name)}</span><small class="level-status ${exam.code==='TPAT3'?'':'pending'}">${exam.code==='TPAT3'?'ชุด 1 · 70 ข้อ · 180 นาที':'อยู่ระหว่างการดำเนินการ'}</small></span><b aria-hidden="true">→</b></button>`).join('')}</div></section>`).join('')}
   <section class="university-exam-section" aria-labelledby="exam-heading-alevel"><div class="section-title"><div><h2 id="exam-heading-alevel">A-Level</h2><p>ความรู้รายวิชา · เปิดคลังข้อสอบและติดตามการเรียน</p></div></div><div class="level-grid">
     <button type="button" class="level-card" data-university-exam="alevel"><span><strong>A-Level</strong><small class="level-status ready">พร้อมใช้งาน · ปี 2568 · 315 ข้อ</small></span><b aria-hidden="true">→</b></button>
   </div></section>`;
 }
 
-function renderUniversityExam(code) {
+async function renderUniversityExam(code) {
   const exam = universityExams.find(item=>item.code===code);
   if (!exam) return renderUniversityPrep();
   practice?.destroy(); practice=null;
+  if (code==='TPAT3') {
+    main.innerHTML='<section class="empty-state"><strong>กำลังเปิด TPAT3 ชุด 1…</strong></section>';
+    try {
+      alevelData=await api('/api/alevel?route=catalog');
+      if (!alevelData.subjects?.some(s=>s.subject_id==='TP30')) {
+        main.innerHTML=`<section class="page-head"><button type="button" class="back-link" data-university-prep>← กลับเตรียมสอบเข้ามหาวิทยาลัย</button><span class="eyebrow">TPAT3</span><h1>TPAT3 · ชุด 1</h1><p>ข้อสอบแต่งใหม่ตาม Blueprint · 70 ข้อ · 5 ตัวเลือก · 180 นาที</p></section><section class="empty-state"><strong>รอนำเข้าชุดข้อสอบ</strong><p>${data.member.can_manage?'ผู้ดูแลนำเข้าไฟล์ School_TPAT3_Set1_Install.sql ในฐานข้อมูล School แล้วกลับมาเปิดหน้านี้เพื่อติดตั้งรูป':'กำลังเตรียมโจทย์และรูปประกอบสำหรับชุด 1'}</p></section>`;
+        return;
+      }
+      alevelData.tpat3_installation=await api('/api/alevel?route=tpat3-status');
+      return renderALevelCatalog('TP30');
+    } catch(error) {
+      main.innerHTML=`<section class="page-head"><button type="button" class="back-link" data-university-prep>← กลับเตรียมสอบเข้ามหาวิทยาลัย</button><h1>TPAT3 · ชุด 1</h1></section><section class="empty-state"><strong>เปิดชุดข้อสอบไม่สำเร็จ</strong><p>${esc(error.message)}</p></section>`;
+      return;
+    }
+  }
   main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-university-prep>← กลับเตรียมสอบเข้ามหาวิทยาลัย</button><span class="eyebrow">เตรียมสอบเข้ามหาวิทยาลัย</span><h1>${esc(exam.code)}</h1><p>${esc(exam.name)}</p></section>
   <section class="empty-state"><strong>อยู่ระหว่างการดำเนินการ</strong><p>หัวข้อ ${esc(exam.code)} เตรียมไว้แล้ว ขณะนี้ยังไม่มีบทเรียนหรือชุดข้อสอบในหัวข้อนี้</p><a class="secondary" href="${esc(exam.source)}" target="_blank" rel="noopener noreferrer">${exam.code==='TPAT1'?'ดูข้อมูลวิชาเฉพาะจาก กสพท':'ดูโครงสร้างข้อสอบจาก MyTCAS'} ↗</a></section>`;
 }
@@ -321,7 +336,7 @@ async function renderALevelSubjects() {
   main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-university-prep>← กลับเตรียมสอบเข้ามหาวิทยาลัย</button><span class="eyebrow">A-LEVEL</span><h1>ข้อสอบ A-Level</h1><p>ใช้หลักการเดียวกับคลังข้อสอบ จปร. — แยกวิชา หมวด หัวข้อ ข้อสอบต้นฉบับ และบันทึกความก้าวหน้ารายคน</p></section>
   <section class="empty-state"><strong>กำลังเปิดคลัง A-Level 2568…</strong><p>กำลังอ่านโครงสร้างรายวิชาและหัวข้อจากฐานข้อมูล School</p></section>`;
   try {
-    const result = await api('/api/alevel?route=catalog');
+    let result = await api('/api/alevel?route=catalog');
     if (result.setup_required) {
       alevelData = null;
       main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-university-prep>← กลับเตรียมสอบเข้ามหาวิทยาลัย</button><span class="eyebrow">A-LEVEL</span><h1>ข้อสอบ A-Level</h1><p>โครงสร้างระบบพร้อมแล้ว เหลือเปิดตาราง A-Level ใน Supabase</p></section>
@@ -329,6 +344,7 @@ async function renderALevelSubjects() {
       return;
     }
     alevelData = result;
+    result={...result,sources:result.sources.filter(s=>s.subject_id!=='TP30'),source_question_count:result.sources.filter(s=>s.subject_id!=='TP30').reduce((n,s)=>n+Number(s.question_count||0),0),subjects:result.subjects.filter(s=>s.subject_id!=='TP30'),chapters:result.chapters.filter(s=>s.subject_id!=='TP30'),topics:result.topics.filter(s=>s.subject_id!=='TP30'),question_count:result.subjects.filter(s=>s.subject_id!=='TP30').reduce((n,s)=>n+s.imported_question_count,0)};
     const sourceTotal = result.source_question_count || 0;
     main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-university-prep>← กลับเตรียมสอบเข้ามหาวิทยาลัย</button><span class="eyebrow">A-LEVEL · 2568</span><h1>ข้อสอบ A-Level</h1><p>เลือกวิชาเพื่อเปิดหมวดและหัวข้อ เนื้อหาต้นฉบับรวม ${sourceTotal.toLocaleString('th-TH')} ข้อจาก 7 รายวิชา</p></section>
     <section class="stats" aria-label="ภาพรวม A-Level"><div class="stat"><strong>${result.subjects.length}</strong><span>วิชา</span></div><div class="stat"><strong>${result.chapters.length}</strong><span>หมวด</span></div><div class="stat"><strong>${result.topics.length}</strong><span>หัวข้อ</span></div><div class="stat"><strong>${result.question_count}</strong><span>ข้อที่นำเข้ารายข้อแล้ว</span></div></section>
@@ -352,6 +368,9 @@ async function renderALevelCatalog(subjectId) {
   const s = alevelData.subjects.find(x=>x.subject_id===subjectId);
   if (!s) return renderALevelSubjects();
   alevelSubject = subjectId;
+  const isTPAT3=subjectId==='TP30';
+  const installation=isTPAT3?alevelData.tpat3_installation:null;
+  const trackName=isTPAT3?'TPAT3':'A-Level';
   alevelQuery = '';
   alevelFilter = 'all';
   const source = alevelData.sources.find(x=>x.subject_id===subjectId);
@@ -360,24 +379,47 @@ async function renderALevelCatalog(subjectId) {
   const progress = new Map((alevelData.viewedProgress || alevelData.progress).map(p=>[p.topic_id,p.status]));
   const completed = topics.filter(t=>progress.get(t.topic_id)==='completed').length;
   main.innerHTML = `<section id="practice-dashboard" class="practice-dashboard" aria-label="ผลการฝึก A-Level ของฉัน"></section>
-  <section class="hero"><button type="button" class="hero-back" data-university-exam="alevel">← A-Level</button><span class="eyebrow">A-LEVEL · ${esc(String(s.subject_code))}</span><h1>${esc(s.subject_name_th)}</h1><p>ข้อสอบจริง พ.ศ. 2568 · ${esc(String(source?.question_count || s.source_question_count_2568))} ข้อ · ${esc(String(s.duration_minutes))} นาที<br>ชุด 1 ฝึกตาม Topic · ชุด 2 ทำข้อสอบจริงเต็มวิชาตามลำดับต้นฉบับ</p>${data.member.can_teach||data.member.can_manage?'<button type="button" class="secondary hero-exam-button" data-open-real-exam>จัดการสอบจริง</button>':''}</section>
+  <section class="hero"><button type="button" class="hero-back" ${isTPAT3?'data-university-prep':'data-university-exam="alevel"'}>← ${isTPAT3?'เตรียมสอบเข้ามหาวิทยาลัย':'A-Level'}</button><span class="eyebrow">${isTPAT3?'TPAT3':'A-LEVEL'} · ${esc(String(s.subject_code))}</span><h1>${esc(s.subject_name_th)}</h1><p>${isTPAT3?'ชุด 1 · ข้อสอบแต่งใหม่ตาม Blueprint':'ข้อสอบจริง พ.ศ. 2568'} · ${esc(String(source?.question_count || s.source_question_count_2568))} ข้อ · ${esc(String(s.duration_minutes))} นาที<br>${isTPAT3?'5 หมวด · 15 / 15 / 15 / 15 / 10 ข้อ · 5 ตัวเลือก<br>สูตรคะแนนชุดฝึก: หมวดละ 20 คะแนน รวม 100 คะแนน':'ชุด 1 ฝึกตาม Topic · ชุด 2 ทำข้อสอบจริงเต็มวิชาตามลำดับต้นฉบับ'}</p>${data.member.can_teach||data.member.can_manage?'<button type="button" class="secondary hero-exam-button" data-open-real-exam>จัดการสอบจริง</button>':''}</section>
+  ${isTPAT3?`<section class="empty-state"><strong>${installation?.ready?'TPAT3 ชุด 1 พร้อมใช้งาน':'กำลังติดตั้ง TPAT3 ชุด 1'}</strong><p>โจทย์ ${installation?.question_count||0}/70 ข้อ · รูป ${installation?.image_count||0}/37 รูป · <a href="https://www.mytcas.com/blueprint/tpat3-30/" target="_blank" rel="noopener noreferrer">ดู Blueprint ↗</a></p>${!installation?.ready&&data.member.can_manage?'<button type="button" class="secondary" data-tpat3-install-images>ติดตั้งรูปประกอบ 37 รูป</button><p id="tpat3-install-status" role="status" aria-live="polite"></p>':''}<p>สูตรรายหมวดเป็นเกณฑ์ของชุดฝึกนี้ โครงสร้างทางการกำหนดส่วนที่ 1 รวม 60 คะแนน และส่วนที่ 2 รวม 40 คะแนน</p></section>`:''}
   <section class="stats"><div class="stat"><strong>${chapters.length}</strong><span>หมวด</span></div><div class="stat"><strong>${topics.length}</strong><span>หัวข้อ</span></div><div class="stat"><strong>${s.imported_question_count || 0}</strong><span>ข้อที่นำเข้ารายข้อแล้ว</span></div><div class="stat"><strong>${completed}</strong><span>หัวข้อที่เรียนแล้ว</span></div></section>
-  <section><div class="section-title"><div><h2>รายการหัวข้อเรียน</h2><p>ดูข้อสอบจริงรายหัวข้อ หรือเลือกชุด 1 เพื่อฝึกตาม Topic และชุด 2 เพื่อทำข้อสอบจริงทั้งวิชา ส่งให้ผู้ดูแลตรวจได้</p></div></div>
+  <section><div class="section-title"><div><h2>รายการหัวข้อเรียน</h2><p>${isTPAT3?'ฝึกตามหัวข้อหรือทำครบ 70 ข้อในชุด 1 · ส่งให้ผู้ดูแลตรวจ หรือเข้าสอบรอบที่ครูกำหนด':'ดูข้อสอบจริงรายหัวข้อ หรือเลือกชุด 1 เพื่อฝึกตาม Topic และชุด 2 เพื่อทำข้อสอบจริงทั้งวิชา ส่งให้ผู้ดูแลตรวจได้'}</p></div></div>
   <div id="learning-member-picker" class="learning-member-picker"></div><div class="search-row"><input type="search" id="alevel-search" aria-label="ค้นหาหัวข้อ A-Level" placeholder="ค้นหาชื่อหัวข้อ หรือรหัสหัวข้อ…"><select id="alevel-status-filter" aria-label="กรองสถานะ A-Level"><option value="all">ทุกสถานะ</option>${Object.entries(labels).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div>
   <p class="progress-note" id="alevel-progress-note"></p><div id="alevel-chapters"></div></section>`;
   document.querySelector('#alevel-search').addEventListener('input',e=>{alevelQuery=e.target.value;renderALevelTopics();});
   document.querySelector('#alevel-status-filter').addEventListener('change',e=>{alevelFilter=e.target.value;renderALevelTopics();});
+  alevelData={...alevelData,subjects:alevelData.subjects.filter(x=>isTPAT3?x.subject_id==='TP30':x.subject_id!=='TP30'),chapters:alevelData.chapters.filter(x=>isTPAT3?x.subject_id==='TP30':x.subject_id!=='TP30'),topics:alevelData.topics.filter(x=>isTPAT3?x.subject_id==='TP30':x.subject_id!=='TP30')};
   practice = createPractice({
     main,
     data:alevelData,
-    api,
+    api:(path,options)=>api(path+(path.startsWith('/api/alevel')?`&exam_group=${isTPAT3?'tpat3':'alevel'}`:''),options),
     notice,
     rerender:renderALevelTopics,
     getSubject:()=>alevelSubject,
-    apiPath:'/api/alevel'
+    apiPath:'/api/alevel',
+    examGroup:isTPAT3?'tpat3':'alevel'
   });
+  document.querySelector('#practice-dashboard').setAttribute('aria-label',`ผลการฝึก ${trackName} ของฉัน`);
+  main.querySelector('[data-tpat3-install-images]')?.addEventListener('click',installTPAT3Images);
   renderALevelTopics();
   practice.refresh();
+}
+
+async function installTPAT3Images(event) {
+  const button=event.currentTarget;
+  button.disabled=true;
+  const status=main.querySelector('#tpat3-install-status');
+  try {
+    const result=await api('/api/alevel?route=tpat3-status');
+    for (const no of result.missing_images) {
+      if(status) status.textContent=`กำลังติดตั้งรูปข้อ ${no}…`;
+      await api('/api/alevel?route=tpat3-install-image',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question_no:no})});
+    }
+    if (main.contains(button)) await renderUniversityExam('TPAT3');
+    notice('ติดตั้งรูป TPAT3 ชุด 1 ครบแล้ว');
+  } catch(error) {
+    if(status) status.textContent=error.message+' · กดติดตั้งอีกครั้งเพื่อทำต่อจากรูปที่ยังไม่เสร็จ';
+    notice(error.message);
+  } finally {button.disabled=false;}
 }
 
 function renderALevelTopics() {
@@ -403,7 +445,7 @@ function renderALevelTopics() {
   root.innerHTML = chapters.length ? chapters.map((c,index)=>`<details class="chapter" data-alevel-chapter="${esc(c.chapter_id)}" ${search||openChapters.has(c.chapter_id)||(!hadChapters&&index===0)?'open':''}><summary><span class="chapter-code">${esc(c.chapter_id)}</span><span class="chapter-name">${esc(c.chapter_name_th)}</span><small>${c.topics.length} หัวข้อ</small></summary>${c.topics.map(t=>{
     const status = progress.get(t.topic_id)||'not_started';
     const q = Number(t.question_count || 0);
-    return `<article class="topic"><div><div class="topic-head"><span class="topic-code">${esc(t.topic_id)}</span><span class="topic-name">${esc(t.topic_name_th)}</span>${topicLearningRoad(alevelData, t.topic_id)}</div><div class="topic-meta">${q ? `นำเข้าข้อสอบจริงแล้ว ${q} ข้อ <button type="button" data-alevel-topic="${esc(t.topic_id)}">ดูข้อสอบจริง</button>` : 'ยังไม่มีข้อสอบจริงในหัวข้อนี้'}</div>${practice?.topicAction(t)||''}</div>${data.member.can_study&&(!alevelData.viewedStudent||alevelData.viewedStudent.member_id===data.member.member_id)?`<select aria-label="สถานะ ${esc(t.topic_name_th)}" data-alevel-progress="${esc(t.topic_id)}">${Object.entries(labels).map(([k,v])=>`<option value="${k}" ${k===status?'selected':''}>${v}</option>`).join('')}</select>`:''}</article>`;
+    return `<article class="topic"><div><div class="topic-head"><span class="topic-code">${esc(t.topic_id)}</span><span class="topic-name">${esc(t.topic_name_th)}</span>${topicLearningRoad(alevelData, t.topic_id)}</div><div class="topic-meta">${q ? `นำเข้า${alevelSubject==='TP30'?'โจทย์ชุด 1':'ข้อสอบจริง'}แล้ว ${q} ข้อ <button type="button" data-alevel-topic="${esc(t.topic_id)}">${alevelSubject==='TP30'?'ดูโจทย์':'ดูข้อสอบจริง'}</button>` : 'ยังไม่มีข้อสอบจริงในหัวข้อนี้'}</div>${practice?.topicAction(t)||''}</div>${data.member.can_study&&(!alevelData.viewedStudent||alevelData.viewedStudent.member_id===data.member.member_id)?`<select aria-label="สถานะ ${esc(t.topic_name_th)}" data-alevel-progress="${esc(t.topic_id)}">${Object.entries(labels).map(([k,v])=>`<option value="${k}" ${k===status?'selected':''}>${v}</option>`).join('')}</select>`:''}</article>`;
   }).join('')}</details>`).join('') : '<div class="empty">ไม่พบหัวข้อที่ตรงกับคำค้นหรือสถานะที่เลือก</div>';
 }
 
@@ -419,7 +461,7 @@ async function showALevelQuestions(id) {
       const choices = Array.isArray(q.choices) && q.choices.length ? `<ol>${q.choices.map(x=>`<li>${esc(typeof x==='string'?x:(x?.label ?? x?.text ?? JSON.stringify(x)))}</li>`).join('')}</ol>` : '';
       const answer = result.can_review && q.answer_key != null ? `<div class="key">เฉลยสำหรับครู/ผู้ดูแล: ${esc(typeof q.answer_key==='object'?JSON.stringify(q.answer_key):q.answer_key)}</div>` : '';
       const explanation = result.can_review && q.explanation ? `<p><strong>เฉลย:</strong> ${esc(q.explanation)}</p>` : '';
-      return `<article class="reference"><strong>พ.ศ. ${q.year_be} · ข้อ ${q.question_no}</strong><p>${esc(q.prompt)}</p>${choices}<small>หน้า PDF ${q.source_page} · ${esc(q.question_type)}</small>${q.question_image_url?`<p><img src="${esc(freshQuestionImage(q.question_image_url))}" alt="รูปประกอบข้อ ${q.question_no}" style="max-width:100%;height:auto"></p>`:''}${answer}${explanation}</article>`;
+      return `<article class="reference"><strong>${q.subject_id==='TP30'?'TPAT3 · ชุด 1':`พ.ศ. ${q.year_be}`} · ข้อ ${q.question_no}</strong><p>${esc(q.prompt)}</p>${choices}<small>${q.subject_id==='TP30'?'ข้อสอบแต่งใหม่ · 5 ตัวเลือก':`หน้า PDF ${q.source_page} · ${esc(q.question_type)}`}</small>${q.question_image_url?`<p><img src="${esc(freshQuestionImage(q.question_image_url))}" alt="รูปประกอบข้อ ${q.question_no}" style="max-width:100%;height:auto"></p>`:''}${answer}${explanation}</article>`;
     }).join('') || '<p>หัวข้อนี้ยังอยู่ระหว่างนำข้อสอบจาก PDF ปี 2568 เข้าระบบ</p>';
   } catch (error) {
     document.querySelector('#detail-body').textContent = error.message;

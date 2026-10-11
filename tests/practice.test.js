@@ -5,6 +5,145 @@ import practice from '../api/practice.js';
 import alevel from '../api/alevel.js';
 import school from '../api/school.js';
 import { COOKIE, signToken } from '../lib/school.js';
+import { tpat3Score } from '../lib/practice.js';
+
+function tpat3Fixture() {
+  const f=fixture(), pictures=new Set([5,10,...Array.from({length:25},(_,i)=>i+16),42,43,45,47,48,52,54,56,58,60]);
+  const qs=Array.from({length:70},(_,i)=>({question_id:`ALP1-TPAT3-S01-${String(i+1).padStart(3,'0')}`,set_no:1,subject_id:'TP30',question_no:i+1,
+    topic_id:`TP30-${String(Math.min(5,Math.floor(i/15)+1)).padStart(2,'0')}.01`,sort_order:i+1,prompt:'Synthetic TPAT3 question',choices:['A','B','C','D','E'],
+    question_type:'single_choice',answer_key:2,answer_key_json:2,explanation:'teacher-only TPAT3 note',reasoning:'teacher-only TPAT3 reasoning',
+    question_image_url:pictures.has(i+1)?`https://media.nathoeng.com/uploads/school/2026/10/q${i+1}.webp`:null}));
+  Object.assign(f.rows,{school_alevel_practice_sets:[{set_no:1,label:'ชุด 1',is_active:true},{set_no:2,label:'ชุด 2',is_active:true}],
+    school_alevel_practice_questions:qs,school_alevel_practice_attempts:[],school_alevel_practice_answers:[],
+    school_alevel_exam_sessions:[],school_alevel_exam_attempts:[],school_alevel_exam_answers:[],school_alevel_exam_session_members:[],
+    school_alevel_topics:[{topic_id:'TP30-01.01',subject_id:'TP30',topic_name_th:'หัวข้อสมมติ'}],school_alevel_topic_progress:[]});
+  return {...f,qs,query:{track:'alevel',exam_group:'tpat3'}};
+}
+
+test('TPAT3 weights five sections independently and rounds only after summation',()=>{
+  const qs=Array.from({length:70},(_,i)=>({question_id:String(i+1),question_no:i+1,subject_id:'TP30'}));
+  assert.equal(tpat3Score(qs,[]).weighted_score,0);
+  assert.equal(tpat3Score(qs,qs.map(q=>({question_id:q.question_id,is_correct:true}))).weighted_score,100);
+  assert.equal(tpat3Score(qs,[{question_id:'1',is_correct:true},{question_id:'61',is_correct:true}]).weighted_score,3.33);
+  const partial=qs.filter(q=>(q.question_no-1)%15<7).map(q=>({question_id:q.question_id,is_correct:true}));
+  const r=tpat3Score(qs,partial);
+  assert.equal(r.weighted_score,51.33);assert.deepEqual(r.section_scores.map(s=>s.correct_count),[7,7,7,7,7]);
+  assert.deepEqual(r.section_scores.map(s=>s.total_count),[15,15,15,15,10]);
+});
+
+test('TPAT3 Set 1 requires complete media and preserves practice permissions and private scores',async t=>{
+  const f=tpat3Fixture(),id=crypto.randomUUID();
+  const a={attempt_id:id,member_id:'student',subject_id:'TP30',set_no:1,status:'draft',total_count:70,correct_count:2};
+  try {
+    f.rows.school_alevel_practice_attempts.push(a);
+    f.rows.school_alevel_practice_answers.push({attempt_id:id,question_id:f.qs[0].question_id,selected_answer:2,is_correct:true},{attempt_id:id,question_id:f.qs[60].question_id,selected_answer:2,is_correct:true});
+    await t.test('incomplete media blocks a new attempt before the transaction',async()=>{
+      const url=f.qs[4].question_image_url;f.qs[4].question_image_url=null;
+      const status=await f.call('tpat3-status','student',undefined,f.query);
+      assert.equal(status.body.ready,false);assert.equal(status.body.image_count,36);assert.deepEqual(status.body.missing_images,[5]);
+      assert.equal((await f.call('start','student',{set_no:1,subject_id:'TP30'},f.query)).status,409);
+      assert.equal(f.requests.some(r=>r.url.pathname.includes('/rpc/')),false);
+      f.qs[4].question_image_url=url;
+    });
+    await t.test('start uses the authenticated member and supports only Set 1',async()=>{
+      f.setRPC((name,p)=>{assert.equal(name,'school_alevel_practice_start');assert.deepEqual(p,{p_member_id:'student',p_set_no:1,p_subject_id:'TP30'});return a;});
+      assert.equal((await f.call('start','student',{set_no:1,subject_id:'TP30',member_id:'manager'},f.query)).status,200);
+      assert.equal((await f.call('start','student',{set_no:2,subject_id:'TP30'},f.query)).status,400);
+      assert.equal((await f.call('start','teacher',{set_no:1,subject_id:'TP30'},f.query)).status,403);
+    });
+    await t.test('draft and submitted students receive no keys or provisional weights',async()=>{
+      for(const state of ['draft','submitted']) {
+        a.status=state;
+        const r=await f.call('subject','student',undefined,{...f.query,set_no:1,subject_id:'TP30'});
+        assert.equal(r.status,200);assert.equal(r.body.questions.length,70);
+        assert.equal(r.body.questions.filter(q=>q.question_image_url).length,37);
+        for(const key of ['answer_key','answer_key_json','explanation','reasoning'])assert.equal(key in r.body.questions[0],false);
+        for(const key of ['correct_count','weighted_score','section_scores'])assert.equal(key in r.body.attempt,false);
+        const summary=await f.call('summary','student',undefined,f.query);
+        assert.equal(summary.body.sets.length,1);assert.equal('weighted_score'in summary.body.attempts[0],false);
+      }
+    });
+    await t.test('published practice scores agree across the paper, summary and staff report',async()=>{
+      a.status='graded';
+      for(const route of ['subject','summary']) {
+        const r=await f.call(route,'student',undefined,{...f.query,set_no:1,subject_id:'TP30'});
+        assert.equal(r.status,200);
+        const attempt=route==='subject'?r.body.attempt:r.body.attempts[0];
+        assert.equal(attempt.weighted_score,3.33);assert.equal(attempt.section_scores.length,5);
+      }
+      const r=await f.call('results','teacher',undefined,{...f.query,set_no:1});
+      assert.equal(r.status,200);assert.equal(r.body.students.find(s=>s.member_id==='student').attempts[0].weighted_score,3.33);
+      assert.equal((await f.call('grade','teacher',{attempt_id:id},f.query)).status,403);
+    });
+    await t.test('TPAT3 and A-Level summary content remain separate',async()=>{
+      f.rows.school_alevel_practice_questions.push({...f.qs[0],question_id:'ALP1-AL61-synthetic',subject_id:'AL61',topic_id:'AL61-01.01'});
+      const own=await f.call('summary','student',undefined,f.query);
+      assert.equal(own.body.topics.length,70);assert.ok(own.body.topics.every(q=>q.subject_id==='TP30'));
+      const al=await f.call('summary','student',undefined,{track:'alevel',exam_group:'alevel'});
+      assert.equal(al.body.topics.length,1);assert.equal(al.body.attempts.length,0);
+    });
+    await t.test('students retain learning progress and teachers retain configurable exam controls',async()=>{
+      const p=await f.call('progress','student',{topic_id:'TP30-01.01',status:'review'},f.query);
+      assert.equal(p.status,200);assert.equal(p.body.item.status,'review');
+      const payload={subject_id:'TP30',set_no:1,title:'สอบจำลอง TPAT3',duration_minutes:180,result_policy:'manual',answer_policy:'never',max_attempts:2,is_published:false};
+      // The fixture intentionally accepts session insertion separately from the question bank.
+      f.rows.school_alevel_exam_sessions.push({...payload,session_id:crypto.randomUUID(),created_by:'teacher'});
+      payload.session_id=f.rows.school_alevel_exam_sessions[0].session_id;
+      assert.equal((await f.call('exam-session-save','teacher',payload,f.query)).status,200);
+      assert.equal((await f.call('exam-session-save','teacher',{...payload,set_no:2},f.query)).status,400);
+      assert.equal((await f.call('exam-session-save','student',payload,f.query)).status,403);
+    });
+  } finally {f.restore();}
+});
+
+test('only a current School manager uploads bundled TPAT3 figures to Media',async()=>{
+  const f=tpat3Fixture(),oldKey=process.env.MEDIA_UPLOAD_KEY,fixtureFetch=globalThis.fetch;
+  process.env.MEDIA_UPLOAD_KEY='synthetic-media-key-'.padEnd(40,'x');
+  f.qs[4].question_image_url=null;
+  let uploads=0;const url='https://media.nathoeng.com/uploads/school/2026/10/'+'a'.repeat(32)+'.webp';
+  globalThis.fetch=async(input,options)=>{
+    if(new URL(input).hostname!=='media.nathoeng.com')return fixtureFetch(input,options);
+    uploads++;assert.equal(options.method,'POST');assert.equal(options.headers['X-Upload-Key'],process.env.MEDIA_UPLOAD_KEY);
+    assert.equal(options.body.get('folder'),'school');assert.equal(options.body.get('file').type,'image/webp');
+    return new Response(JSON.stringify({ok:true,url,bytes:1234}),{status:201});
+  };
+  f.setRPC((name,p)=>{assert.equal(name,'school_tpat3_media_save');assert.deepEqual(p,{p_member_id:'manager',p_question_no:5,p_url:url});f.qs[4].question_image_url=url;return p;});
+  try {
+    for(const actor of [null,'student','teacher']) assert.equal((await f.call('tpat3-install-image',actor,{question_no:5},f.query)).status,actor?403:401);
+    assert.equal((await f.call('tpat3-install-image','manager',{question_no:5},{...f.query,origin:'https://evil.invalid'})).status,403);
+    assert.equal((await f.call('tpat3-install-image','manager',{question_no:1},f.query)).status,400);assert.equal(uploads,0);
+    const r=await f.call('tpat3-install-image','manager',{question_no:5,url:'https://evil.invalid/image',member_id:'student'},f.query);
+    assert.equal(r.status,200);assert.equal(r.body.item.url,url);assert.equal(uploads,1);
+    assert.equal(JSON.stringify(r.body).includes(process.env.MEDIA_UPLOAD_KEY),false);
+    assert.equal((await f.call('tpat3-install-image','manager',{question_no:5},f.query)).body.item.already_installed,true);assert.equal(uploads,1);
+    f.members.find(m=>m.member_id==='manager').can_manage=false;
+    assert.equal((await f.call('tpat3-install-image','manager',{question_no:5},f.query)).status,403);
+  } finally {if(oldKey===undefined)delete process.env.MEDIA_UPLOAD_KEY;else process.env.MEDIA_UPLOAD_KEY=oldKey;f.restore();}
+});
+
+test('TPAT3 timed exam scores follow score release while solutions follow answer release',async()=>{
+  const f=tpat3Fixture(),sid=crypto.randomUUID(),aid=crypto.randomUUID();
+  const s={session_id:sid,subject_id:'TP30',set_no:1,title:'Synthetic TPAT3 round',duration_minutes:180,result_policy:'manual',answer_policy:'never',is_published:true,audience_mode:'all_students',created_by:'teacher'};
+  const a={exam_attempt_id:aid,session_id:sid,member_id:'student',attempt_no:1,status:'submitted',total_count:70,correct_count:2,started_at:new Date().toISOString(),deadline_at:new Date(Date.now()+180*60000).toISOString(),submitted_at:new Date().toISOString(),timed_out:false};
+  f.rows.school_alevel_exam_sessions.push(s);f.rows.school_alevel_exam_attempts.push(a);
+  f.rows.school_alevel_exam_answers.push(...[0,60].map(i=>({exam_attempt_id:aid,question_id:f.qs[i].question_id,selected_answer:2,response_value:2,is_correct:true})));
+  try {
+    let r=await f.call('exam-open','student',undefined,{...f.query,session_id:sid});
+    assert.equal(r.status,200);assert.equal(r.body.attempt.result_visible,false);assert.equal('weighted_score'in r.body.attempt,false);
+    s.result_policy='immediate';
+    r=await f.call('exam-open','student',undefined,{...f.query,session_id:sid});
+    assert.equal(r.body.attempt.weighted_score,3.33);assert.equal(r.body.can_review,false);
+    assert.equal('answer_key'in r.body.questions[0],false);assert.equal('is_correct'in r.body.answers[0],false);
+    r=await f.call('exam-review','teacher',undefined,{...f.query,exam_attempt_id:aid});
+    assert.equal(r.status,200);assert.equal(r.body.can_review,true);assert.equal(r.body.attempt.weighted_score,3.33);
+    assert.equal(r.body.questions[0].answer_key,2);
+    r=await f.call('exam-results','teacher',undefined,{...f.query,set_no:1});
+    assert.equal(r.status,200);assert.equal(r.body.students.find(x=>x.member_id==='student').attempts[0].weighted_score,3.33);
+    s.answer_policy='with_result';
+    r=await f.call('exam-open','student',undefined,{...f.query,session_id:sid});
+    assert.equal(r.body.can_review,true);assert.equal(r.body.questions[0].answer_key,2);
+  } finally {f.restore();}
+});
 
 test('topic learning states persist per owner and teachers can follow every topic', async t => {
   for (const track of ['military', 'alevel']) await t.test(track, async t => {

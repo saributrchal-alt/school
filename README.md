@@ -35,7 +35,17 @@ There are four Vercel Node functions (`api/session.js`, `api/school.js`, `api/pr
 
 The home page has a **เตรียมสอบเข้ามหาวิทยาลัย** category. The existing **ชั้นมัธยม → ม.6 → เตรียมสอบเข้ามหาวิทยาลัย** path opens the same page. It lists TGAT1–3 and TPAT1–5 separately with their Thai subject names, and links to the existing A-Level catalog. Back navigation returns to the entry path used.
 
-Each TGAT/TPAT heading opens its own preparation page with **อยู่ระหว่างการดำเนินการ** and a link to its official MyTCAS blueprint (or กสพท for TPAT1). These are navigation placeholders with no lessons or question bank yet. No SQL migration, database rows, new JavaScript file or environment variable is required. Names were checked against the TCAS70 blueprint at `https://www.mytcas.com/blueprint/` and the TPAT1 information linked by MyTCAS.
+TPAT3 opens Set 1 in the existing university practice and configurable exam system. The other TGAT/TPAT headings remain preparation placeholders with a link to the official blueprint. Names were checked against the TCAS70 blueprint at `https://www.mytcas.com/blueprint/` and the TPAT1 information linked by MyTCAS.
+
+## TPAT3 Set 1
+
+TPAT3 uses subject `TP30` in the existing `school_alevel_*` tables. Its UI, summaries, sessions and student reports are scoped separately from the seven A-Level subjects. The authored Set 1 contains 70 five-choice questions, 37 figures, and five sections with 15/15/15/15/10 questions; the default timed-exam duration is 180 minutes. Teachers retain control over availability, audience, start time, attempts, submission and score/solution release.
+
+Run the private `School_TPAT3_Set1_Install.sql` in the existing SCHOOL database. It includes the public schema extension in `supabase/School_TPAT3_Schema.sql` plus the full private seed. The seed is deliberately excluded from GitHub. It preserves existing A-Level Set 1 metadata, attempts, answers and uploaded URLs on rerun, and refuses conflicting question content. Prerequisites are the installed A-Level schema, Set 2 migration and exam sessions.
+
+After import, a School manager opens TPAT3 and selects **ติดตั้งรูปประกอบ 37 รูป**. Each authenticated POST uploads one bundled WebP to `https://media.nathoeng.com/upload.php` using server-side `MEDIA_UPLOAD_KEY`, `folder=school`, and a 2 MiB limit. The database stores only returned Media URLs; no image bytes are stored in Supabase. Interrupted installations resume at missing images. The server-side JSON bundle contains only the figures, never answer keys. It can be removed after successful installation. Before all 70 questions and 37 Media URLs are ready, the API and database reject starting a TPAT3 attempt.
+
+Practice-defined scoring is `sum(20 * correct_in_section / questions_in_section)` across the five sections, rounded to two decimal places after summation. It respects the official part totals of 60 and 40 while making no claim about official per-question weights. Correct-answer percentages remain explicitly labeled accuracy. Students receive no keys, explanations or provisional scores before release; existing teacher/admin boundaries and learning/understanding records are retained.
 
 ## Practice sets
 

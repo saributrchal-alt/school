@@ -1,3 +1,9 @@
 {
-  "outputDirectory": "public"
+  "outputDirectory": "public",
+  "functions": {
+    "api/alevel.js": {
+      "includeFiles": "lib/tpat3-set1-media.json",
+      "maxDuration": 30
+    }
+  }
 }
