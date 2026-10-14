@@ -1,5 +1,5 @@
 import { body, requireMember, sameOrigin, fail, sendError, understanding, saveUnderstanding } from '../lib/school.js';
-import { examResults, examReview, releaseExamResults, summary, subject, reviewQueue, studentResults, transaction, examSessions, examMembers, saveExamSession, saveExamMembers, deleteExamSession, examOpen, examStart, examSave, examSubmit } from '../lib/practice.js';
+import { examResults, examReview, releaseExamResults, summary, subject, reviewQueue, studentResults, transaction, examSessions, examMembers, saveExamSession, saveExamMembers, deleteExamSession, examOpen, selfStudyPaper, checkSelfStudy, examStart, examSave, examSubmit } from '../lib/practice.js';
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -18,6 +18,7 @@ export default async function handler(req, res) {
         }
       }
       if (route === 'subject') return res.status(200).json({ success: true, ...await subject(member, req.query) });
+      if (route === 'selftest-paper') return res.status(200).json({ success:true, ...await selfStudyPaper(member,req.query) });
       if (route === 'results') return res.status(200).json({ success: true, ...await studentResults(member, req.query) });
       if (route === 'review') {
         if (!member.can_manage) fail('เฉพาะผู้ดูแล School', 403);
@@ -33,6 +34,7 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') fail('Method not allowed', 405);
     sameOrigin(req);
     if (route === 'understanding-save') return res.status(200).json({ success: true, item: await saveUnderstanding(member, body(req)) });
+    if (route === 'selftest-check') return res.status(200).json({ success:true, item:await checkSelfStudy(member,body(req)) });
     if (['start','save','submit','grade'].includes(route)) return res.status(200).json({ success:true, item:await transaction(route,member,body(req)) });
     if (route === 'exam-release-results') return res.status(200).json({ success:true, item:await releaseExamResults(member,body(req)) });
     if (route === 'exam-session-save') return res.status(200).json({ success:true, item:await saveExamSession(member,body(req)) });
