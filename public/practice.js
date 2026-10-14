@@ -51,6 +51,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   let staffResults = null, staffStudentId = null, resultsQuery = '', resultsFilter = 'all', returnView = null;
   let staffPracticeResults = null, staffExamResults = null, resultsMode = null, resultsSessionId = '', examReportReturn = null;
   let examSessionsData = null, examEditingId = null, examMembersData = null;
+  let selfTestExpanded = null;
   let realExam = null, realExamIndex = 0, realExamSaved = new Map(), realExamChoices = new Map();
   let realExamTimer = null, realExamClockOffset = 0, realExamSubmitting = false;
   const realExamWarnings = new Set();
@@ -63,6 +64,9 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   const isTPAT3 = isALevel && examGroup==='tpat3';
   const learningPath = isALevel ? '/api/alevel' : '/api/school';
   const examTrack = isTPAT3 ? 'TPAT3' : isALevel ? 'A-Level' : 'เตรียมทหาร';
+  const selfTestPrefix = 'ฝึกทดสอบตนเอง · ';
+  const isSelfTest = s => !isALevel && Boolean(s?.title?.startsWith(selfTestPrefix));
+  const selfTestRoot = !isALevel ? document.querySelector('#military-self-tests') : null;
   const scoreText = a => a?.weighted_score!==undefined ? `${Number(a.weighted_score).toLocaleString('th-TH',{maximumFractionDigits:2})} / 100` : pct(a?.correct_count,a?.total_count);
   const weightedTable = a => !a?.section_scores?.length ? '' : '<div class="exam-subject-scores"><h4>คะแนน TPAT3 รายหมวด</h4><div class="exam-score-table-wrap"><table><thead><tr><th scope="col">หมวด</th><th scope="col">ถูก / ทั้งหมด</th><th scope="col">คะแนน</th></tr></thead><tbody>'+a.section_scores.map(r=>'<tr><th scope="row">'+esc(r.name)+'</th><td>'+esc(r.correct_count)+' / '+esc(r.total_count)+'</td><td>'+esc(r.score)+' / 20</td></tr>').join('')+'</tbody></table></div><p class="practice-muted">สูตรชุดฝึก: หมวดละ 20 × จำนวนข้อถูก ÷ จำนวนข้อในหมวด · รวมแล้วปัดทศนิยมสองตำแหน่ง · มิใช่สูตรคะแนนรายข้อทางการของ MyTCAS</p></div>';
   const subjectName = id => id === 'ALL' ? 'ข้อสอบทั้งชุด · ทุกวิชา' : (data.subjects.find(s => s.subject_id === id)?.subject_name_th || id);
@@ -373,7 +377,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
 
   function studentExamSection() {
     if (!data.member.can_study || !examSessionsData) return '';
-    const sessions=(examSessionsData.sessions||[]).filter(s=>s.is_published && (!isALevel || s.subject_id===getSubject()));
+    const sessions=(examSessionsData.sessions||[]).filter(s=>s.is_published && !isSelfTest(s) && (!isALevel || s.subject_id===getSubject()));
     if(!sessions.length) return examSessionsData.exam_error
       ? '<section class="real-exam-section"><div class="real-exam-section-head"><div><span class="eyebrow">REAL EXAM</span><h3>สอบจริง</h3></div></div><p class="practice-muted">'+esc(examSessionsData.exam_error)+'</p></section>'
       : '';
@@ -432,6 +436,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
       panel.innerHTML = `<div class="practice-heading"><div><span class="eyebrow">PRACTICE</span><h2>กำลังเตรียมชุดฝึกใหม่</h2><p>กำลังเตรียมโจทย์และเฉลยสำหรับแต่ละหัวข้อ</p></div><div class="practice-toolbar"><button type="button" class="secondary" data-practice-refresh>ตรวจอีกครั้ง</button>${resultButton()}${understandingButton()}${learningButton()}</div></div>`;
       return;
     }
+    renderSelfTests();
     const graded = bank.attempts.filter(a => a.set_no === selectedSet && a.status === 'graded');
     const total = graded.reduce((n, a) => n + a.total_count, 0), correct = graded.reduce((n, a) => n + a.correct_count, 0);
     const availableSubjects = data.subjects.filter(s => bank.counts.some(c => c.set_no === selectedSet && c.subject_id === s.subject_id));
@@ -495,7 +500,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   };
 
   function renderExamManager() {
-    const sessions = examSessionsData?.sessions || [];
+    const sessions = (examSessionsData?.sessions || []).filter(s=>!isSelfTest(s));
     document.querySelector('#practice-title').textContent = 'จัดการรอบสอบจริง '+examTrack;
     modalBody.innerHTML =
       '<div class="exam-manager-head">'+
@@ -1448,6 +1453,8 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
 
   const mainClick = event => {
     const target = event.target.closest('button'); if (!target) return;
+    if(target.dataset.selfTestGroup){ const g=Number(target.dataset.selfTestGroup); selfTestExpanded=selfTestExpanded===g?null:g; renderSelfTests(); return; }
+    if(target.dataset.selfTestSet){ openSelfTest(Number(target.dataset.selfTestSet)); return; }
     if (target.dataset.practice) {
       const topic = data.topics.find(t => t.topic_id === target.dataset.practice); if (topic) openSubject(topic.subject_id, topic.topic_id);
     } else if (target.dataset.practiceSubject) openSubject(target.dataset.practiceSubject);
