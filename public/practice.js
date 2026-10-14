@@ -431,7 +431,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   }
 
   function renderSelfTests() {
-    if(!selfTestRoot || !data.member.can_study) {if(selfTestRoot)selfTestRoot.innerHTML='';return;}
+    if(!selfTestRoot)return;
     if(!bank?.ready || !examSessionsData?.sessions) {
       selfTestRoot.innerHTML='<section class="selftest-box"><h2>ทดสอบชุดข้อสอบเตรียมทหาร</h2><p>กำลังโหลดชุดที่พร้อมทดสอบ…</p></section>';return;
     }
@@ -452,15 +452,15 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
       const a=attempts.filter(x=>x.session_id===o.session.session_id).sort((x,y)=>y.attempt_no-x.attempt_no);
       return a[0]?.status==='draft'?'ทำต่อ':a.length>=o.session.max_attempts?'ดูผลล่าสุด':a[0]?.status==='submitted'?'ทดสอบใหม่':'เริ่มทำ';
     };
-    const option=o=>'<button type="button" class="selftest-choice" data-self-test-set="'+o.set.set_no+'"><span><b>'+esc(o.label)+'</b><small>'+o.count+' ข้อ · '+esc(state(o))+'</small></span><span aria-hidden="true">→</span></button>';
-    selfTestRoot.innerHTML='<section class="selftest-box"><div class="selftest-heading"><span>แบบทดสอบด้วยตนเอง</span><h2>ทดสอบชุดข้อสอบเตรียมทหาร</h2><p>ทำข้อสอบได้ทันที · เลือกเลขข้อได้ทุกข้อ · มีเวลาสูงสุด 10 ชั่วโมงต่อรอบ · ส่งแล้วรู้คะแนนพร้อมเฉลยโดยไม่ต้องรอครู</p></div><div class="selftest-groups">'+groups.map(group=>{
+    const option=o=>'<button type="button" class="selftest-choice" data-self-test-set="'+o.set.set_no+'" '+(!data.member.can_study?'disabled title="สำหรับบัญชีนักเรียน"':'')+'><span><b>'+esc(o.label)+'</b><small>'+o.count+' ข้อ · '+esc(state(o))+'</small></span><span aria-hidden="true">→</span></button>';
+    selfTestRoot.innerHTML='<section class="selftest-box"><div class="selftest-heading"><span>แบบทดสอบด้วยตนเอง</span><h2>ทดสอบชุดข้อสอบเตรียมทหาร</h2><p>ทำข้อสอบได้ทันที · เลือกเลขข้อได้ทุกข้อ · มีเวลาสูงสุด 10 ชั่วโมงต่อรอบ · ส่งแล้วรู้คะแนนพร้อมเฉลยโดยไม่ต้องรอครู</p>'+(data.member.can_study?'':'<p class="selftest-preview-note">มุมมองผู้ดูแล · ปุ่มเริ่มทดสอบใช้งานด้วยบัญชีนักเรียน</p>')+'</div><div class="selftest-groups">'+groups.map(group=>{
       const items=entries.filter(x=>x.group===group).sort((a,b)=>(a.sub??-1)-(b.sub??-1));
       const hasVariants=items.length>1||items.some(x=>x.sub!==null);
       const main=items.find(x=>x.sub===null)||items[0];
       const opened=selfTestExpanded===group;
       return '<div class="selftest-series">'+(hasVariants
         ? '<button type="button" class="selftest-group '+(opened?'is-active':'')+'" data-self-test-group="'+group+'" aria-expanded="'+opened+'"><span><strong>ทดสอบชุด '+group+'</strong><small>'+main.count+' ข้อ · มีตัวเลือก '+items.length+' ชุด</small></span><b aria-hidden="true">'+(opened?'−':'+')+'</b></button>'
-        : '<button type="button" class="selftest-group" data-self-test-set="'+main.set.set_no+'"><span><strong>ทดสอบชุด '+group+'</strong><small>'+main.count+' ข้อ · '+esc(state(main))+'</small></span><b aria-hidden="true">→</b></button>')+
+        : '<button type="button" class="selftest-group" data-self-test-set="'+main.set.set_no+'" '+(!data.member.can_study?'disabled title="สำหรับบัญชีนักเรียน"':'')+'><span><strong>ทดสอบชุด '+group+'</strong><small>'+main.count+' ข้อ · '+esc(state(main))+'</small></span><b aria-hidden="true">→</b></button>')+
         (hasVariants&&opened?'<div class="selftest-choices" aria-label="ชุดหลักและชุดคู่ขนาน">'+items.map(option).join('')+'</div>':'')+'</div>';
     }).join('')+'</div></section>';
   }
@@ -509,7 +509,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     try {
       const results=await Promise.all([
         api(apiPath+'?route=summary'),
-        data.member.can_study
+        (data.member.can_study || (!isALevel && canSeeResults()))
           ? api(apiPath+'?route=exam-sessions').catch(error=>({sessions:[],attempts:[],exam_error:error.message}))
           : Promise.resolve(examSessionsData),
         refreshLearning()
