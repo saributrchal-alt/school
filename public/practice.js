@@ -453,7 +453,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
       return a[0]?.status==='draft'?'ทำต่อ':a.length>=o.session.max_attempts?'ดูผลล่าสุด':a[0]?.status==='submitted'?'ทดสอบใหม่':'เริ่มทำ';
     };
     const option=o=>'<button type="button" class="selftest-choice" data-self-test-set="'+o.set.set_no+'"><span><b>'+esc(o.label)+'</b><small>'+o.count+' ข้อ · '+esc(state(o))+'</small></span><span aria-hidden="true">→</span></button>';
-    selfTestRoot.innerHTML='<section class="selftest-box"><div class="selftest-heading"><span>แบบทดสอบด้วยตนเอง</span><h2>ทดสอบชุดข้อสอบเตรียมทหาร</h2><p>ทำข้อสอบได้ทันที · เลือกเลขข้อได้ทุกข้อ · ส่งแล้วรู้คะแนนและดูเฉลยโดยไม่ต้องรอครู</p></div><div class="selftest-groups">'+groups.map(group=>{
+    selfTestRoot.innerHTML='<section class="selftest-box"><div class="selftest-heading"><span>แบบทดสอบด้วยตนเอง</span><h2>ทดสอบชุดข้อสอบเตรียมทหาร</h2><p>ทำข้อสอบได้ทันที · เลือกเลขข้อได้ทุกข้อ · มีเวลาสูงสุด 10 ชั่วโมงต่อรอบ · ส่งแล้วรู้คะแนนพร้อมเฉลยโดยไม่ต้องรอครู</p></div><div class="selftest-groups">'+groups.map(group=>{
       const items=entries.filter(x=>x.group===group).sort((a,b)=>(a.sub??-1)-(b.sub??-1));
       const hasVariants=items.length>1||items.some(x=>x.sub!==null);
       const main=items.find(x=>x.sub===null)||items[0];
@@ -1021,7 +1021,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
       modalBody.innerHTML=realExamTimerHeader()+
         '<div class="practice-complete real-exam-complete"><span class="eyebrow">EXAM SUMMARY</span><h3>'+(realExamSaved.size===n?'ตอบครบทุกข้อแล้ว':'ยังเหลือ '+(n-realExamSaved.size)+' ข้อ')+'</h3>'+
         '<p>'+(s.allow_submit_early?'สามารถส่งข้อสอบก่อนหมดเวลาได้':'รอจนหมดเวลา ระบบจะส่งข้อสอบอัตโนมัติ')+'</p>'+
-        (s.allow_submit_early?'<button type="button" class="practice-primary" data-real-exam-submit>ส่งข้อสอบ</button>':'')+
+        (s.allow_submit_early?'<button type="button" class="practice-primary" data-real-exam-submit>'+(isSelfTest(s)?'ส่งและตรวจคำตอบ':'ส่งข้อสอบ')+'</button>':'')+
         (realExamSaved.size<n?'<button type="button" class="secondary" data-real-exam-unanswered>ไปข้อที่ยังไม่ตอบ</button>':'')+
         '<button type="button" class="secondary" data-real-exam-index="0">กลับข้อแรก</button></div>'+realExamGrid();
       updateRealExamClock(); return;
