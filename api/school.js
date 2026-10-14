@@ -53,13 +53,13 @@ function validatedZoomLink(value) {
   try { url = new URL(value.trim()); } catch { fail('ลิงก์ Zoom ไม่ถูกต้อง'); }
   if (url.protocol !== 'https:' || url.username || url.password
       || !(url.hostname === 'zoom.us' || url.hostname.endsWith('.zoom.us'))
-      || !/^\\/j\\/\\d{9,13}\\/?$/.test(url.pathname)) fail('ใช้ลิงก์เข้าประชุม Zoom (https://…zoom.us/j/…) เท่านั้น');
+      || !/^\/j\/\d{9,13}\/?$/.test(url.pathname)) fail('ใช้ลิงก์เข้าประชุม Zoom (https://…zoom.us/j/…) เท่านั้น');
   url.hash = '';
   return url.toString();
 }
 
 function liveTime(value) {
-  if (typeof value !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}T/.test(value)) fail('กรุณากำหนดวันเวลา');
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T/.test(value)) fail('กรุณากำหนดวันเวลา');
   const time = Date.parse(value);
   if (!Number.isFinite(time)) fail('วันเวลาไม่ถูกต้อง');
   return new Date(time).toISOString();
