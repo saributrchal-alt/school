@@ -931,7 +931,8 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
 
   function realExamGrid() {
     if(!realExam?.questions?.length) return '';
-    return '<details class="practice-grid-wrap real-exam-grid"><summary>ไปยังข้อ · เขียวหมายถึงบันทึกคำตอบแล้ว</summary><div class="practice-question-grid">'+
+    const selfStudy=isSelfTest(realExam.exam_session);
+    return '<details class="practice-grid-wrap real-exam-grid '+(selfStudy?'selftest-overview':'')+'"><summary>'+(selfStudy?'☷ ภาพรวมทุกข้อ ('+realExam.questions.length+' ข้อ) · กดเลือกหมายเลขข้อ':'ไปยังข้อ · เขียวหมายถึงบันทึกคำตอบแล้ว')+'</summary><div class="practice-question-grid">'+
       realExam.questions.map((q,i)=>{
         const a=realExamSaved.get(q.question_id);
         const incorrect=realExam.can_review&&a&&a.is_correct===false;
@@ -999,7 +1000,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   function renderRealExam() {
     if(!realExam) return;
     const s=realExam.exam_session, a=realExam.attempt, n=realExam.questions.length;
-    document.querySelector('#practice-title').textContent=realExam.staff_review?realExam.student.member_name+' · ผลสอบจริง':s.title.startsWith('ฝึกสอบเสมือนจริง A-Level · ')?'ทดสอบเสมือนจริง · '+subjectName(s.subject_id):'สอบจริง · '+s.title;
+    document.querySelector('#practice-title').textContent=realExam.staff_review?realExam.student.member_name+' · ผลสอบจริง':isSelfTest(s)?'ทดสอบตนเอง · '+s.title.slice(selfTestPrefix.length):s.title.startsWith('ฝึกสอบเสมือนจริง A-Level · ')?'ทดสอบเสมือนจริง · '+subjectName(s.subject_id):'สอบจริง · '+s.title;
     document.querySelector('#practice-close').disabled=realExamSubmitting;
 
     if(a.status==='submitted' && realExamIndex<0){
@@ -1035,7 +1036,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     const subjectLine=s.subject_id==='ALL'?subjectName(q.subject_id)+' · ':'';
     const savedBadge=answer?'<span class="practice-badge '+(realExam.can_review?(answer.is_correct?'correct':'incorrect'):'answered')+'">'+(realExam.can_review?(answer.is_correct?'✓ ตอบถูก':'ควรทบทวน'):'✓ บันทึกแล้ว')+'</span>':'';
     const canNext=a.status!=='draft'||realExamHasResponse(q,selected);
-    modalBody.innerHTML=realExamTimerHeader()+
+    modalBody.innerHTML=realExamTimerHeader()+(isSelfTest(s)?realExamGrid():'')+
       '<div class="practice-question-heading"><span>ข้อ '+(Math.max(0,realExamIndex)+1)+' / '+n+' · '+esc(subjectLine+topicName(q.topic_id))+'</span>'+savedBadge+'<h3>'+(q.question_no?'ข้อ '+esc(q.question_no):'ข้อ '+(Math.max(0,realExamIndex)+1))+'</h3></div>'+
       '<p class="practice-prompt">'+esc(q.prompt)+'</p>'+
       (q.question_image_url?'<figure class="practice-source-figure"><img src="'+esc(freshQuestionImage(q.question_image_url))+'" alt="ภาพประกอบข้อ '+esc(q.question_no||realExamIndex+1)+'" loading="lazy"><figcaption>ภาพประกอบจากข้อสอบต้นฉบับ</figcaption></figure>':'')+
@@ -1045,7 +1046,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
       (a.status==='draft'?'<button type="button" class="secondary" data-real-exam-skip>ข้าม →</button>':'')+
       '<button type="button" class="practice-primary" data-real-exam-next '+(!canNext||realExamSubmitting?'disabled':'')+'>'+(realExamIndex===n-1?'สรุปข้อสอบ':'ยืนยันและไปข้อต่อไป →')+'</button></div>'+
       (a.status==='submitted'?'<button type="button" class="secondary" data-real-exam-summary>กลับสรุปคะแนน</button>':'')+
-      review+understandingMarkup(realExam,q,'exam',Boolean(realExam.staff_review))+learningMarkup(realExam,q,'exam')+realExamGrid();
+      review+understandingMarkup(realExam,q,'exam',Boolean(realExam.staff_review))+learningMarkup(realExam,q,'exam')+(isSelfTest(s)?'':realExamGrid());
     updateLearningHeading(realExam,q,'exam');
     updateRealExamClock();
   }
