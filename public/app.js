@@ -352,7 +352,10 @@ async function renderALevelSubjects() {
       const imported = Number(s.imported_question_count || 0);
       const total = Number(s.source_question_count_2568 || 0);
       const status = imported ? `<small class="level-status ready">นำเข้าแล้ว ${imported}/${total} ข้อ</small>` : `<small class="level-status">ต้นฉบับ ${total} ข้อ · พร้อมจัดเข้าหัวข้อ</small>`;
-      return `<button type="button" class="level-card" data-alevel-subject="${esc(s.subject_id)}"><span><strong>${esc(s.subject_name_th)}</strong>${status}</span><b aria-hidden="true">→</b></button>`;
+      return `<article class="level-card alevel-quick-card">
+        <button type="button" class="alevel-subject-link" data-alevel-subject="${esc(s.subject_id)}"><span><strong>${esc(s.subject_name_th)}</strong>${status}</span><b aria-hidden="true">→</b></button>
+        <button type="button" class="alevel-test-button" data-alevel-test="${esc(s.subject_id)}" aria-label="ทดสอบเสมือนจริงวิชา ${esc(s.subject_name_th)}" ${!data.member.can_study?'disabled title="สำหรับนักเรียนเท่านั้น"':''}>⏱ ทดสอบ <small>${esc(String(s.duration_minutes))} นาที</small></button>
+      </article>`;
     }).join('')}</section>`;
   } catch (error) {
     main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-university-prep>← กลับเตรียมสอบเข้ามหาวิทยาลัย</button><span class="eyebrow">A-LEVEL</span><h1>ข้อสอบ A-Level</h1></section><section class="empty-state"><strong>เปิดคลัง A-Level ไม่สำเร็จ</strong><p>${esc(error.message)}</p></section>`;
@@ -379,7 +382,7 @@ async function renderALevelCatalog(subjectId) {
   const progress = new Map((alevelData.viewedProgress || alevelData.progress).map(p=>[p.topic_id,p.status]));
   const completed = topics.filter(t=>progress.get(t.topic_id)==='completed').length;
   main.innerHTML = `<section id="practice-dashboard" class="practice-dashboard" aria-label="ผลการฝึก A-Level ของฉัน"></section>
-  <section class="hero"><button type="button" class="hero-back" ${isTPAT3?'data-university-prep':'data-university-exam="alevel"'}>← ${isTPAT3?'เตรียมสอบเข้ามหาวิทยาลัย':'A-Level'}</button><span class="eyebrow">${isTPAT3?'TPAT3':'A-LEVEL'} · ${esc(String(s.subject_code))}</span><h1>${esc(s.subject_name_th)}</h1><p>${isTPAT3?'ชุด 1 · ข้อสอบแต่งใหม่ตาม Blueprint':'ข้อสอบจริง พ.ศ. 2568'} · ${esc(String(source?.question_count || s.source_question_count_2568))} ข้อ · ${esc(String(s.duration_minutes))} นาที<br>${isTPAT3?'5 หมวด · 15 / 15 / 15 / 15 / 10 ข้อ · 5 ตัวเลือก<br>สูตรคะแนนชุดฝึก: หมวดละ 20 คะแนน รวม 100 คะแนน':'ชุด 1 ฝึกตาม Topic · ชุด 2 ทำข้อสอบจริงเต็มวิชาตามลำดับต้นฉบับ'}</p>${data.member.can_teach||data.member.can_manage?'<button type="button" class="secondary hero-exam-button" data-open-real-exam>จัดการสอบจริง</button>':''}</section>
+  <section class="hero"><button type="button" class="hero-back" ${isTPAT3?'data-university-prep':'data-university-exam="alevel"'}>← ${isTPAT3?'เตรียมสอบเข้ามหาวิทยาลัย':'A-Level'}</button><span class="eyebrow">${isTPAT3?'TPAT3':'A-LEVEL'} · ${esc(String(s.subject_code))}</span><h1>${esc(s.subject_name_th)}</h1><p>${isTPAT3?'ชุด 1 · ข้อสอบแต่งใหม่ตาม Blueprint':'ข้อสอบจริง พ.ศ. 2568'} · ${esc(String(source?.question_count || s.source_question_count_2568))} ข้อ · ${esc(String(s.duration_minutes))} นาที<br>${isTPAT3?'5 หมวด · 15 / 15 / 15 / 15 / 10 ข้อ · 5 ตัวเลือก<br>สูตรคะแนนชุดฝึก: หมวดละ 20 คะแนน รวม 100 คะแนน':'ชุด 1 ฝึกตาม Topic · ชุด 2 ทำข้อสอบจริงเต็มวิชาตามลำดับต้นฉบับ'}</p>${!isTPAT3&&data.member.can_study?`<button type="button" class="practice-primary alevel-hero-test" data-alevel-test="${esc(s.subject_id)}">⏱ ทดสอบเสมือนจริง · ${esc(String(s.duration_minutes))} นาที</button>`:''}${data.member.can_teach||data.member.can_manage?'<button type="button" class="secondary hero-exam-button" data-open-real-exam>จัดการสอบจริง</button>':''}</section>
   ${isTPAT3?`<section class="empty-state"><strong>${installation?.ready?'TPAT3 ชุด 1 พร้อมใช้งาน':'กำลังติดตั้ง TPAT3 ชุด 1'}</strong><p>โจทย์ ${installation?.question_count||0}/70 ข้อ · รูป ${installation?.image_count||0}/37 รูป · <a href="https://www.mytcas.com/blueprint/tpat3-30/" target="_blank" rel="noopener noreferrer">ดู Blueprint ↗</a></p>${!installation?.ready&&data.member.can_manage?'<button type="button" class="secondary" data-tpat3-install-images>ติดตั้งรูปประกอบ 37 รูป</button><p id="tpat3-install-status" role="status" aria-live="polite"></p>':''}<p>สูตรรายหมวดเป็นเกณฑ์ของชุดฝึกนี้ โครงสร้างทางการกำหนดส่วนที่ 1 รวม 60 คะแนน และส่วนที่ 2 รวม 40 คะแนน</p></section>`:''}
   <section class="stats"><div class="stat"><strong>${chapters.length}</strong><span>หมวด</span></div><div class="stat"><strong>${topics.length}</strong><span>หัวข้อ</span></div><div class="stat"><strong>${s.imported_question_count || 0}</strong><span>ข้อที่นำเข้ารายข้อแล้ว</span></div><div class="stat"><strong>${completed}</strong><span>หัวข้อที่เรียนแล้ว</span></div></section>
   <section><div class="section-title"><div><h2>รายการหัวข้อเรียน</h2><p>${isTPAT3?'ฝึกตามหัวข้อหรือทำครบ 70 ข้อในชุด 1 · ส่งให้ผู้ดูแลตรวจ หรือเข้าสอบรอบที่ครูกำหนด':'ดูข้อสอบจริงรายหัวข้อ หรือเลือกชุด 1 เพื่อฝึกตาม Topic และชุด 2 เพื่อทำข้อสอบจริงทั้งวิชา ส่งให้ผู้ดูแลตรวจได้'}</p></div></div>
@@ -504,7 +507,7 @@ function renderCatalog() {
   }).join('')}</details>`).join('') : '<div class="empty">ไม่พบหัวข้อที่ตรงกับคำค้นหรือสถานะที่เลือก</div>';
 }
 
-main.addEventListener('click',event=>{
+main.addEventListener('click',async event=>{
   const home=event.target.closest('[data-home]'); if(home){renderLearningHome();return;}
   const backArea=event.target.closest('[data-back-area]'); if(backArea){currentArea?renderArea(currentArea.id):renderLearningHome();return;}
   const backM6=event.target.closest('[data-m6]'); if(backM6){renderM6();return;}
@@ -522,6 +525,17 @@ main.addEventListener('click',event=>{
     return;
   }
   const realExam=event.target.closest('[data-open-real-exam]'); if(realExam){practice?.openExamManager();return;}
+  const mock=event.target.closest('[data-alevel-test]');
+  if(mock){
+    if(!data.member.can_study)return notice('เฉพาะนักเรียนที่มีสิทธิ์ School จึงเริ่มสอบได้');
+    const id=mock.dataset.alevelTest; mock.disabled=true;
+    try{
+      if(!practice||alevelSubject!==id||!main.querySelector('#practice-dashboard'))await renderALevelCatalog(id);
+      if(practice)await practice.openQuickExam(id);
+    }catch(error){notice(error.message);}
+    finally{if(mock.isConnected)mock.disabled=false;}
+    return;
+  }
   const alevelSubjectCard=event.target.closest('[data-alevel-subject]'); if(alevelSubjectCard){renderALevelCatalog(alevelSubjectCard.dataset.alevelSubject);return;}
   const alevelTopic=event.target.closest('[data-alevel-topic]'); if(alevelTopic){showALevelQuestions(alevelTopic.dataset.alevelTopic);return;}
   const tab=event.target.closest('[data-subject]'); if(tab){subject=tab.dataset.subject;renderCatalog();practice?.subjectChanged();return;}

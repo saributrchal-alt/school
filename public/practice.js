@@ -829,6 +829,21 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     }finally{busy=false;}
   }
 
+  async function openQuickExam(subjectId=getSubject()){
+    if(disposed||busy||!isALevel||isTPAT3)return;
+    if(!data.member.can_study)return notice('เฉพาะนักเรียนจึงเริ่มทดสอบได้');
+    try{
+      const result=await api(apiPath+'?route=exam-sessions');
+      if(disposed)return;
+      examSessionsData=result;
+      const s=(result.sessions||[]).find(x=>x.subject_id===subjectId&&x.set_no===2&&
+        x.title.startsWith('ฝึกสอบเสมือนจริง A-Level · ')&&x.is_published&&
+        x.result_policy==='immediate'&&x.answer_policy==='with_result');
+      if(!s)return notice('ยังไม่เปิดทดสอบเสมือนจริงวิชานี้ กรุณาแจ้งผู้ดูแล School');
+      await beginRealExam(s.session_id);
+    }catch(error){notice(error.message);}
+  }
+
   function realExamRemainingMs() {
     if(!realExam?.attempt?.deadline_at) return 0;
     return new Date(realExam.attempt.deadline_at).getTime()-(Date.now()+realExamClockOffset);
@@ -935,7 +950,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   function renderRealExam() {
     if(!realExam) return;
     const s=realExam.exam_session, a=realExam.attempt, n=realExam.questions.length;
-    document.querySelector('#practice-title').textContent=realExam.staff_review?realExam.student.member_name+' · ผลสอบจริง':'สอบจริง · '+s.title;
+    document.querySelector('#practice-title').textContent=realExam.staff_review?realExam.student.member_name+' · ผลสอบจริง':s.title.startsWith('ฝึกสอบเสมือนจริง A-Level · ')?'ทดสอบเสมือนจริง · '+subjectName(s.subject_id):'สอบจริง · '+s.title;
     document.querySelector('#practice-close').disabled=realExamSubmitting;
 
     if(a.status==='submitted' && realExamIndex<0){
@@ -1547,7 +1562,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     else if (!modal.open && (data.member.can_study || data.viewedStudent)) refreshLearning().then(() => { if (!disposed) { rerender(); renderPanel(); } });
   }, 30000);
   renderPanel();
-  return { refresh, topicAction, openExamManager, beginLearningSave() {
+  return { refresh, topicAction, openExamManager, openQuickExam, beginLearningSave() {
     learningSaving = true; learningRequest++; learningReportRequest++;
   }, learningChanged() {
     learningSaving = false;

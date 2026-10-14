@@ -286,3 +286,11 @@
   font-weight:650;
 }
 .hero .hero-exam-button:hover{background:#fff;border-color:rgba(25,62,53,.38)}
+
+/* A-Level instant mock: visible separate test action per subject. */
+.alevel-quick-card{display:flex;flex-direction:column;align-items:stretch;gap:12px;min-height:166px;padding:14px}
+.alevel-quick-card .alevel-subject-link{display:flex;justify-content:space-between;align-items:center;gap:10px;flex:1;width:100%;border:0;background:transparent;text-align:left;padding:7px 5px;color:#29493a}
+.alevel-subject-link>span{display:flex;flex-direction:column;align-items:flex-start;gap:6px}.alevel-subject-link strong{font-size:16px}.alevel-subject-link b{font-size:20px;color:#90a499}
+.alevel-test-button{width:100%;min-height:59px;padding:11px 16px;border:0;border-radius:11px;background:#176f50;color:white;font-size:22px;font-weight:800}.alevel-test-button small{font-size:12px;font-weight:600;opacity:.94}.alevel-test-button:hover:not(:disabled){background:#125a43}.alevel-test-button:disabled{opacity:.5;cursor:not-allowed}
+.alevel-hero-test{position:relative;z-index:1;margin-top:20px;padding:13px 20px;font-size:17px;font-weight:750}
+@media(max-width:640px){.alevel-quick-card{min-height:148px}.alevel-test-button{min-height:62px;font-size:24px}.alevel-hero-test{width:100%;font-size:16px}}
