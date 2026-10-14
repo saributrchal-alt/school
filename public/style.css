@@ -294,3 +294,41 @@
 .alevel-test-button{width:100%;min-height:59px;padding:11px 16px;border:0;border-radius:11px;background:#176f50;color:white;font-size:22px;font-weight:800}.alevel-test-button small{font-size:12px;font-weight:600;opacity:.94}.alevel-test-button:hover:not(:disabled){background:#125a43}.alevel-test-button:disabled{opacity:.5;cursor:not-allowed}
 .alevel-hero-test{position:relative;z-index:1;margin-top:20px;padding:13px 20px;font-size:17px;font-weight:750}
 @media(max-width:640px){.alevel-quick-card{min-height:148px}.alevel-test-button{min-height:62px;font-size:24px}.alevel-hero-test{width:100%;font-size:16px}}
+
+
+/* Zoom live learning: fully separate from exam/practice styling */
+.live-home-banner{display:flex;align-items:center;justify-content:space-between;gap:22px;background:#f0f7f0;border:1px solid #ccdecd;border-radius:18px;padding:24px 27px;margin:10px 0 32px}
+.live-home-banner h2{color:var(--green);font-size:21px;margin:7px 0}
+.live-home-banner p{color:#607267;font-size:13px;line-height:1.6;margin:0}
+.live-home-banner .eyebrow{color:#956e2f}
+.live-open-button{border:0;border-radius:10px;padding:12px 18px;background:var(--green);color:white;font-weight:650;font-size:13px;white-space:nowrap}
+.live-open-button:hover:not(:disabled){background:#2e5c48}
+.live-open-button:disabled{opacity:.52}
+.live-editor{background:white;border:1px solid var(--line);border-radius:18px;padding:25px 28px;margin-bottom:28px}
+.live-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.live-form>label{display:flex;flex-direction:column;gap:8px;color:#375042;font-size:13px;font-weight:600}
+.live-form input[type="text"],.live-form input[type="url"],.live-form input[type="datetime-local"],.live-form input:not([type]){width:100%;padding:12px 14px;border:1px solid #cbd8cc;border-radius:10px;background:#fff;min-width:0;color:#29493a}
+.live-form small,.live-note{font-size:11px;font-weight:400;color:#718278;line-height:1.65}
+.live-wide{grid-column:1/-1}
+.live-form fieldset{border:1px solid var(--line);border-radius:12px;min-width:0;padding:14px}
+.live-form legend{font-size:13px;font-weight:600;padding:0 6px}
+.live-student-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-height:200px;overflow:auto}
+.live-student-choice{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:400;background:#f7f9f6;border-radius:8px;padding:9px;cursor:pointer}
+.live-student-choice input{accent-color:#193e35}
+.live-editor-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.live-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.live-class-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;min-width:0}
+.live-class-card.is-cancelled{opacity:.65}
+.live-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.live-card-top strong{font-size:17px;color:var(--green)}
+.live-status{font-size:11px;border-radius:30px;padding:5px 9px;white-space:nowrap;background:#eef3ec;color:#58705d}
+.live-status.live{background:#e1f4e9;color:#1d7046}
+.live-status.cancelled{background:#fff0ec;color:#995b4f}
+.live-class-card>p{font-size:13px;color:#657569;line-height:1.7}
+.live-class-card>p.live-note{font-size:11px}
+.live-card-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:17px}
+.live-roster{padding:8px 0;font-size:12px;color:#476050}
+.live-roster summary{cursor:pointer}
+.live-roster div{display:grid;gap:6px;padding:10px 0}
+.live-roster span{padding:7px 9px;border-radius:7px;background:#f6f9f6}
+@media(max-width:680px){.live-home-banner{align-items:stretch;flex-direction:column;padding:21px}.live-open-button{white-space:normal}.live-form,.live-list,.live-student-list{grid-template-columns:1fr}.live-editor{padding:22px 18px}}
