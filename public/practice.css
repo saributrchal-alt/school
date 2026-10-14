@@ -245,3 +245,26 @@ progress{accent-color:#4a7d58}.practice-subject progress{display:block;width:100
  .selftest-groups{grid-template-columns:1fr}
  .selftest-group{min-height:83px}
 }
+
+/* Untimed military per-question study (separate from proctored examinations). */
+.selfstudy-status{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:13px 16px;margin-bottom:12px;border:1px solid #d9e7d9;border-radius:12px;background:#f3f9f3;color:#315d48;font-size:12px;font-weight:650}
+.selfstudy-clock{text-align:right;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.selfstudy-clock strong{font:750 25px/1.2 system-ui,sans-serif;font-variant-numeric:tabular-nums;color:#126849}
+.selfstudy-clock small{font-size:10px;color:#708c7a;font-weight:400}
+.selfstudy-overview{margin:0 0 20px;padding:13px;border:1px solid #a6d0af;border-radius:11px;background:#f7fcf8}
+.selfstudy-overview summary{color:#215b44;font-size:14px;font-weight:750;cursor:pointer}
+.selfstudy-overview[open]{max-height:45vh;overflow:auto}
+.selfstudy-overview .practice-question-grid{grid-template-columns:repeat(auto-fill,minmax(43px,1fr))}
+.selfstudy-overview .practice-question-grid button{min-height:40px}
+.selfstudy-hint{font-size:13px;line-height:1.85;color:#647d6a;background:#f5f7f2;padding:12px;border-radius:9px;margin-top:14px}
+.selfstudy-feedback{margin-top:22px;padding:18px;border:1px solid #d6e5d7;background:#f5faf2;border-radius:13px}
+.selfstudy-feedback.is-incorrect{border-color:#efdab3;background:#fff9f0}
+.selfstudy-feedback h3{margin:0 0 9px;font-size:20px;color:#236645}
+.selfstudy-feedback.is-incorrect h3{color:#925d21}
+.selfstudy-feedback>p{margin:0 0 13px;color:#52705a;font-size:14px}
+.selfstudy-feedback>h4{font-size:15px;margin:12px 0;color:#2a5b41}
+.selfstudy-feedback .practice-explanation{margin:10px 0 0;background:#fff}
+.selfstudy-submit{font-size:17px;font-weight:750;padding:12px 20px}
+.selftest-preview-note{color:#a07127!important;font-weight:600}
+.selftest-group:disabled,.selftest-choice:disabled{cursor:not-allowed;opacity:.55}
+@media(max-width:640px){.selfstudy-status{align-items:flex-start;flex-direction:column}.selfstudy-clock{text-align:left}.selfstudy-clock strong{font-size:25px}.selfstudy-feedback{padding:13px}.selfstudy-feedback h3{font-size:18px}}
