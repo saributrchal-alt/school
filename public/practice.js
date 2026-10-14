@@ -542,7 +542,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
       const elapsed=Math.min(86400000,Math.round(selfElapsed.get(q.question_id)||0));
       const response=await post('selftest-check',{set_no:selfPaper.set_no,question_id:q.question_id,selected_answer:chosen,elapsed_ms:elapsed});
       const result=response.item;
-      if(!selfPaper || selfPaper.set_no!==response.item?.set_no && !q) return;
+      if(!selfPaper)return;
       selfResults.set(q.question_id,result);
       selfRetry.delete(q.question_id);
       selfElapsed.delete(q.question_id);
@@ -1353,7 +1353,13 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   }
 
   async function closeModal() {
-    if (busy || realExamSubmitting) return;
+    if (busy || realExamSubmitting || selfBusy) return;
+    if(selfPaper) {
+      stopThinking();selfPaper=null;selfResults.clear();selfChoices.clear();
+      selfElapsed.clear();selfRetry.clear();requestNo++;
+      document.querySelector('#practice-close').disabled=false;
+      modal.close();return;
+    }
     if (realExam) {
       if (realExam.attempt?.status==='draft' && !realExam.exam_session?.allow_resume) {
         notice('รอบสอบนี้ไม่อนุญาตให้ออกจากหน้าสอบก่อนส่งหรือหมดเวลา');
@@ -1621,6 +1627,15 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   };
   const modalClick = event => {
     const t = event.target.closest('button'); if (!t || busy) return;
+    if(t.dataset.selfstudyIndex!==undefined){moveSelfQuestion(Number(t.dataset.selfstudyIndex));return;}
+    if(t.hasAttribute('data-selfstudy-check')){checkSelfQuestion();return;}
+    if(t.hasAttribute('data-selfstudy-retry')){
+      if(selfPaper && !selfBusy){
+        const id=selfPaper.questions[selfIndex].question_id;
+        selfRetry.add(id);selfChoices.delete(id);selfElapsed.delete(id);renderSelfQuestion();
+      }
+      return;
+    }
     if (t.hasAttribute('data-learning-report')) openLearningReport();
     else if (t.dataset.learningStudent) openLearningReport(t.dataset.learningStudent);
     else if (t.hasAttribute('data-learning-update')) updateLearningReport();
@@ -1673,6 +1688,14 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     else if (t.dataset.grade) grade(t.dataset.grade, t);
   };
   const choiceChange = event => {
+    if(selfPaper && event.target.name==='selfstudy-answer' && !selfBusy) {
+      const q=selfPaper.questions[selfIndex],value=Number(event.target.value);
+      if(!Number.isInteger(value)||value<1||value>q.choices.length)return;
+      selfChoices.set(q.question_id,value);
+      const submit=modalBody.querySelector('[data-selfstudy-check]');
+      if(submit)submit.disabled=false;
+      return;
+    }
     if (event.target.dataset.learningStatus) { changeLearning(event.target.dataset.learningStatus, event.target.value); return; }
     if (event.target.id === 'learning-status-filter') { learningFilter = event.target.value; renderLearningRows(); return; }
     if (event.target.id === 'learning-subject-filter') { learningSubject = event.target.value; renderLearningRows(); return; }
@@ -1709,10 +1732,16 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     }
   };
   const cancel = event => { event.preventDefault(); closeModal(); };
+  const studyVisibility=()=>{
+    if(!selfPaper)return;
+    if(document.visibilityState==='hidden')stopThinking();
+    else if(selfTimer===null && !selfBusy)startThinking();
+  };
   main.addEventListener('click', mainClick); main.addEventListener('change', setChange);
   modalBody.addEventListener('click', modalClick); modalBody.addEventListener('change', choiceChange);
   modalBody.addEventListener('input', resultsSearch);
   modal.addEventListener('cancel', cancel); document.querySelector('#practice-close').addEventListener('click', closeModal);
+  document.addEventListener('visibilitychange',studyVisibility);
   learningTimer = setInterval(() => {
     if (document.visibilityState === 'hidden' || busy || learningSaving) return;
     if (learningView && learningReport && modal.open) updateLearningReport();
@@ -1731,6 +1760,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     modalBody.removeEventListener('click', modalClick); modalBody.removeEventListener('change', choiceChange);
     modalBody.removeEventListener('input', resultsSearch);
     modal.removeEventListener('cancel', cancel); document.querySelector('#practice-close').removeEventListener('click', closeModal);
+    document.removeEventListener('visibilitychange',studyVisibility);stopThinking();selfPaper=null;
     clearInterval(realExamTimer); realExamTimer=null; realExam=null; modal.close(); session = null;
   } };
 }
