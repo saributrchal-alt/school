@@ -430,6 +430,50 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     return '<section class="real-exam-section"><div class="real-exam-section-head"><div><span class="eyebrow">REAL EXAM</span><h3>สอบจริง</h3><p>จับเวลาจริงจากฐานข้อมูล ปิดหน้าแล้วเวลาไม่หยุด</p></div></div><div class="real-exam-list">'+cards+'</div></section>';
   }
 
+  function renderSelfTests() {
+    if(!selfTestRoot || !data.member.can_study) {if(selfTestRoot)selfTestRoot.innerHTML='';return;}
+    if(!bank?.ready || !examSessionsData?.sessions) {
+      selfTestRoot.innerHTML='<section class="selftest-box"><h2>ทดสอบชุดข้อสอบเตรียมทหาร</h2><p>กำลังโหลดชุดที่พร้อมทดสอบ…</p></section>';return;
+    }
+    const sessions=examSessionsData.sessions.filter(s=>isSelfTest(s)&&s.is_published);
+    const attempts=examSessionsData.attempts||[];
+    const entries=bank.sets.map(set=>{
+      const session=sessions.find(s=>Number(s.set_no)===Number(set.set_no)&&s.subject_id==='ALL');
+      const count=bank.counts.filter(x=>x.set_no===set.set_no).reduce((a,x)=>a+x.total_count,0);
+      const label=String(set.display_label||set.label||'');
+      const parts=label.match(/ชุด(?:ฝึก)?(?:ที่)?\s*(\d+)(?:\.(\d+))?/);
+      const group=parts?Number(parts[1]):Number(set.set_no);
+      const sub=parts?.[2]?Number(parts[2]):null;
+      return {set,session,count,group,sub,label:'ชุด '+group+(sub!==null?'.'+sub:'')};
+    }).filter(x=>x.session&&x.count>0);
+    const groups=[...new Set(entries.map(x=>x.group))].sort((a,b)=>a-b);
+    if(!groups.length){selfTestRoot.innerHTML='';return;}
+    const state=o=>{
+      const a=attempts.filter(x=>x.session_id===o.session.session_id).sort((x,y)=>y.attempt_no-x.attempt_no);
+      return a[0]?.status==='draft'?'ทำต่อ':a.length>=o.session.max_attempts?'ดูผลล่าสุด':a[0]?.status==='submitted'?'ทดสอบใหม่':'เริ่มทำ';
+    };
+    const option=o=>'<button type="button" class="selftest-choice" data-self-test-set="'+o.set.set_no+'"><span><b>'+esc(o.label)+'</b><small>'+o.count+' ข้อ · '+esc(state(o))+'</small></span><span aria-hidden="true">→</span></button>';
+    selfTestRoot.innerHTML='<section class="selftest-box"><div class="selftest-heading"><span>แบบทดสอบด้วยตนเอง</span><h2>ทดสอบชุดข้อสอบเตรียมทหาร</h2><p>ทำข้อสอบได้ทันที · เลือกเลขข้อได้ทุกข้อ · ส่งแล้วรู้คะแนนและดูเฉลยโดยไม่ต้องรอครู</p></div><div class="selftest-groups">'+groups.map(group=>{
+      const items=entries.filter(x=>x.group===group).sort((a,b)=>(a.sub??-1)-(b.sub??-1));
+      const hasVariants=items.length>1||items.some(x=>x.sub!==null);
+      const main=items.find(x=>x.sub===null)||items[0];
+      const opened=selfTestExpanded===group;
+      return '<div class="selftest-series">'+(hasVariants
+        ? '<button type="button" class="selftest-group '+(opened?'is-active':'')+'" data-self-test-group="'+group+'" aria-expanded="'+opened+'"><span><strong>ทดสอบชุด '+group+'</strong><small>'+main.count+' ข้อ · มีตัวเลือก '+items.length+' ชุด</small></span><b aria-hidden="true">'+(opened?'−':'+')+'</b></button>'
+        : '<button type="button" class="selftest-group" data-self-test-set="'+main.set.set_no+'"><span><strong>ทดสอบชุด '+group+'</strong><small>'+main.count+' ข้อ · '+esc(state(main))+'</small></span><b aria-hidden="true">→</b></button>')+
+        (hasVariants&&opened?'<div class="selftest-choices" aria-label="ชุดหลักและชุดคู่ขนาน">'+items.map(option).join('')+'</div>':'')+'</div>';
+    }).join('')+'</div></section>';
+  }
+
+  async function openSelfTest(setNo) {
+    if(busy||isALevel||!data.member.can_study)return;
+    const s=(examSessionsData?.sessions||[]).find(x=>isSelfTest(x)&&x.is_published&&Number(x.set_no)===setNo&&x.subject_id==='ALL');
+    if(!s){notice('ไม่พบชุดทดสอบที่พร้อมใช้งาน กรุณาอัปเดตหน้า');return;}
+    const own=(examSessionsData.attempts||[]).filter(x=>x.session_id===s.session_id).sort((a,b)=>b.attempt_no-a.attempt_no);
+    if(own.length>=s.max_attempts && own[0]?.status==='submitted') return openRealExamIntro(s.session_id);
+    return beginRealExam(s.session_id);
+  }
+
   function renderPanel() {
     if (!bank) { panel.innerHTML = '<p class="practice-muted" role="status">กำลังเปิดผลการฝึก…</p>'; return; }
     if (!bank.ready) {
