@@ -52,6 +52,8 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   let staffPracticeResults = null, staffExamResults = null, resultsMode = null, resultsSessionId = '', examReportReturn = null;
   let examSessionsData = null, examEditingId = null, examMembersData = null;
   let selfTestExpanded = null;
+  let selfPaper=null, selfIndex=0, selfResults=new Map(), selfChoices=new Map();
+  let selfElapsed=new Map(), selfStartedAt=null, selfTimer=null, selfBusy=false, selfRetry=new Set();
   let realExam = null, realExamIndex = 0, realExamSaved = new Map(), realExamChoices = new Map();
   let realExamTimer = null, realExamClockOffset = 0, realExamSubmitting = false;
   const realExamWarnings = new Set();
@@ -432,28 +434,22 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
 
   function renderSelfTests() {
     if(!selfTestRoot)return;
-    if(!bank?.ready || !examSessionsData?.sessions) {
+    if(!bank?.ready) {
       selfTestRoot.innerHTML='<section class="selftest-box"><h2>ทดสอบชุดข้อสอบเตรียมทหาร</h2><p>กำลังโหลดชุดที่พร้อมทดสอบ…</p></section>';return;
     }
-    const sessions=examSessionsData.sessions.filter(s=>isSelfTest(s)&&s.is_published);
-    const attempts=examSessionsData.attempts||[];
     const entries=bank.sets.map(set=>{
-      const session=sessions.find(s=>Number(s.set_no)===Number(set.set_no)&&s.subject_id==='ALL');
       const count=bank.counts.filter(x=>x.set_no===set.set_no).reduce((a,x)=>a+x.total_count,0);
       const label=String(set.display_label||set.label||'');
       const parts=label.match(/ชุด(?:ฝึก)?(?:ที่)?\s*(\d+)(?:\.(\d+))?/);
       const group=parts?Number(parts[1]):Number(set.set_no);
       const sub=parts?.[2]?Number(parts[2]):null;
       return {set,session,count,group,sub,label:'ชุด '+group+(sub!==null?'.'+sub:'')};
-    }).filter(x=>x.session&&x.count>0);
+    }).filter(x=>x.count>0);
     const groups=[...new Set(entries.map(x=>x.group))].sort((a,b)=>a-b);
     if(!groups.length){selfTestRoot.innerHTML='';return;}
-    const state=o=>{
-      const a=attempts.filter(x=>x.session_id===o.session.session_id).sort((x,y)=>y.attempt_no-x.attempt_no);
-      return a[0]?.status==='draft'?'ทำต่อ':a.length>=o.session.max_attempts?'ดูผลล่าสุด':a[0]?.status==='submitted'?'ทดสอบใหม่':'เริ่มทำ';
-    };
+    const state=o=>'เลือกข้อเพื่อฝึกคิด';
     const option=o=>'<button type="button" class="selftest-choice" data-self-test-set="'+o.set.set_no+'" '+(!data.member.can_study?'disabled title="สำหรับบัญชีนักเรียน"':'')+'><span><b>'+esc(o.label)+'</b><small>'+o.count+' ข้อ · '+esc(state(o))+'</small></span><span aria-hidden="true">→</span></button>';
-    selfTestRoot.innerHTML='<section class="selftest-box"><div class="selftest-heading"><span>แบบทดสอบด้วยตนเอง</span><h2>ทดสอบชุดข้อสอบเตรียมทหาร</h2><p>ทำข้อสอบได้ทันที · เลือกเลขข้อได้ทุกข้อ · มีเวลาสูงสุด 10 ชั่วโมงต่อรอบ · ส่งแล้วรู้คะแนนพร้อมเฉลยโดยไม่ต้องรอครู</p>'+(data.member.can_study?'':'<p class="selftest-preview-note">มุมมองผู้ดูแล · ปุ่มเริ่มทดสอบใช้งานด้วยบัญชีนักเรียน</p>')+'</div><div class="selftest-groups">'+groups.map(group=>{
+    selfTestRoot.innerHTML='<section class="selftest-box"><div class="selftest-heading"><span>แบบทดสอบด้วยตนเอง</span><h2>ทดสอบชุดข้อสอบเตรียมทหาร</h2><p>ฝึกคิดทีละข้อ ไม่จำกัดเวลา · กดส่งตรวจแต่ละข้อ แล้วดูเฉลย คำอธิบาย และเวลาที่ใช้ทันที</p>'+(data.member.can_study?'':'<p class="selftest-preview-note">มุมมองผู้ดูแล · ปุ่มเริ่มทดสอบใช้งานด้วยบัญชีนักเรียน</p>')+'</div><div class="selftest-groups">'+groups.map(group=>{
       const items=entries.filter(x=>x.group===group).sort((a,b)=>(a.sub??-1)-(b.sub??-1));
       const hasVariants=items.length>1||items.some(x=>x.sub!==null);
       const main=items.find(x=>x.sub===null)||items[0];
@@ -465,14 +461,120 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     }).join('')+'</div></section>';
   }
 
-  async function openSelfTest(setNo) {
-    if(busy||isALevel||!data.member.can_study)return;
-    const s=(examSessionsData?.sessions||[]).find(x=>isSelfTest(x)&&x.is_published&&Number(x.set_no)===setNo&&x.subject_id==='ALL');
-    if(!s){notice('ไม่พบชุดทดสอบที่พร้อมใช้งาน กรุณาอัปเดตหน้า');return;}
-    const own=(examSessionsData.attempts||[]).filter(x=>x.session_id===s.session_id).sort((a,b)=>b.attempt_no-a.attempt_no);
-    if(own.length>=s.max_attempts && own[0]?.status==='submitted') return openRealExamIntro(s.session_id);
-    return beginRealExam(s.session_id);
+  // Untimed, independent question study.  Never touches exam-start/exam-submit.
+  const thinkingNow=()=>typeof performance!=='undefined'?performance.now():Date.now();
+  const thinkingText=ms=>{
+    const secs=Math.floor(Math.max(0,ms)/1000);
+    const hours=Math.floor(secs/3600), mins=Math.floor(secs%3600/60), seconds=secs%60;
+    return (hours?hours+':':'')+String(mins).padStart(2,'0')+':'+String(seconds).padStart(2,'0');
+  };
+  function stopThinking() {
+    if(selfTimer!==null){clearInterval(selfTimer);selfTimer=null;}
+    if(selfPaper && selfStartedAt!==null){
+      const id=selfPaper.questions[selfIndex]?.question_id;
+      if(id)selfElapsed.set(id,(selfElapsed.get(id)||0)+Math.max(0,thinkingNow()-selfStartedAt));
+    }
+    selfStartedAt=null;
   }
+  function updateThinking() {
+    if(!selfPaper || selfStartedAt===null)return;
+    const id=selfPaper.questions[selfIndex]?.question_id;
+    const node=modalBody.querySelector('#self-thinking-time');
+    if(node)node.textContent=thinkingText((selfElapsed.get(id)||0)+thinkingNow()-selfStartedAt);
+  }
+  function startThinking() {
+    stopThinking();
+    if(!selfPaper || document.visibilityState==='hidden')return;
+    const id=selfPaper.questions[selfIndex]?.question_id;
+    if(!id || (selfResults.has(id)&&!selfRetry.has(id)))return;
+    selfStartedAt=thinkingNow();
+    selfTimer=setInterval(updateThinking,250);
+  }
+  function renderSelfQuestion(){
+    if(!selfPaper)return;
+    stopThinking();
+    const qs=selfPaper.questions, q=qs[selfIndex], id=q.question_id;
+    const checked=selfResults.get(id), result=selfRetry.has(id)?null:checked;
+    const selected=selfChoices.get(id);
+    const done=selfResults.size;
+    const buttons=qs.map((row,i)=>{
+      const answer=selfResults.get(row.question_id);
+      return '<button type="button" data-selfstudy-index="'+i+'" class="'+(i===selfIndex?'current ':'')+(answer?(answer.is_correct?'answered':'incorrect'):'')+'" aria-label="ไปข้อ '+(i+1)+'">'+(i+1)+(answer?' ✓':'')+'</button>';
+    }).join('');
+    document.querySelector('#practice-title').textContent='ฝึกคิดรายข้อ · '+esc(selfPaper.label);
+    document.querySelector('#practice-close').disabled=selfBusy;
+    modalBody.innerHTML='<div class="selfstudy-status"><span>ฝึกคิดแบบไม่จำกัดเวลา · ตรวจแล้ว '+done+' / '+qs.length+' ข้อ</span>'+
+      '<div class="selfstudy-clock">เวลาคิดข้อนี้ <strong id="self-thinking-time">'+thinkingText(result?result.elapsed_ms:(selfElapsed.get(id)||0))+'</strong><small>นับขึ้น ไม่ใช่นับถอยหลัง</small></div></div>'+
+      '<details class="practice-grid-wrap selfstudy-overview"><summary>☷ ภาพรวมทุกข้อ · กดหมายเลขเพื่อเลือกข้อ ('+qs.length+' ข้อ)</summary><div class="practice-question-grid">'+buttons+'</div></details>'+
+      '<div class="practice-question-heading"><span>'+esc(subjectName(q.subject_id))+' · ข้อ '+(selfIndex+1)+' / '+qs.length+'</span><h3>'+(q.question_no?'ข้อ '+esc(q.question_no):esc(topicName(q.topic_id)))+'</h3></div>'+
+      '<p class="practice-prompt">'+esc(q.prompt)+'</p>'+
+      (q.question_image_url?'<figure class="practice-source-figure"><img src="'+esc(freshQuestionImage(q.question_image_url))+'" alt="รูปประกอบข้อ '+(q.question_no||selfIndex+1)+'" loading="lazy"></figure>':'')+
+      '<fieldset class="practice-choices" '+(result||selfBusy?'disabled':'')+'><legend class="sr-only">เลือกคำตอบข้อ '+(selfIndex+1)+'</legend>'+
+      (q.choices||[]).map((choice,i)=>{
+        const answer=i+1;
+        return '<label class="practice-choice '+(selected===answer?'selected ':'')+(result&&result.answer_key===answer?'answer-key':'')+'">'+
+          '<input type="radio" name="selfstudy-answer" value="'+answer+'" '+(selected===answer?'checked':'')+'><span class="practice-choice-number">'+answer+'</span><span>'+esc(choice)+'</span>'+
+          (result&&result.answer_key===answer?'<span class="practice-choice-key">เฉลย</span>':'')+'</label>';
+      }).join('')+'</fieldset>'+
+      (result?
+        '<section class="selfstudy-feedback '+(result.is_correct?'is-correct':'is-incorrect')+'" aria-live="polite"><h3>'+(result.is_correct?'🎉 ยินดีด้วย! คุณตอบถูกต้อง':'ข้อนี้ยังไม่ถูกต้อง มาศึกษาเฉลยกัน')+'</h3><p>ใช้เวลาคิด <b>'+thinkingText(result.elapsed_ms)+'</b> · '+(result.is_correct?'ตอบถูก':'ตอบผิด')+'</p>'+
+        '<h4>คำตอบที่ถูกต้อง: ตัวเลือก '+esc(result.answer_key)+'</h4>'+
+        '<div class="practice-explanation"><h4>คำอธิบาย</h4><p>'+esc(result.explanation||'')+'</p><h4>เหตุผล / วิธีคิด</h4><p>'+esc(result.reasoning||'')+'</p></div></section>':
+        '<p class="selfstudy-hint">เลือกคำตอบ แล้วกด “ส่งตรวจ” เพื่อทราบผลข้อนี้ทันที ไม่มีการส่งข้อสอบทั้งชุด</p>')+
+      '<div class="practice-navigation">'+
+        '<button type="button" class="secondary" data-selfstudy-index="'+Math.max(0,selfIndex-1)+'" '+(selfIndex===0?'disabled':'')+'>← ข้อก่อนหน้า</button>'+
+        (result?'<button type="button" class="secondary" data-selfstudy-retry>ลองคิดข้อนี้ใหม่</button>':
+          '<button type="button" class="practice-primary selfstudy-submit" data-selfstudy-check '+(!selected||selfBusy?'disabled':'')+'>ส่งตรวจคำตอบ</button>')+
+        '<button type="button" class="secondary" data-selfstudy-index="'+Math.min(qs.length-1,selfIndex+1)+'" '+(selfIndex===qs.length-1?'disabled':'')+'>ข้อถัดไป →</button></div>';
+    startThinking();
+  }
+  function moveSelfQuestion(to) {
+    if(!selfPaper || selfBusy || !Number.isInteger(to)||to<0||to>=selfPaper.questions.length)return;
+    stopThinking();selfIndex=to;renderSelfQuestion();modal.scrollTop=0;
+  }
+  async function checkSelfQuestion() {
+    if(!selfPaper||selfBusy)return;
+    const q=selfPaper.questions[selfIndex],chosen=selfChoices.get(q.question_id);
+    if(!Number.isInteger(chosen)){notice('กรุณาเลือกคำตอบก่อนส่งตรวจ');return;}
+    stopThinking();selfBusy=true;
+    document.querySelector('#practice-close').disabled=true;
+    try {
+      const elapsed=Math.min(86400000,Math.round(selfElapsed.get(q.question_id)||0));
+      const response=await post('selftest-check',{set_no:selfPaper.set_no,question_id:q.question_id,selected_answer:chosen,elapsed_ms:elapsed});
+      const result=response.item;
+      if(!selfPaper || selfPaper.set_no!==response.item?.set_no && !q) return;
+      selfResults.set(q.question_id,result);
+      selfRetry.delete(q.question_id);
+      selfElapsed.delete(q.question_id);
+      notice(result.is_correct?'ตอบถูกต้อง!':'ตรวจแล้ว · เปิดเฉลยให้ศึกษาแล้ว');
+    }catch(error){notice(error.message);}
+    finally{
+      selfBusy=false;
+      if(selfPaper)renderSelfQuestion();
+      else document.querySelector('#practice-close').disabled=false;
+    }
+  }
+  async function openSelfTest(setNo) {
+    if(busy||selfBusy||isALevel||!data.member.can_study)return;
+    busy=true;stopThinking();selfPaper=null;
+    clearInterval(realExamTimer);realExamTimer=null;realExam=null;session=null;
+    document.querySelector('#practice-title').textContent='กำลังเปิดแบบฝึกคิดรายข้อ';
+    modalBody.innerHTML='<p class="practice-muted" role="status">กำลังโหลดโจทย์ฝึกคิด…</p>';
+    if(!modal.open)modal.showModal();
+    try{
+      const paper=await api(apiPath+'?route=selftest-paper&set_no='+encodeURIComponent(setNo));
+      if(disposed)return;
+      selfPaper=paper;selfResults=new Map(paper.results.map(r=>[r.question_id,r]));
+      selfChoices=new Map(paper.results.map(r=>[r.question_id,r.selected_answer]));
+      selfElapsed=new Map();selfRetry=new Set();
+      selfIndex=paper.questions.findIndex(q=>!selfResults.has(q.question_id));
+      if(selfIndex<0)selfIndex=0;
+      renderSelfQuestion();modal.scrollTop=0;
+    }catch(error){
+      modalBody.innerHTML='<p class="practice-inline-error" role="alert">'+esc(error.message)+'</p><button type="button" class="secondary" data-real-exam-close>ปิด</button>';
+    }finally{busy=false;}
+  }
+
 
   function renderPanel() {
     if (!bank) { panel.innerHTML = '<p class="practice-muted" role="status">กำลังเปิดผลการฝึก…</p>'; return; }
