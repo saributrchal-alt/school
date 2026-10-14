@@ -215,3 +215,33 @@ progress{accent-color:#4a7d58}.practice-subject progress{display:block;width:100
   #practice-dialog .real-exam-header-clock span{font-size:10px}
   #practice-dialog .real-exam-header-clock strong{font-size:29px}
 }
+
+/* Self-service military test selectors and prominent question overview */
+.selftest-box{background:#fff;border:1px solid #d5e5dc;border-radius:19px;padding:25px;margin:4px 0 30px}
+.selftest-heading>span{display:block;font-size:12px;font-weight:700;color:#3f8664;margin-bottom:5px}
+.selftest-heading h2{font-size:22px;color:#163c30;margin:0 0 6px}
+.selftest-heading p{font-size:13px;line-height:1.7;color:#61786d;margin:0 0 19px}
+.selftest-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:13px;align-items:start}
+.selftest-series{min-width:0}
+.selftest-group{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#176747;color:#fff;border:0;border-radius:13px;width:100%;min-height:87px;text-align:left;padding:17px 19px}
+.selftest-group strong{display:block;font-size:19px}
+.selftest-group small{display:block;font-size:11px;line-height:1.6;margin-top:5px;opacity:.88}
+.selftest-group>b{font-size:27px;color:#e4f8ed}
+.selftest-group:hover,.selftest-group.is-active{background:#104e39}
+.selftest-choices{display:grid;gap:8px;margin-top:10px;padding:11px;background:#f0f7f0;border:1px solid #d5e7da;border-radius:13px}
+.selftest-choice{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid #d3e1d6;border-radius:10px;background:white;text-align:left;padding:12px;color:#164a36}
+.selftest-choice:hover{border-color:#288359;background:#f8fcf7}
+.selftest-choice b{font-size:15px}
+.selftest-choice small{display:block;margin-top:4px;font-size:11px;color:#638071}
+.selftest-choice>span:last-child{font-size:19px}
+#practice-dialog .selftest-overview{margin:0 0 17px;padding:13px 15px;border:2px solid #70b898;background:#f2faf5;border-radius:12px}
+#practice-dialog .selftest-overview>summary{font-size:15px;font-weight:750;color:#145a3f}
+#practice-dialog .selftest-overview[open]{max-height:49vh;overflow:auto}
+#practice-dialog .selftest-overview .practice-question-grid{grid-template-columns:repeat(auto-fill,minmax(44px,1fr))}
+#practice-dialog .selftest-overview .practice-question-grid button{min-height:40px}
+@media(max-width:640px){
+ .selftest-box{padding:18px 15px}
+ .selftest-heading h2{font-size:20px}
+ .selftest-groups{grid-template-columns:1fr}
+ .selftest-group{min-height:83px}
+}
