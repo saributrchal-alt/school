@@ -92,3 +92,19 @@ The current state is attached to every topic name. **เรียนแล้ว
 Topic lists and the sticky question header always show the complete four-step road. Earlier steps remain visible with green circles/checks, the current step is highlighted, and upcoming steps remain gray. The start is retained when progressing to review or completion; selecting another state updates the same road without hiding stages. This uses the existing recorded topic state.
 
 Teachers choose a student above the catalog to see that student's states beside the same topics. **สถานะหัวข้อเรียน** opens a student list and a report with all topics (including unstarted topics), subject/status filters, search, counts and update times. Both practice and real-exam student reports link to it. Teachers read the student's state; only the cookie owner with current study permission can save it. Open reports and visible catalogs refresh every 30 seconds. Reads and writes use the existing authenticated APIs and current School/Temple permission checks, without exposing question keys or progress notes.
+
+
+## Zoom live classes (link-based MVP)
+
+The School home page has a **เรียนออนไลน์กับครู** entry for teachers and students. It uses existing Temple → School logins; no Zoom SDK, Zoom OAuth app, external video server, or new secret is required for the first phase.
+
+**Install:** In the **existing School Supabase project**, run `supabase/School_Zoom_Live_Classes.sql` once (after the base School schema). The new tables and `school_live_save` RPC are isolated from exam/practice data. They have RLS enabled; only School's backend service key can use them. Before SQL installation, the UI shows a setup-required message rather than altering existing data.
+
+**Teacher/manager:** Open **เรียนออนไลน์กับครู**, enter a class title, starting/ending time, the Zoom **join** URL copied from the host's scheduled meeting (e.g. `https://us05web.zoom.us/j/...`), and select eligible School students. Teachers can see and edit their own classes; School managers can manage all classes. The backend validates a Zoom HTTPS hostname and meeting URL, and writes class + roster atomically using `school_live_save`. To change a live class, press **แก้ไข** and save. Cancelling a class does not delete its record.
+
+**Student:** Only assigned, active learners see their scheduled classes. A student may press **เปิดห้อง Zoom** from 15 minutes before the scheduled start until 15 minutes after the scheduled end; the School server checks the member's current Temple/School rights and the class roster before returning the Zoom link. Instructors can open their rooms earlier. The full Zoom join URL is never sent to the public page or an unassigned learner.
+
+**Attendance limitation:** The class roster shows **first clicks on the School "open Zoom" button**. This is *not* proof of connection to Zoom, actual attendance duration, or an automatic Zoom report. Zoom host authorization, waiting room, passcode, and the free-plan meeting time limit are managed in Zoom itself; School does not bypass them. It does not record meeting video, monitor screens, or embed Zoom inside School yet.
+
+**Important:** Do not commit real student data, Zoom passcodes, or meeting join URLs to the GitHub repository. Teachers paste each private join URL into the authenticated class form instead. Keep Waiting Room and a meeting passcode enabled in Zoom. After installing SQL and merging/deploying the feature, test with one teacher and one permitted student before expanding to larger classes.
+

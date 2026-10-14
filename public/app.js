@@ -102,6 +102,7 @@ const universityExams = [
 
 let data, subject = 'ENG', query = '', filter = 'all', noticeTimer, practice, currentArea = null;
 let alevelData = null, alevelSubject = 'AL61', alevelQuery = '', alevelFilter = 'all';
+let liveData = null, liveEditingId = null;
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const roles = member => [member.can_study?'นักเรียน':'',member.can_teach?'ครู / ผู้สอน':'',member.can_manage?'ผู้ดูแล':''].filter(Boolean).map(x=>`<span class="role">${x}</span>`).join('');
 const QUESTION_IMAGE_REV = '20261006-crop3';
@@ -239,6 +240,7 @@ function areaCard(area) {
 function renderLearningHome() {
   practice?.destroy(); practice=null; currentArea=null;
   main.innerHTML = `<section class="hero learning-home-hero hero-with-logo"><div class="hero-copy"><span class="eyebrow">NATHOENG SCHOOL</span><h1>เลือกประเภทการเรียน ฝึกฝน และทดสอบ</h1><p>เริ่มจากระดับหรือเส้นทางที่ต้องการ ระบบจะแยกเนื้อหาและแบบฝึกให้เป็นหมวดชัดเจน เพื่อให้ค้นหาและติดตามผลการเรียนได้ง่าย</p></div><img class="hero-school-logo" src="https://media.nathoeng.com/uploads/school/logo/school-logo.png?v=20261006-media1" alt="ตรา Nathoeng School"></section>
+  <section class="live-home-banner"><div><span class="eyebrow">เรียนสดกับครู</span><h2>ห้องเรียนออนไลน์ผ่าน Zoom</h2><p>ดูตารางสอน เข้าห้องเรียน และทำโจทย์กับครูผ่าน NATHOENG SCHOOL</p></div><button type="button" class="live-open-button" data-live-open>เปิดห้องเรียนสด →</button></section>
   <section>
     <div class="section-title"><div><h2>ประเภทการเรียน</h2><p>เลือกหมวดที่ต้องการ แล้วจึงเลือกระดับหรือสายการสอบในขั้นถัดไป</p></div>${data.member.can_manage?'<button type="button" class="secondary" id="members">สมาชิก School</button>':''}</div>
     <div class="learning-grid">${learningAreas.map(areaCard).join('')}</div>
@@ -508,7 +510,101 @@ function renderCatalog() {
   }).join('')}</details>`).join('') : '<div class="empty">ไม่พบหัวข้อที่ตรงกับคำค้นหรือสถานะที่เลือก</div>';
 }
 
+
+function localDateTime(value) {
+  const d = value ? new Date(value) : new Date(Date.now() + 60 * 60 * 1000);
+  const p = n => String(n).padStart(2, '0');
+  return [d.getFullYear(), p(d.getMonth() + 1), p(d.getDate())].join('-') + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+function liveTimeLabel(iso) {
+  return new Date(iso).toLocaleString('th-TH', { dateStyle:'medium', timeStyle:'short' });
+}
+
+function liveCanJoin(item) {
+  if (item.status !== 'scheduled') return false;
+  if (data.member.can_manage || (data.member.can_teach && item.teacher_id === data.member.member_id)) return true;
+  const now = Date.now();
+  return now >= Date.parse(item.starts_at) - 15 * 60000 && now <= Date.parse(item.ends_at) + 15 * 60000;
+}
+
+async function showLiveRooms() {
+  practice?.destroy(); practice=null; currentArea=null;
+  main.innerHTML='<section class="empty-state"><strong>กำลังเปิดตารางเรียนสด…</strong></section>';
+  try {
+    liveData = await api('/api/school?route=live-classes');
+    renderLiveRooms();
+  } catch (error) {
+    main.innerHTML='<section class="page-head"><button type="button" data-home class="back-link">← กลับหน้าแรก</button><h1>ห้องเรียนสด</h1></section><section class="empty-state"><strong>เปิดตารางเรียนไม่สำเร็จ</strong><p>' + esc(error.message) + '</p></section>';
+  }
+}
+
+function renderLiveRooms() {
+  const staff = Boolean(data.member.can_teach || data.member.can_manage);
+  const items = liveData?.classes || [];
+  const selected = items.find(c => c.class_id === liveEditingId && c.status === 'scheduled');
+  if (!selected) liveEditingId=null;
+  const starts = selected?.starts_at || null;
+  const ends = selected?.ends_at || new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+  const enroll = selected?.student_ids || [];
+  const studentChoices = (liveData?.students || []).map(student =>
+    '<label class="live-student-choice"><input type="checkbox" name="student_ids" value="' + esc(student.member_id) + '"' +
+    (enroll.includes(student.member_id) ? ' checked' : '') + '><span>' + esc(student.member_name) + '</span></label>').join('');
+  const editor = staff && !liveData.setup_required ? `
+    <section class="live-editor">
+      <div class="section-title"><div><h2>${selected?'แก้ไขห้องเรียนสด':'กำหนดห้องเรียนสด'}</h2><p>ครูเพิ่มลิงก์ Zoom และเลือกนักเรียนที่มีสิทธิ์เข้าร่วม</p></div></div>
+      <form id="live-form" class="live-form">
+        <label>ชื่อคาบเรียน<input name="title" required maxlength="160" placeholder="เช่น จปร. ติวเข้ม" value="${esc(selected?.title || '')}"></label>
+        <label>เริ่มสอน<input name="starts_at" required type="datetime-local" value="${esc(localDateTime(starts))}"></label>
+        <label>เลิกสอน<input name="ends_at" required type="datetime-local" value="${esc(localDateTime(ends))}"></label>
+        <label class="live-wide">ลิงก์เข้าร่วม Zoom<input name="zoom_join_url" required type="url" autocomplete="off" placeholder="https://us05web.zoom.us/j/..." value="${esc(selected?.zoom_join_url || '')}"><small>คัดลอกจาก Zoom → Meetings → Copy Invitation (นำเฉพาะลิงก์ Join Zoom Meeting)</small></label>
+        <fieldset class="live-wide"><legend>เลือกนักเรียนที่อนุญาตให้เข้าห้อง (${(liveData.students||[]).length} คน)</legend><div class="live-student-list">${studentChoices || '<p class="progress-note">ยังไม่มีสมาชิกที่ได้รับสิทธิ์นักเรียนจากวัด</p>'}</div></fieldset>
+        <div class="live-wide live-editor-actions"><button type="submit" class="live-open-button">${selected?'บันทึกการแก้ไข':'สร้างคาบเรียน'}</button>${selected?'<button type="button" class="secondary" data-live-edit-cancel>ยกเลิกการแก้ไข</button>':''}</div>
+      </form>
+      <p class="live-note">School จะเก็บลิงก์ไว้ในฐานข้อมูลฝั่งเซิร์ฟเวอร์ นักเรียนจะรับลิงก์เมื่อกดเข้าเรียนตามเวลาที่กำหนด</p>
+    </section>` : '';
+  const cards = items.length ? items.map(c => {
+    const cancelled = c.status === 'cancelled';
+    const canJoin = liveCanJoin(c);
+    const roster = c.student_ids || [];
+    const clicked = c.join_clicks || [];
+    return `<article class="live-class-card${cancelled?' is-cancelled':''}">
+      <div class="live-card-top"><strong>${esc(c.title)}</strong><span class="live-status ${cancelled?'cancelled':canJoin?'live':'upcoming'}">${cancelled?'ยกเลิกแล้ว':canJoin?'เข้าห้องได้':'ตามตาราง'}</span></div>
+      <p>📅 ${esc(liveTimeLabel(c.starts_at))} – ${esc(new Date(c.ends_at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}))} น.</p>
+      ${staff?'<p class="live-note">นักเรียนที่เลือก '+roster.length+' คน · กดเข้าผ่าน School แล้ว '+clicked.length+' คน (ไม่ใช่การยืนยันเวลาอยู่ใน Zoom)</p>':''}
+      ${staff && roster.length ? '<details class="live-roster"><summary>ดูรายชื่อนักเรียน</summary><div>'+roster.map(id=>{const student=liveData.students.find(x=>x.member_id===id);return '<span>'+esc(student?.member_name||id)+' '+(clicked.some(x=>x.member_id===id)?'✓ กดเข้าห้องแล้ว':'— ยังไม่กด')+'</span>';}).join('')+'</div></details>':''}
+      <div class="live-card-actions">
+        ${!cancelled?'<button type="button" class="live-open-button" data-live-join="'+esc(c.class_id)+'"'+(canJoin?'':' disabled')+'>เปิดห้อง Zoom ↗</button>':''}
+        ${staff&&!cancelled?'<button type="button" class="secondary" data-live-edit="'+esc(c.class_id)+'">แก้ไข</button><button type="button" class="secondary" data-live-cancel="'+esc(c.class_id)+'">ยกเลิกคาบ</button>':''}
+      </div>
+      ${!staff && !canJoin && !cancelled?'<small class="live-note">กดเข้าได้ตั้งแต่ 15 นาทีก่อนเริ่มจนถึง 15 นาทีหลังเวลาเลิก</small>':''}
+    </article>`;
+  }).join('') : '<div class="empty-state"><strong>ยังไม่มีคาบเรียนสด</strong><p>เมื่อครูเพิ่มตารางสอนและเลือกนักเรียนแล้ว คาบเรียนจะปรากฏที่นี่</p></div>';
+  main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-home>← กลับหน้าแรก</button><span class="eyebrow">NATHOENG SCHOOL · ZOOM</span><h1>เรียนออนไลน์กับครู</h1><p>สอนสดผ่าน Zoom · เวลาแสดงตามเขตเวลาของอุปกรณ์ที่ใช้งาน</p></section>
+  ${liveData?.setup_required ? '<section class="empty-state"><strong>รอเปิดระบบเรียนสด</strong><p>ผู้ดูแลต้องติดตั้ง supabase/School_Zoom_Live_Classes.sql ในฐานข้อมูล School ก่อน จึงจะเปิดตารางเรียนได้</p></section>' : editor + '<section><div class="section-title"><div><h2>ตารางเรียนสด</h2><p>ห้องเรียนสำหรับบัญชีที่ได้รับสิทธิ์เท่านั้น</p></div></div><div class="live-list">' + cards + '</div></section>'}`;
+}
+
 main.addEventListener('click',async event=>{
+  const liveOpen=event.target.closest('[data-live-open]'); if(liveOpen){liveEditingId=null;await showLiveRooms();return;}
+  const liveEdit=event.target.closest('[data-live-edit]'); if(liveEdit){liveEditingId=liveEdit.dataset.liveEdit;renderLiveRooms();main.querySelector('#live-form')?.scrollIntoView({block:'start'});return;}
+  const liveEditCancel=event.target.closest('[data-live-edit-cancel]'); if(liveEditCancel){liveEditingId=null;renderLiveRooms();return;}
+  const liveCancel=event.target.closest('[data-live-cancel]'); if(liveCancel){
+    if(!window.confirm('ยกเลิกคาบเรียนนี้หรือไม่?'))return;
+    liveCancel.disabled=true;
+    try {await api('/api/school?route=live-cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({class_id:liveCancel.dataset.liveCancel})});liveEditingId=null;await showLiveRooms();notice('ยกเลิกคาบเรียนแล้ว');}
+    catch(error){notice(error.message);if(liveCancel.isConnected)liveCancel.disabled=false;}
+    return;
+  }
+  const liveJoin=event.target.closest('[data-live-join]'); if(liveJoin){
+    const popup=window.open('', '_blank');
+    if(!popup){notice('กรุณาอนุญาตให้เบราว์เซอร์เปิดแท็บใหม่ก่อน');return;}
+    popup.opener=null;popup.document.title='กำลังเปิด Zoom';popup.document.body.textContent='กำลังตรวจสิทธิ์เข้าห้อง Zoom…';
+    liveJoin.disabled=true;
+    try {const result=await api('/api/school?route=live-join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({class_id:liveJoin.dataset.liveJoin})});popup.location.replace(result.join_url);}
+    catch(error){popup.close();notice(error.message);}
+    finally{if(liveJoin.isConnected)liveJoin.disabled=false;}
+    return;
+  }
   const home=event.target.closest('[data-home]'); if(home){renderLearningHome();return;}
   const backArea=event.target.closest('[data-back-area]'); if(backArea){currentArea?renderArea(currentArea.id):renderLearningHome();return;}
   const backM6=event.target.closest('[data-m6]'); if(backM6){renderM6();return;}
@@ -542,6 +638,27 @@ main.addEventListener('click',async event=>{
   const tab=event.target.closest('[data-subject]'); if(tab){subject=tab.dataset.subject;renderCatalog();practice?.subjectChanged();return;}
   const topic=event.target.closest('[data-topic]'); if(topic)showQuestions(topic.dataset.topic);
 });
+
+main.addEventListener('submit', async event => {
+  const form = event.target.closest('#live-form');
+  if (!form) return;
+  event.preventDefault();
+  const payload = {
+    class_id:liveEditingId || null,
+    title:form.elements.title.value.trim(),
+    starts_at:new Date(form.elements.starts_at.value).toISOString(),
+    ends_at:new Date(form.elements.ends_at.value).toISOString(),
+    zoom_join_url:form.elements.zoom_join_url.value.trim(),
+    student_ids:[...form.querySelectorAll('input[name="student_ids"]:checked')].map(el=>el.value)
+  };
+  const submit=form.querySelector('button[type="submit"]'); submit.disabled=true;
+  try {
+    await api('/api/school?route=live-save', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    liveEditingId=null;await showLiveRooms();notice('บันทึกตารางเรียนสดแล้ว');
+  } catch(error){notice(error.message);}
+  finally{if(submit.isConnected)submit.disabled=false;}
+});
+
 main.addEventListener('change',async event=>{
   const alevelSelect=event.target.closest('[data-alevel-progress]');
   if(alevelSelect){
