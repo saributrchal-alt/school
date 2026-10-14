@@ -4,7 +4,7 @@ const QUESTION_IMAGE_REV = '20261006-crop3';
 const freshQuestionImage = url => url ? `${url}${url.includes("?") ? "&" : "?"}v=${QUESTION_IMAGE_REV}` : '';
 
 const stateLabel = { draft:'กำลังทำ', submitted:'รอตรวจ', graded:'ตรวจแล้ว' };
-const setLabel = set => set?.source_type === 'original_exam' ? `ชุด ${Number(set.set_no)} · ข้อสอบจริง` : Number.isInteger(Number(set?.set_no)) ? `ชุด ${Number(set.set_no)}` : (set?.display_label || set?.label || '');
+const setLabel = set => set?.source_type === 'original_exam' ? `ชุด ${Number(set.set_no)} · ข้อสอบจริง` : set?.display_label || (Number.isInteger(Number(set?.set_no)) ? `ชุด ${Number(set.set_no)}` : (set?.label || ''));
 const setText = (sets, no) => setLabel((sets || []).find(s => s.set_no === no));
 
 export const learningLabels = { not_started:'ยังไม่เริ่ม', in_progress:'กำลังเรียน', review:'ทบทวน', completed:'เรียนแล้ว' };
@@ -1156,7 +1156,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     busy = true; modalError = ''; renderQuestion();
     try {
       const payload={attempt_id:session.attempt.attempt_id,question_id:question.question_id};
-      if(session.set_no===2) payload.response=value; else payload.selected_answer=Number(value);
+      payload.selected_answer=Number(value);
       const result=await post('save',payload);
       const stored={question_id:question.question_id,response:result.item.response ?? value};
       if(question.response_mode==='choice') stored.selected_answer=Number(value);
