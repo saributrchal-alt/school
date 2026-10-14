@@ -844,11 +844,11 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   function updateRealExamClock() {
     if(!realExam||realExam.attempt?.status!=='draft') return;
     const ms=realExamRemainingMs();
-    const el=modalBody.querySelector('[data-real-exam-clock]');
+    const el=modal.querySelector('[data-real-exam-clock]');
     if(el){
       el.textContent=formatExamClock(ms);
-      el.closest('.real-exam-clock')?.classList.toggle('urgent',ms<=5*60*1000);
-      el.closest('.real-exam-clock')?.classList.toggle('critical',ms<=60*1000);
+      el.closest('.real-exam-header-clock')?.classList.toggle('urgent',ms<=5*60*1000);
+      el.closest('.real-exam-header-clock')?.classList.toggle('critical',ms<=60*1000);
     }
     for(const [limit,label] of [[10,'เหลือเวลา 10 นาที'],[5,'เหลือเวลา 5 นาที'],[1,'เหลือเวลา 1 นาที']]){
       if(ms<=limit*60*1000 && ms>0 && !realExamWarnings.has(limit)){
@@ -929,7 +929,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
       const context=realExam.staff_review?'<div class="practice-student-context">'+back+'<div><strong>'+esc(realExam.student.member_name)+'</strong><small>'+esc(realExam.exam_session.title)+' · ครั้งที่ '+esc(a.attempt_no)+'</small></div></div>':understandingReturn?back:'';
       return context+'<div class="real-exam-statusbar"><span>ส่งข้อสอบแล้ว '+esc(date(a.submitted_at))+'</span><span>ตอบ '+realExamSaved.size+' / '+n+' ข้อ</span></div>';
     }
-    return '<div class="real-exam-statusbar"><div class="real-exam-clock"><small>เวลาคงเหลือ</small><strong data-real-exam-clock>'+formatExamClock(realExamRemainingMs())+'</strong></div><div><b>ตอบแล้ว '+realExamSaved.size+' / '+n+' ข้อ</b><small>หมดเวลา '+esc(date(a.deadline_at))+'</small></div></div>';
+    return '<div class="real-exam-statusbar is-live"><strong>กำลังสอบ</strong><div><b>ตอบแล้ว '+realExamSaved.size+' / '+n+' ข้อ</b><small>หมดเวลา '+esc(date(a.deadline_at))+'</small></div></div>';
   }
 
   function renderRealExam() {
