@@ -1046,6 +1046,9 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     try{
       const result=await post('exam-submit',{exam_attempt_id:realExam.attempt.exam_attempt_id,timeout});
       await loadRealExam(result);
+      // Submission is complete: release the modal lock and repaint its Close controls.
+      realExamSubmitting=false;
+      renderRealExam();
       notice(timeout?'หมดเวลา · ระบบส่งข้อสอบอัตโนมัติแล้ว':'ส่งข้อสอบเรียบร้อย');
       examSessionsData=await api(apiPath+'?route=exam-sessions').catch(()=>examSessionsData);
       renderPanel();
