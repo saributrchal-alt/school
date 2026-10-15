@@ -100,98 +100,7 @@ const universityExams = [
   {code:'TPAT5', name:'ความถนัดครุศาสตร์-ศึกษาศาสตร์', source:'https://www.mytcas.com/blueprint/tpat5-50/'}
 ];
 
-const m1SoQuestions = [
-  [
-    "I love chocolate.",
-    "So _____ I!",
-    "do",
-    "Present Simple: love → do"
-  ],
-  [
-    "I'm very hungry.",
-    "So _____ I.",
-    "am",
-    "I am → So am I. ฉันก็หิวเช่นกัน"
-  ],
-  [
-    "I can ride a bicycle.",
-    "So _____ I.",
-    "can",
-    "ใช้ can ตามประโยคต้นฉบับ"
-  ],
-  [
-    "I like playing football.",
-    "So _____ I.",
-    "do",
-    "Present Simple: like → do"
-  ],
-  [
-    "I'm excited about the trip.",
-    "So _____ I!",
-    "am",
-    "I'm excited → So am I."
-  ],
-  [
-    "I watched a movie last night.",
-    "So _____ I.",
-    "did",
-    "Past Simple: watched → did"
-  ],
-  [
-    "I have finished my homework.",
-    "So _____ I.",
-    "have",
-    "Present Perfect: have finished → have"
-  ],
-  [
-    "I will study English tonight.",
-    "So _____ I.",
-    "will",
-    "ใช้ will ตามประโยคต้นฉบับ"
-  ],
-  [
-    "My brother likes basketball.",
-    "So _____ my sister.",
-    "does",
-    "my sister เป็นเอกพจน์ ใช้ does"
-  ],
-  [
-    "I'm in Grade 7.",
-    "So _____ I!",
-    "am",
-    "I'm in Grade 7 → So am I."
-  ],
-  [
-    "Look! There's a rainbow!",
-    "Oh, so there _____!",
-    "is",
-    "So there is! = อ๋อ จริงด้วย"
-  ],
-  [
-    "It's raining outside.",
-    "Oh, so it _____!",
-    "is",
-    "So it is! = อ๋อ จริงด้วย"
-  ],
-  [
-    "Why are you staying home?",
-    "I'm sick, _____ I need to rest.",
-    "so",
-    "so = ดังนั้น ใช้เชื่อมเหตุและผล"
-  ],
-  [
-    "Why did you miss the bus?",
-    "I woke up late, _____ I missed it.",
-    "so",
-    "ตื่นสายจึงพลาดรถ ใช้ so"
-  ],
-  [
-    "The test was difficult.",
-    "Yes, it was _____ hard!",
-    "so",
-    "so + adjective = มาก เช่น so hard"
-  ]
-];
+let m1SoQuestions = [];
 
 let data, subject = 'ENG', query = '', filter = 'all', noticeTimer, practice, currentArea = null;
 let alevelData = null, alevelSubject = 'AL61', alevelQuery = '', alevelFilter = 'all';
@@ -391,34 +300,97 @@ function openLevel(levelId) {
 
 function renderM1() {
   practice?.destroy(); practice=null;
+  const teacher=Boolean(data.member.can_teach || data.member.can_manage);
   main.innerHTML = '<section class="page-head"><button type="button" class="back-link" data-back-area>← กลับชั้นมัธยม</button><span class="eyebrow">NATHOENG SCHOOL · M.1</span><h1>มัธยมศึกษาปีที่ 1</h1><p>เลือกบทเรียนและแบบฝึกหัด</p></section>'
-    + '<section class="level-grid"><button type="button" class="level-card" data-m1-so-open><span><strong>ภาษาอังกฤษ — Using “So” in Conversations</strong><small class="level-status ready">15 ข้อ · เติมคำในบทสนทนา · ตรวจคำตอบได้ทันที</small></span><b aria-hidden="true">→</b></button></section>'
-    + '<p class="progress-note" style="margin-top:18px">รายวิชาอื่นของ ม.1 อยู่ระหว่างดำเนินงาน</p>';
+    + '<section class="level-grid"><button type="button" class="level-card" data-m1-so-open><span><strong>ภาษาอังกฤษ — Using “So” in Conversations</strong><small class="level-status ready">15 ข้อ · เติมคำในบทสนทนา · บันทึกคะแนนเข้าระบบ</small></span><b aria-hidden="true">→</b></button>'
+    + (teacher?'<button type="button" class="level-card" data-m1-so-reports><span><strong>ผลการทำแบบฝึกภาษาอังกฤษ ม.1</strong><small class="level-status ready">สำหรับครูและผู้ดูแล · คะแนนและข้อที่ยังตอบผิด</small></span><b aria-hidden="true">→</b></button>':'')
+    + '</section><p class="progress-note" style="margin-top:18px">รายวิชาอื่นของ ม.1 อยู่ระหว่างดำเนินงาน</p>';
 }
-function renderM1SoPractice() {
+async function renderM1SoPractice() {
   practice?.destroy(); practice=null;
-  main.innerHTML = '<section class="page-head"><button type="button" class="back-link" data-back-m1>← กลับบทเรียน ม.1</button><span class="eyebrow">ENGLISH · M.1 · CONVERSATIONS</span><h1>Using “So” in Conversations</h1><p>เติมคำในบทสนทนา แล้วตรวจคำตอบและอ่านคำอธิบายภาษาไทย</p></section>'
-    + '<section class="chapter" style="padding:20px 24px;line-height:1.8"><strong>Grammar Tips / สรุปการใช้ So</strong><p>I like cats. — <b>So do I.</b> (ฉันก็ชอบ) · I am happy. — <b>So am I.</b> (ฉันก็มีความสุข)</p><p>I can swim. — <b>So can I.</b> · There is a cat. — <b>So there is!</b> (จริงด้วย) · I was tired, <b>so</b> I slept. (ดังนั้น)</p></section>'
-    + '<section class="chapter" aria-label="แบบฝึกภาษาอังกฤษ ม.1">' + m1SoQuestions.map(([a,b],i)=>'<div class="topic" style="grid-template-columns:1fr"><div style="min-width:0"><strong>Question '+(i+1)+'</strong><p>A: '+esc(a)+'</p><p>B: '+esc(b)+'</p><label for="so-m1-'+i+'" style="font-size:12px;color:#66766c;display:block;margin-bottom:6px">Fill in one word</label><input id="so-m1-'+i+'" data-so-m1-input="'+i+'" type="text" maxlength="20" autocomplete="off" spellcheck="false" style="padding:11px 12px;max-width:260px;width:100%;border:1px solid #cbd9ce;border-radius:10px" placeholder="Your answer"><p data-so-m1-feedback="'+i+'" role="status" style="display:none;font-size:13px;line-height:1.7"></p></div></div>').join('') + '</section>'
-    + '<section class="chapter" style="padding:24px"><strong id="so-m1-score" role="status" style="display:block;font-size:19px;margin-bottom:16px">15 questions · ยังไม่ได้ตรวจ</strong><button type="button" class="secondary" data-so-m1-check style="background:#193e35;color:white;margin-right:8px">ตรวจคำตอบ / Check Answers</button><button type="button" class="secondary" data-so-m1-retry>ทำอีกครั้ง / Retry</button><p class="progress-note" style="margin:16px 0 0">การตรวจนี้ทำในหน้าเว็บ ยังไม่บันทึกคะแนนลงระบบผลการเรียน</p></section>';
+  main.innerHTML='<section class="empty-state" data-so-m1-loading>กำลังเปิดแบบฝึก ม.1…</section>';
+  try {
+    const [paper,history]=await Promise.all([
+      api('/api/school?route=m1-so-paper'),
+      api('/api/school?route=m1-so-history')
+    ]);
+    if (!main.querySelector('[data-so-m1-loading]')) return;
+    m1SoQuestions=paper.questions || [];
+    if(m1SoQuestions.length!==15)throw new Error('แบบฝึกยังมีข้อไม่ครบ');
+    const past=(history.attempts||[]).slice(0,5);
+    main.innerHTML = '<section class="page-head"><button type="button" class="back-link" data-back-m1>← กลับบทเรียน ม.1</button><span class="eyebrow">ENGLISH · M.1 · CONVERSATIONS</span><h1>Using “So” in Conversations</h1><p>เติมคำในบทสนทนา แล้วกดส่งตรวจ ระบบจะบันทึกคะแนนของสมาชิกปัจจุบันโดยอัตโนมัติ</p></section>'
+      + '<section class="chapter" style="padding:20px 24px;line-height:1.8"><strong>Grammar Tips / สรุปการใช้ So</strong><p>I like cats. — <b>So do I.</b> (ฉันก็ชอบ) · I am happy. — <b>So am I.</b> (ฉันก็มีความสุข)</p><p>I can swim. — <b>So can I.</b> · There is a cat. — <b>So there is!</b> (จริงด้วย) · I was tired, <b>so</b> I slept. (ดังนั้น)</p></section>'
+      + '<section class="chapter" aria-label="แบบฝึกภาษาอังกฤษ ม.1">' + m1SoQuestions.map((q,i)=>'<div class="topic" style="grid-template-columns:1fr"><div style="min-width:0"><strong>Question '+esc(q.question_no)+'</strong><p>A: '+esc(q.speaker_a)+'</p><p>B: '+esc(q.speaker_b)+'</p><label for="so-m1-'+i+'" style="font-size:12px;color:#66766c;display:block;margin-bottom:6px">Fill in one word</label><input id="so-m1-'+i+'" data-so-m1-input="'+i+'" type="text" maxlength="20" autocomplete="off" spellcheck="false" style="padding:11px 12px;max-width:260px;width:100%;border:1px solid #cbd9ce;border-radius:10px" placeholder="Your answer"><p data-so-m1-feedback="'+i+'" role="status" style="display:none;font-size:13px;line-height:1.7"></p></div></div>').join('') + '</section>'
+      + '<section class="chapter" style="padding:24px"><strong id="so-m1-score" role="status" style="display:block;font-size:19px;margin-bottom:16px">15 questions · ยังไม่ได้ส่งตรวจ</strong>'
+      + (data.member.can_study?'<button type="button" class="secondary" data-so-m1-check style="background:#193e35;color:white;margin-right:8px">ส่งตรวจและบันทึกคะแนน</button><button type="button" class="secondary" data-so-m1-retry>ทำอีกครั้ง / Retry</button>':'<p class="progress-note">บัญชีครูที่ไม่มีสิทธิ์นักเรียนสามารถดูแบบฝึกได้ แต่ส่งคะแนนแทนนักเรียนไม่ได้</p>')
+      + '<p class="progress-note" style="margin:16px 0 0">คะแนนนี้เป็นคะแนนฝึกทบทวน ไม่ใช่คะแนนสอบจริง การทำใหม่แต่ละครั้งจะเก็บเป็นประวัติอีกหนึ่งรายการ</p></section>'
+      + '<section class="chapter" style="padding:20px 24px"><strong>ประวัติคะแนนล่าสุดของฉัน</strong><div data-so-m1-history style="margin-top:12px">'
+      + (past.length?past.map(a=>'<p style="margin:7px 0;font-size:13px">'+esc(new Date(a.submitted_at).toLocaleString('th-TH'))+' — <b>'+esc(a.correct_count)+'/'+esc(a.total_count)+'</b></p>').join(''):'<p style="font-size:13px;color:#738078">ยังไม่เคยส่งแบบฝึกนี้</p>')
+      + '</div></section>';
+  }catch(error){
+    if(main.querySelector('[data-so-m1-loading]')){
+      main.innerHTML='<section class="page-head"><button type="button" class="back-link" data-back-m1>← กลับบทเรียน ม.1</button><h1>Using “So” in Conversations</h1></section><section class="empty-state"><strong>เปิดแบบฝึกไม่สำเร็จ</strong><p>'+esc(error.message)+'</p></section>';
+    }
+  }
 }
-function checkM1SoPractice() {
-  let totalCorrect=0;
-  m1SoQuestions.forEach(([, ,answer,why],i)=>{
-    const input=main.querySelector('[data-so-m1-input="'+i+'"]');
-    const feedback=main.querySelector('[data-so-m1-feedback="'+i+'"]');
-    if (!input || !feedback) return;
-    const correct=input.value.trim().toLowerCase()===answer;
-    if(correct)totalCorrect++;
-    input.disabled=true;
-    feedback.style.display='block';
-    feedback.style.color=correct?'#246346':'#a33427';
-    feedback.textContent=(correct?'✓ Correct!':'✗ Answer: '+answer)+' — '+why;
-  });
-  const score=main.querySelector('#so-m1-score');
-  if(score)score.textContent='Your Score: '+totalCorrect+' / '+m1SoQuestions.length+' ('+Math.round(100*totalCorrect/m1SoQuestions.length)+'%)';
+async function checkM1SoPractice() {
   const button=main.querySelector('[data-so-m1-check]');
-  if(button)button.disabled=true;
+  if (!button || button.disabled || m1SoQuestions.length!==15)return;
+  const payload=m1SoQuestions.map((q,i)=>({question_no:q.question_no,answer:main.querySelector('[data-so-m1-input="'+i+'"]')?.value?.trim()||''}));
+  button.disabled=true;button.textContent='กำลังตรวจและบันทึกคะแนน…';
+  try {
+    const response=await api('/api/school?route=m1-so-submit',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({answers:payload})
+    });
+    const item=response.item;
+    if(!item || !Array.isArray(item.feedback) || item.feedback.length!==15)throw new Error('ระบบตรวจยังไม่ตอบกลับครบ 15 ข้อ');
+    const feedbackByNumber=new Map(item.feedback.map(q=>[q.question_no,q]));
+    m1SoQuestions.forEach((q,i)=>{
+      const field=main.querySelector('[data-so-m1-input="'+i+'"]');
+      const feedback=main.querySelector('[data-so-m1-feedback="'+i+'"]');
+      const graded=feedbackByNumber.get(q.question_no);
+      if(!field || !feedback || !graded)return;
+      field.disabled=true;
+      feedback.style.display='block';feedback.style.color=graded.is_correct?'#246346':'#9b372c';
+      feedback.textContent=(graded.is_correct?'✓ Correct!':'✗ Answer: '+graded.answer)+' — '+graded.explanation;
+    });
+    const label=main.querySelector('#so-m1-score');
+    if(label)label.textContent='Your Score: '+item.correct_count+' / '+item.total_count+' ('+Math.round(100*item.correct_count/item.total_count)+'%) · บันทึกแล้ว';
+    const history=main.querySelector('[data-so-m1-history]');
+    if(history)history.insertAdjacentHTML('afterbegin','<p style="margin:7px 0;font-size:13px"><b>ล่าสุด: '+esc(new Date(item.submitted_at).toLocaleString('th-TH'))+' — '+esc(item.correct_count)+'/'+esc(item.total_count)+'</b></p>');
+    button.textContent='ส่งตรวจแล้ว ✓';
+    notice('ตรวจคำตอบและบันทึกคะแนนเรียบร้อย');
+  }catch(error){
+    button.disabled=false;button.textContent='ส่งตรวจและบันทึกคะแนน';
+    notice('ยังไม่ได้บันทึกคะแนน: '+error.message);
+  }
+}
+async function renderM1SoReports() {
+  if(!data.member.can_teach && !data.member.can_manage)return notice('เฉพาะครูหรือผู้ดูแล');
+  main.innerHTML='<section class="empty-state" data-so-m1-report-loading>กำลังโหลดผลแบบฝึกภาษาอังกฤษ ม.1…</section>';
+  try {
+    const result=await api('/api/school?route=m1-so-results');
+    if(!main.querySelector('[data-so-m1-report-loading]'))return;
+    const students=result.students||[];
+    const completed=students.filter(s=>s.latest).length;
+    const rows=students.map(s=>{
+      const last=s.latest;
+      const wrong=last?.wrong_answers||[];
+      return '<article class="topic" style="grid-template-columns:1fr"><div><strong>'+esc(s.member_name)+'</strong>'
+        + '<p style="margin:7px 0 0;color:#738078;font-size:12px">'+(s.is_active?'บัญชีใช้งาน':'บัญชีไม่ใช้งาน')+' · ทำแล้ว '+esc(s.attempt_count)+' ครั้ง</p>'
+        + (last?'<p style="margin:9px 0"><b>คะแนนล่าสุด '+esc(last.correct_count)+'/'+esc(last.total_count)+'</b> · '+esc(Math.round(100*last.correct_count/last.total_count))+'% · '+esc(new Date(last.submitted_at).toLocaleString('th-TH'))+'</p>'
+          + (wrong.length?'<details><summary>ดูข้อที่ตอบผิด ('+wrong.length+' ข้อ)</summary><ol>'+wrong.map(q=>'<li style="margin:12px 0">ข้อ '+esc(q.question_no)+' · ตอบ: <b>'+esc(q.selected_answer||'(เว้นว่าง)')+'</b> · เฉลย: <b>'+esc(q.answer)+'</b><div style="color:#738078;font-size:12px">'+esc(q.explanation)+'</div></li>').join('')+'</ol></details>':'<p style="color:#246346;font-size:12px">✓ ตอบถูกทุกข้อ</p>')
+          :'<p style="margin:9px 0;color:#738078;font-size:13px">ยังไม่ส่งแบบฝึก</p>')
+      + '</div></article>';
+    }).join('');
+    main.innerHTML='<section class="page-head"><button type="button" class="back-link" data-back-m1>← กลับบทเรียน ม.1</button><span class="eyebrow">NATHOENG SCHOOL · TEACHER</span><h1>ผลการฝึก English M.1 — So</h1><p>คะแนนล่าสุดและข้อที่ตอบผิดของนักเรียน (รายงานนี้ไม่ใช่คะแนนสอบจริง)</p></section>'
+      + '<section class="stats"><div class="stat"><strong>'+esc(students.length)+'</strong><span>นักเรียน</span></div><div class="stat"><strong>'+esc(completed)+'</strong><span>ส่งแล้ว</span></div></section>'
+      + '<section class="chapter"><div style="padding:20px 23px"><strong>ติดตามผลรายคน</strong>'+(result.truncated?'<p class="progress-note">แสดงเฉพาะประวัติ 1,000 รายการล่าสุด อาจมีจำนวนครั้งที่ไม่ครบ</p>':'')+'</div>'+ (rows||'<div class="topic">ยังไม่มีนักเรียน</div>') +'</section>';
+  }catch(error){
+    if(main.querySelector('[data-so-m1-report-loading]'))
+      main.innerHTML='<section class="page-head"><button type="button" class="back-link" data-back-m1>← กลับบทเรียน ม.1</button><h1>ผลแบบฝึก</h1></section><section class="empty-state"><strong>โหลดรายงานไม่สำเร็จ</strong><p>'+esc(error.message)+'</p></section>';
+  }
 }
 
 function renderM6() {
@@ -736,9 +708,10 @@ main.addEventListener('click',async event=>{
     return;
   }
   const m1Back=event.target.closest('[data-back-m1]'); if(m1Back){renderM1();return;}
-  const m1Open=event.target.closest('[data-m1-so-open]'); if(m1Open){renderM1SoPractice();return;}
-  const m1Check=event.target.closest('[data-so-m1-check]'); if(m1Check){checkM1SoPractice();return;}
-  const m1Retry=event.target.closest('[data-so-m1-retry]'); if(m1Retry){renderM1SoPractice();return;}
+  const m1Open=event.target.closest('[data-m1-so-open]'); if(m1Open){await renderM1SoPractice();return;}
+  const m1Reports=event.target.closest('[data-m1-so-reports]'); if(m1Reports){await renderM1SoReports();return;}
+  const m1Check=event.target.closest('[data-so-m1-check]'); if(m1Check){await checkM1SoPractice();return;}
+  const m1Retry=event.target.closest('[data-so-m1-retry]'); if(m1Retry){await renderM1SoPractice();return;}
   const home=event.target.closest('[data-home]'); if(home){renderLearningHome();return;}
   const backArea=event.target.closest('[data-back-area]'); if(backArea){currentArea?renderArea(currentArea.id):renderLearningHome();return;}
   const backM6=event.target.closest('[data-m6]'); if(backM6){renderM6();return;}
