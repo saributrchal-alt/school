@@ -355,3 +355,74 @@
 @media(max-width:640px){
   .hero.army-camo-hero{background-blend-mode:normal,normal}
 }
+
+
+/* University entrance preparation: distinctive academic banner.
+   Scoped to the TGAT / TPAT / A-Level landing page only. */
+.page-head.university-prep-hero{
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+  min-height:236px;
+  padding:36px 40px 39px;
+  border:1px solid #4a5271;
+  border-radius:24px;
+  color:#fff;
+  background-color:#243456;
+  background-image:
+    linear-gradient(90deg,rgba(18,30,58,.97) 0%,rgba(23,37,70,.94) 39%,rgba(29,42,72,.67) 66%,rgba(30,41,67,.38) 100%),
+    url("https://media.nathoeng.com/uploads/school/bg/univer.png");
+  background-size:cover;
+  background-position:center,center 40%;
+  box-shadow:0 12px 30px rgba(24,37,68,.12);
+}
+.page-head.university-prep-hero::after{
+  content:"";
+  pointer-events:none;
+  position:absolute;
+  z-index:0;
+  width:330px;
+  height:330px;
+  top:-144px;
+  right:-42px;
+  border:1px solid rgba(236,204,139,.29);
+  border-radius:50%;
+  box-shadow:0 0 0 34px rgba(236,204,139,.045),0 0 0 70px rgba(236,204,139,.035);
+}
+.page-head.university-prep-hero>*{position:relative;z-index:1}
+.page-head.university-prep-hero .back-link{
+  color:#edf1ff;
+  margin-bottom:19px;
+  text-shadow:0 1px 3px rgba(0,0,0,.25);
+}
+.page-head.university-prep-hero .eyebrow{color:#f0c87a}
+.page-head.university-prep-hero h1{
+  color:#fff;
+  font-size:clamp(26px,3vw,34px);
+  font-weight:700;
+  margin:14px 0 9px;
+  text-shadow:0 2px 5px rgba(0,0,0,.30);
+}
+.page-head.university-prep-hero p{
+  color:#eef1fa;
+  font-size:14px;
+  line-height:1.8;
+  text-shadow:0 1px 4px rgba(0,0,0,.25);
+}
+@media(max-width:640px){
+  .page-head.university-prep-hero{
+    min-height:217px;
+    padding:28px 24px 31px;
+    border-radius:18px;
+    background-image:
+      linear-gradient(90deg,rgba(18,30,58,.97) 0%,rgba(23,37,70,.91) 62%,rgba(29,42,72,.68) 100%),
+      url("https://media.nathoeng.com/uploads/school/bg/univer.png");
+    background-position:center,62% center;
+  }
+  .page-head.university-prep-hero h1{font-size:26px}
+  .page-head.university-prep-hero p{font-size:13px}
+}
