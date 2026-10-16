@@ -225,6 +225,76 @@ async function m1SoTeacherResults(member) {
     truncated:rows.length===1000};
 }
 
+const M1_DAYS_QUESTION_FIELDS = 'question_no,prompt_en,prompt_th';
+
+async function m1DaysPaper(member) {
+  if (!member.can_study && !member.can_teach && !member.can_manage) fail('ไม่มีสิทธิ์เปิดแบบฝึกนี้',403);
+  const questions=await db('school_m1_days_questions?select='+M1_DAYS_QUESTION_FIELDS+'&order=question_no.asc&limit=20');
+  if (questions.length!==20) fail('แบบฝึก ม.1 ยังไม่พร้อมใช้งาน',503);
+  return {questions};
+}
+
+async function m1DaysHistory(member) {
+  if (!member.can_study && !member.can_teach && !member.can_manage) fail('ไม่มีสิทธิ์ดูประวัติ',403);
+  const rows=await db('school_m1_days_attempts?member_id=eq.'+encodeURIComponent(member.member_id)+
+    '&select=attempt_id,correct_count,total_count,submitted_at&order=submitted_at.desc&limit=20');
+  return {attempts:rows};
+}
+
+async function m1DaysSubmit(member, payload) {
+  if (!member.can_study) fail('เฉพาะนักเรียนจึงบันทึกคะแนนแบบฝึกได้',403);
+  if (!payload || !Array.isArray(payload.answers) || payload.answers.length!==20 ||
+      payload.answers.some(item=>!item || !Number.isInteger(item.question_no) ||
+        item.question_no<1 || item.question_no>20 ||
+        typeof item.answer!=='string' || item.answer.length>80))
+    fail('กรุณาส่งคำตอบให้ครบทั้ง 20 ข้อ',400);
+  try {
+    const graded=await db('rpc/school_m1_days_grade','POST',{
+      p_member_id:member.member_id,
+      p_answers:payload.answers
+    });
+    if (!graded?.attempt_id || !Array.isArray(graded.feedback)) fail('บันทึกผลการฝึกไม่สำเร็จ',503);
+    return graded;
+  } catch(error) {
+    if (error.dbCode==='PT400') fail('ข้อมูลคำตอบไม่ถูกต้อง กรุณาลองใหม่',400);
+    if (error.dbCode==='PT403') fail('บัญชีนี้ไม่มีสิทธิ์บันทึกคะแนน',403);
+    if (error.dbCode==='PT503') fail('แบบฝึกนี้ยังไม่พร้อม กรุณาแจ้งผู้ดูแล',503);
+    throw error;
+  }
+}
+
+async function m1DaysTeacherResults(member) {
+  if (!member.can_teach && !member.can_manage) fail('เฉพาะครูหรือผู้ดูแลจึงเห็นผลนักเรียน',403);
+  const [members,rows]=await Promise.all([
+    db('school_members?select=member_id,member_name,can_study,is_active&order=member_name.asc&limit=1000'),
+    db('school_m1_days_attempts?select=attempt_id,member_id,correct_count,total_count,feedback,submitted_at&order=submitted_at.desc&limit=1000')
+  ]);
+  const memberNames=new Map(members.map(m=>[m.member_id,m.member_name]));
+  const latest=new Map(),counts=new Map();
+  for(const a of rows) {
+    counts.set(a.member_id,(counts.get(a.member_id)||0)+1);
+    if(latest.has(a.member_id)) continue;
+    const wrong=(Array.isArray(a.feedback)?a.feedback:[])
+      .filter(x=>x && x.is_correct===false)
+      .map(x=>({question_no:x.question_no,selected_answer:x.selected_answer,
+                 answer:x.answer,explanation:x.explanation}));
+    latest.set(a.member_id,{
+      member_id:a.member_id,member_name:memberNames.get(a.member_id)||'นักเรียน (ถอนสิทธิ์)',
+      correct_count:a.correct_count,total_count:a.total_count,submitted_at:a.submitted_at,
+      wrong_answers:wrong
+    });
+  }
+  const students=members.filter(m=>m.can_study || latest.has(m.member_id)).map(m=>{
+    const last=latest.get(m.member_id);
+    return {member_id:m.member_id,member_name:m.member_name,is_active:m.is_active,
+      attempt_count:counts.get(m.member_id)||0,
+      latest:last?{correct_count:last.correct_count,total_count:last.total_count,
+        submitted_at:last.submitted_at,wrong_answers:last.wrong_answers}:null};
+  });
+  return {students,showing_latest_attempts:rows.length,
+    truncated:rows.length===1000};
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   const route = req.query?.route || 'catalog';
@@ -266,6 +336,10 @@ export default async function handler(req, res) {
       sameOrigin(req);
       return res.status(200).json({success:true,item:await m1SoSubmit(member,body(req))});
     }
+    if (route === 'm1-days-submit' && req.method === 'POST') {
+      sameOrigin(req);
+      return res.status(200).json({success:true,item:await m1DaysSubmit(member,body(req))});
+    }
     if (route === 'progress' && req.method === 'POST') {
       sameOrigin(req);
       return res.status(200).json({ success: true, item: await saveTopicProgress(member, body(req)) });
@@ -275,6 +349,9 @@ export default async function handler(req, res) {
     if (route === 'm1-so-paper') return res.status(200).json({success:true,...await m1SoPaper(member)});
     if (route === 'm1-so-history') return res.status(200).json({success:true,...await m1SoHistory(member)});
     if (route === 'm1-so-results') return res.status(200).json({success:true,...await m1SoTeacherResults(member)});
+    if (route === 'm1-days-paper') return res.status(200).json({success:true,...await m1DaysPaper(member)});
+    if (route === 'm1-days-history') return res.status(200).json({success:true,...await m1DaysHistory(member)});
+    if (route === 'm1-days-results') return res.status(200).json({success:true,...await m1DaysTeacherResults(member)});
     if (route === 'live-classes') return res.status(200).json({ success:true, ...await liveClasses(member) });
     if (route === 'progress') return res.status(200).json({ success: true, ...await topicProgress(member, req.query) });
     if (route === 'learning-results') return res.status(200).json({ success: true, ...await learningStudents(member) });
