@@ -217,13 +217,97 @@ function welcome(message = '') {
 }
 
 function renderAccount() {
-  account.innerHTML = `<span class="account-name">${esc(data.member.member_name)}</span><span>${roles(data.member)}</span><button type="button" id="logout">ออกจาก School</button>`;
+  account.innerHTML = `<span class="account-name">${esc(data.member.member_name)}</span><span>${roles(data.member)}</span>${data.member.can_manage?'<button type="button" id="open-explanation-admin">แก้ไขเฉลย</button>':''}<button type="button" id="logout">ออกจาก School</button>`;
+  document.querySelector('#open-explanation-admin')?.addEventListener('click',()=>renderExplanationAdmin());
   document.querySelector('#logout').addEventListener('click',async()=>{
     try{
       await api('/api/session?route=logout',{method:'POST'});
       practice?.destroy(); practice=null; data=null; welcome();
     }catch(error){notice(error.message);}
   });
+}
+
+
+const explanationSubjectOptions = {
+  army:[['ENG','อังกฤษ'],['MATH','คณิตศาสตร์'],['SCI','วิทยาศาสตร์'],['THAI','ภาษาไทย'],['SOC','สังคมศึกษา']],
+  alevel:[['AL61','คณิต 1'],['AL64','ฟิสิกส์'],['AL65','เคมี'],['AL66','ชีววิทยา'],['AL82','อังกฤษ'],['AL81','ภาษาไทย'],['AL70','สังคม'],['TP30','TPAT3']],
+  reference:[['AL61','คณิต 1'],['AL64','ฟิสิกส์'],['AL65','เคมี'],['AL66','ชีววิทยา'],['AL82','อังกฤษ'],['AL81','ภาษาไทย'],['AL70','สังคม']]
+};
+let explanationState = {bank:'army',subject:'',set:'',search:'',page:0,id:''};
+const explanationEndpoint = params => '/api/school?route=explanation-editor&'+new URLSearchParams(params).toString();
+const mediaExplanationURL = url => /^https:\/\/media\.nathoeng\.com\/uploads\/school\/[A-Za-z0-9/_.-]+\.(png|jpe?g|webp|gif)(\?v=[A-Za-z0-9_-]{1,40})?$/i.test(url);
+function renderExplanationAdmin(bank,id) {
+  if(!data?.member?.can_manage){notice('เฉพาะผู้ดูแล School');return;}
+  practice?.destroy();practice=null;
+  if(['army','alevel','reference'].includes(bank) && bank!==explanationState.bank)
+    explanationState={bank,subject:'',set:'',search:'',page:0,id:''};
+  const s=explanationState;
+  const options=(values,current)=>values.map(x=>'<option value="'+esc(x[0])+'" '+(x[0]===current?'selected':'')+'>'+esc(x[1])+'</option>').join('');
+  const bankChoices=options([['army','เตรียมทหาร จปร.'],['alevel','A-Level / TPAT3 ชุดฝึกและสอบ'],['reference','คลังอ้างอิง A-Level']],s.bank);
+  const setChoices=options(Array.from({length:10},(_,i)=>[String(i+1),'ชุด '+(i+1)]),s.set);
+  const subjectChoices=options(explanationSubjectOptions[s.bank],s.subject);
+  main.innerHTML='<section class="page-head explanation-admin-header">'+
+    '<button type="button" class="back-link" data-home>← กลับหน้า School</button><span class="eyebrow">ADMIN · ANSWER EXPLANATIONS</span>'+
+    '<h1>แก้ไขเฉลยรายข้อ</h1><p>แก้ไขคำอธิบาย วิธีคิด และภาพประกอบเฉลย · ไม่เปลี่ยนโจทย์ ตัวเลือกเฉลย หรือคะแนน</p></section>'+
+    '<section class="explanation-admin"><div class="explanation-list-area"><h2>ค้นหาข้อสอบ</h2>'+
+    '<label>คลังข้อสอบ<select id="explanation-bank">'+bankChoices+'</select></label>'+
+    '<div class="explanation-filters"><label>ชุด<select id="explanation-set" '+(s.bank==='reference'?'disabled':'')+'><option value="">ทุกชุด</option>'+setChoices+'</select></label>'+
+    '<label>วิชา<select id="explanation-subject"><option value="">ทุกวิชา</option>'+subjectChoices+'</select></label></div>'+
+    '<form id="explanation-search-form" class="explanation-search"><input name="search" maxlength="60" placeholder="รหัสข้อหรือคำในโจทย์" value="'+esc(s.search)+'" aria-label="ค้นหาข้อสอบ"><button type="submit" class="secondary">ค้นหา</button></form>'+
+    '<div id="explanation-list" role="status">กำลังเปิดคลังข้อสอบ…</div>'+
+    '<div class="explanation-pagination"><button type="button" class="secondary" data-explanation-page="-1">← ก่อนหน้า</button><span id="explanation-page-label"></span><button type="button" class="secondary" data-explanation-page="1">ถัดไป →</button></div></div>'+
+    '<div class="explanation-edit-area" id="explanation-edit-area"><h2>เทมเพลตแก้ไขเฉลย</h2><p class="explanation-empty">เลือกข้อสอบทางซ้ายเพื่อแก้ไข</p></div></section>';
+  loadExplanationList();
+  if(id)openExplanationQuestion(id);
+}
+async function loadExplanationList(){
+  const s=explanationState,bank=s.bank,page=s.page,box=main.querySelector('#explanation-list');
+  if(!box)return;
+  box.textContent='กำลังค้นหา…';
+  try{
+    const result=await api(explanationEndpoint({bank,page,subject_id:s.subject,set_no:s.set,search:s.search}));
+    if(!box.isConnected||bank!==explanationState.bank||page!==explanationState.page)return;
+    box.innerHTML=result.items.length?result.items.map(q=>
+      '<button type="button" class="explanation-question-item '+(q.question_id===explanationState.id?'selected':'')+'" data-explanation-question="'+esc(q.question_id)+'">'+
+      '<strong>'+esc(q.question_id)+' · '+esc(q.subject_id)+(q.set_no?' · ชุด '+esc(q.set_no):'')+'</strong>'+
+      '<span>'+esc(String(q.prompt||'').slice(0,145))+'</span>'+
+      (q.explanation_updated_at?'<small>แก้ไขเฉลยแล้ว</small>':'')+'</button>').join(''):'<p class="explanation-empty">ไม่พบข้อสอบ</p>';
+    main.querySelector('#explanation-page-label').textContent='หน้า '+(page+1);
+    main.querySelector('[data-explanation-page="-1"]').disabled=page===0;
+    main.querySelector('[data-explanation-page="1"]').disabled=!result.has_more;
+  }catch(err){if(box.isConnected)box.innerHTML='<p class="practice-inline-error">'+esc(err.message)+'</p>';}
+}
+async function openExplanationQuestion(id){
+  const box=main.querySelector('#explanation-edit-area'),bank=explanationState.bank;
+  if(!box)return;
+  explanationState.id=id;box.textContent='กำลังโหลดโจทย์…';
+  try{
+    const result=await api(explanationEndpoint({bank,question_id:id}));
+    if(!box.isConnected||bank!==explanationState.bank||id!==explanationState.id)return;
+    const q=result.question,key=q.answer_key_json&&Number(q.set_no)===2?q.answer_key_json:q.answer_key;
+    const keyText=key==null?'—':typeof key==='object'?JSON.stringify(key):String(key);
+    box.innerHTML='<h2>แก้ไขเฉลย <small>'+esc(q.question_id)+'</small></h2>'+
+      '<div class="explanation-question-preview"><strong>ข้อ '+esc(q.question_no??'—')+' · '+esc(q.subject_id)+'</strong>'+
+      '<p>'+esc(q.prompt)+'</p>'+(q.question_image_url?'<img src="'+esc(q.question_image_url)+'" alt="ภาพโจทย์เดิม">':'')+
+      '<p><strong>คำตอบที่ถูกต้อง (อ่านอย่างเดียว):</strong> '+esc(keyText)+'</p></div>'+
+      '<form id="explanation-edit-form"><input type="hidden" name="question_id" value="'+esc(q.question_id)+'">'+
+      '<label>คำอธิบาย / แปลโจทย์ / สาระความรู้<textarea name="explanation" rows="6" maxlength="12000" placeholder="คำอธิบายของข้อนี้…">'+esc(q.explanation||'')+'</textarea></label>'+
+      '<label>เหตุผล / วิธีทำทีละขั้น / จุดที่ควรระวัง<textarea name="reasoning" rows="7" maxlength="12000" placeholder="ขั้นที่ 1 …">'+esc(q.reasoning||'')+'</textarea></label>'+
+      '<label>URL ภาพประกอบเฉลยจาก Media<input type="url" name="explanation_image_url" maxlength="500" placeholder="https://media.nathoeng.com/uploads/school/..." value="'+esc(q.explanation_image_url||'')+'"></label>'+
+      '<small>เว้น URL ว่างได้ · รูปเฉลยแยกจากรูปโจทย์เดิม</small>'+
+      '<div class="explanation-action-row"><button type="submit" class="practice-primary">บันทึกเฉลยข้อนี้</button><span id="explanation-save-status" role="status"></span></div></form>'+
+      '<div class="explanation-live-preview"><h3>ตัวอย่างเมื่อเปิดเฉลยให้นักเรียน</h3><div id="explanation-preview"></div></div>'+
+      (q.explanation_updated_at?'<p class="explanation-edit-meta">แก้ไขล่าสุด '+esc(new Date(q.explanation_updated_at).toLocaleString('th-TH'))+' โดย '+esc(q.explanation_updated_by||'ผู้ดูแล')+'</p>':'');
+    renderExplanationPreview();loadExplanationList();
+  }catch(err){if(box.isConnected)box.innerHTML='<p class="practice-inline-error">'+esc(err.message)+'</p>';}
+}
+function renderExplanationPreview(){
+  const form=main.querySelector('#explanation-edit-form'),box=main.querySelector('#explanation-preview');
+  if(!form||!box)return;
+  const exp=form.elements.explanation.value,reason=form.elements.reasoning.value,url=form.elements.explanation_image_url.value.trim();
+  box.innerHTML='<h4>คำอธิบาย</h4><p>'+esc(exp||'—')+'</p><h4>เหตุผล / วิธีคิด</h4><p>'+esc(reason||'—')+'</p>'+
+    (mediaExplanationURL(url)?'<figure class="practice-source-figure"><img src="'+esc(url)+'" alt="ภาพประกอบเฉลย" loading="lazy"><figcaption>ภาพประกอบคำอธิบาย</figcaption></figure>':
+      url?'<p class="practice-inline-error">URL ต้องมาจาก Media ของ School</p>':'');
 }
 
 function areaCard(area) {
@@ -712,6 +796,10 @@ main.addEventListener('click',async event=>{
   const m1Reports=event.target.closest('[data-m1-so-reports]'); if(m1Reports){await renderM1SoReports();return;}
   const m1Check=event.target.closest('[data-so-m1-check]'); if(m1Check){await checkM1SoPractice();return;}
   const m1Retry=event.target.closest('[data-so-m1-retry]'); if(m1Retry){await renderM1SoPractice();return;}
+  const eq=event.target.closest('[data-explanation-question]');
+  if(eq){await openExplanationQuestion(eq.dataset.explanationQuestion);return;}
+  const ep=event.target.closest('[data-explanation-page]');
+  if(ep){explanationState.page=Math.max(0,explanationState.page+Number(ep.dataset.explanationPage));await loadExplanationList();return;}
   const home=event.target.closest('[data-home]'); if(home){renderLearningHome();return;}
   const backArea=event.target.closest('[data-back-area]'); if(backArea){currentArea?renderArea(currentArea.id):renderLearningHome();return;}
   const backM6=event.target.closest('[data-m6]'); if(backM6){renderM6();return;}
@@ -746,6 +834,27 @@ main.addEventListener('click',async event=>{
   const topic=event.target.closest('[data-topic]'); if(topic)showQuestions(topic.dataset.topic);
 });
 
+main.addEventListener('submit',async event=>{
+  const search=event.target.closest('#explanation-search-form');
+  if(search){event.preventDefault();explanationState.search=search.elements.search.value.trim();explanationState.page=0;await loadExplanationList();return;}
+  const form=event.target.closest('#explanation-edit-form');
+  if(!form)return;
+  event.preventDefault();
+  const button=form.querySelector('button[type="submit"]'),status=form.querySelector('#explanation-save-status');
+  button.disabled=true;status.textContent='กำลังบันทึก…';
+  try{
+    await api('/api/school?route=explanation-editor-save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      bank:explanationState.bank,question_id:form.elements.question_id.value,
+      explanation:form.elements.explanation.value,reasoning:form.elements.reasoning.value,
+      explanation_image_url:form.elements.explanation_image_url.value.trim()})});
+    status.textContent='บันทึกแล้ว ✓';notice('บันทึกเฉลยสำเร็จ');await loadExplanationList();
+  }catch(err){status.textContent=err.message;notice(err.message);}
+  finally{if(button.isConnected)button.disabled=false;}
+});
+main.addEventListener('input',event=>{
+  if(event.target.closest('#explanation-edit-form'))renderExplanationPreview();
+});
+
 main.addEventListener('submit', async event => {
   const form = event.target.closest('#live-form');
   if (!form) return;
@@ -767,6 +876,13 @@ main.addEventListener('submit', async event => {
 });
 
 main.addEventListener('change',async event=>{
+  if(event.target.id==='explanation-bank'){renderExplanationAdmin(event.target.value);return;}
+  if(event.target.id==='explanation-set'||event.target.id==='explanation-subject'){
+    explanationState.set=main.querySelector('#explanation-set')?.value||'';
+    explanationState.subject=main.querySelector('#explanation-subject')?.value||'';
+    explanationState.page=0;await loadExplanationList();return;
+  }
+
   const alevelSelect=event.target.closest('[data-alevel-progress]');
   if(alevelSelect){
     const id=alevelSelect.dataset.alevelProgress, status=alevelSelect.value;
@@ -792,6 +908,13 @@ main.addEventListener('change',async event=>{
   } catch(error){notice(error.message);}
   finally{practice?.learningChanged();}
   renderCatalog();
+});
+
+document.addEventListener('click',event=>{
+  const button=event.target.closest('[data-explanation-edit]');
+  if(!button||!data?.member?.can_manage)return;
+  document.querySelector('#practice-dialog')?.close();
+  renderExplanationAdmin(button.dataset.explanationBank||'army',button.dataset.explanationEdit);
 });
 
 async function showQuestions(id) {
