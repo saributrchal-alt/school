@@ -64,6 +64,7 @@ const learningAreas = [
     id:'dhamma-naktham',
     title:'นักธรรม (นักบวช)',
     titlePrefix:'เรียน',
+    backgroundUrl:'https://media.nathoeng.com/uploads/school/dhama/dhama-student.png',
     cardTitle:'นักธรรม (นักบวช)',
     description:'นักธรรมตรี · นักธรรมโท · นักธรรมเอก · แนวข้อสอบสนามหลวง พ.ศ. 2566'
   },
@@ -71,6 +72,7 @@ const learningAreas = [
     id:'dhamma-thammasuksa',
     title:'ธรรมศึกษา (บุคคลทั่วไป)',
     titlePrefix:'เรียน',
+    backgroundUrl:'https://media.nathoeng.com/uploads/school/dhama/dhamastudey.png',
     cardTitle:'ธรรมศึกษา (บุคคลทั่วไป)',
     description:'ธรรมศึกษาตรี · โท · เอก แบ่งระดับประถม มัธยม และประชาชนทั่วไป'
   },
@@ -349,11 +351,20 @@ function areaCard(area) {
 function renderLearningHome() {
   practice?.destroy(); practice=null; currentArea=null;
   main.innerHTML = `<section class="hero learning-home-hero hero-with-logo"><div class="hero-copy"><span class="eyebrow">NATHOENG SCHOOL</span><h1>เลือกประเภทการเรียน ฝึกฝน และทดสอบ</h1><p>เริ่มจากระดับหรือเส้นทางที่ต้องการ ระบบจะแยกเนื้อหาและแบบฝึกให้เป็นหมวดชัดเจน เพื่อให้ค้นหาและติดตามผลการเรียนได้ง่าย</p></div><img class="hero-school-logo" src="https://media.nathoeng.com/uploads/school/logo/school-logo.png?v=20261006-media1" alt="ตรา Nathoeng School"></section>
-  <section class="live-home-banner"><div><span class="eyebrow">เรียนสดกับครู</span><h2>ห้องเรียนออนไลน์ผ่าน Zoom</h2><p>ดูตารางสอน เข้าห้องเรียน และทำโจทย์กับครูผ่าน NATHOENG SCHOOL</p></div><button type="button" class="live-open-button" data-live-open>เปิดห้องเรียนสด →</button></section>
-  <section>
-    <div class="section-title"><div><h2>ประเภทการเรียน</h2><p>เลือกหมวดที่ต้องการ แล้วจึงเลือกระดับหรือสายการสอบในขั้นถัดไป</p></div>${data.member.can_manage?'<button type="button" class="secondary" id="members">สมาชิก School</button>':''}</div>
-    <div class="learning-grid">${learningAreas.map(areaCard).join('')}</div>
-  </section>`;
+
+  <section class="learning-section learning-section-dhamma" aria-labelledby="school-dhamma-heading">
+    <div class="section-title">
+      <div><h2 id="school-dhamma-heading">การสอบธรรมะ</h2><p>เลือกเรียนและฝึกข้อสอบนักธรรมสำหรับนักบวช หรือธรรมศึกษาสำหรับบุคคลทั่วไป</p></div>
+      ${data.member.can_manage?'<button type="button" class="secondary" id="members">สมาชิก School</button>':''}
+    </div>
+    <div class="learning-grid learning-grid-dhamma">${learningAreas.filter(area=>area.id.startsWith('dhamma-')).map(areaCard).join('')}</div>
+  </section>
+  <div class="learning-section-divider" role="separator" aria-label="เส้นแบ่งหมวดการสอบธรรมะกับการศึกษาทางโลก"></div>
+  <section class="learning-section learning-section-general" aria-labelledby="school-general-heading">
+    <div class="section-title"><div><h2 id="school-general-heading">การศึกษาทางโลก</h2><p>เลือกชั้นเรียน ระดับการศึกษา หรือเส้นทางเตรียมสอบตามต้องการ</p></div></div>
+    <div class="learning-grid">${learningAreas.filter(area=>!area.id.startsWith('dhamma-')).map(areaCard).join('')}</div>
+  </section>
+  <section class="live-home-banner"><div><span class="eyebrow">เรียนสดกับครู</span><h2>ห้องเรียนออนไลน์ผ่าน Zoom</h2><p>ดูตารางสอน เข้าห้องเรียน และทำโจทย์กับครูผ่าน NATHOENG SCHOOL</p></div><button type="button" class="live-open-button" data-live-open>เปิดห้องเรียนสด →</button></section>`;
   document.querySelector('#members')?.addEventListener('click',showMembers);
 }
 
