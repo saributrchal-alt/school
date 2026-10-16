@@ -333,8 +333,10 @@ function areaCard(area) {
       ? '<span class="learning-ready">พร้อมเรียน: ภาษาอังกฤษ ม.1 · A-Level 2568</span>'
       : area.id === 'university-prep'
       ? '<span class="learning-ready">มีคลังข้อสอบแล้ว: A-Level 2568</span>'
-      : ['dhamma-naktham','dhamma-thammasuksa'].includes(area.id)
-      ? '<span class="learning-ready">ข้อสอบและเฉลย พ.ศ. 2566 · เริ่มศึกษาได้</span>'
+      : area.id === 'dhamma-naktham'
+      ? '<span class="learning-ready">เริ่มฝึกได้: นักธรรมตรี วิชาธรรม พ.ศ. 2566 (10 ข้อ)</span>'
+      : area.id === 'dhamma-thammasuksa'
+      ? '<span class="learning-muted">เปิดหมวดเรียนแล้ว · รอนำเข้าข้อสอบ</span>'
       : '<span class="learning-muted">อยู่ระหว่างการดำเนินงาน</span>';
   const bg = area.backgroundUrl || commonsImage(area.backgroundFile);
   const art = area.art ? learningCardArt[area.art] : '';
