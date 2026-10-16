@@ -1,4 +1,4 @@
-import { body, db, verifyBridge, memberId, findMember, requireMember, sameOrigin, fail, sendError, bridgeHealth, MEMBER_FIELDS, topicProgress, learningStudents, saveTopicProgress } from '../lib/school.js';
+import { body, db, verifyBridge, memberId, findMember, requireMember, sameOrigin, fail, sendError, bridgeHealth, MEMBER_FIELDS, topicProgress, learningStudents, saveTopicProgress, explanationEditor, saveExplanationEditor } from '../lib/school.js';
 
 async function importMember(req, res) {
   const p = body(req);
@@ -246,6 +246,10 @@ export default async function handler(req, res) {
       return await importMember(req, res);
     }
     const member = await requireMember(req);
+    if (route === 'explanation-editor-save' && req.method === 'POST') {
+      sameOrigin(req);
+      return res.status(200).json({ success:true,item:await saveExplanationEditor(member,body(req)) });
+    }
     if (route === 'live-save' && req.method === 'POST') {
       sameOrigin(req);
       return res.status(200).json({ success:true, item:await saveLiveClass(member, body(req)) });
@@ -267,6 +271,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, item: await saveTopicProgress(member, body(req)) });
     }
     if (req.method !== 'GET') fail('Method not allowed', 405);
+    if (route === 'explanation-editor') return res.status(200).json({success:true,...await explanationEditor(member,req.query)});
     if (route === 'm1-so-paper') return res.status(200).json({success:true,...await m1SoPaper(member)});
     if (route === 'm1-so-history') return res.status(200).json({success:true,...await m1SoHistory(member)});
     if (route === 'm1-so-results') return res.status(200).json({success:true,...await m1SoTeacherResults(member)});
