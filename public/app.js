@@ -64,7 +64,7 @@ const learningAreas = [
     id:'dhamma-naktham',
     title:'นักธรรม (นักบวช)',
     titlePrefix:'เรียน',
-    backgroundUrl:'https://media.nathoeng.com/uploads/school/dhama/dhama-student.png',
+    backgroundUrl:'https://media.nathoeng.com/uploads/school/dhama/monk-student.jpg',
     cardTitle:'นักธรรม (นักบวช)',
     description:'นักธรรมตรี · นักธรรมโท · นักธรรมเอก · แนวข้อสอบสนามหลวง พ.ศ. 2566'
   },
@@ -72,7 +72,7 @@ const learningAreas = [
     id:'dhamma-thammasuksa',
     title:'ธรรมศึกษา (บุคคลทั่วไป)',
     titlePrefix:'เรียน',
-    backgroundUrl:'https://media.nathoeng.com/uploads/school/dhama/dhamastudey.png',
+    backgroundUrl:'https://media.nathoeng.com/uploads/school/dhama/laity-student.jpg',
     cardTitle:'ธรรมศึกษา (บุคคลทั่วไป)',
     description:'ธรรมศึกษาตรี · โท · เอก แบ่งระดับประถม มัธยม และประชาชนทั่วไป'
   },
