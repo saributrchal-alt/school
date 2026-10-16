@@ -162,7 +162,7 @@ export function renderDhamma({main,track,member,api,notice,onHome,onEdit}) {
    if(!q)return;
    if(q.question_type==='choice'&&!stage.choices.has(id)){notice('กรุณาเลือกคำตอบก่อนตรวจ');return;}
    stage.revealed.add(id);
-   t.closest('.dhamma-question')?.outerHTML=studyCard(q);return;
+   const card=t.closest('.dhamma-question'); if(card)card.outerHTML=studyCard(q); return;
   }
   if(t.dataset.dhammaEditExplanation){onEdit(t.dataset.dhammaEditExplanation);return;}
   if(t.hasAttribute('data-dhamma-add')){showQuestionForm(null);return;}
