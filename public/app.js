@@ -246,7 +246,8 @@ function renderAccount() {
 const explanationSubjectOptions = {
   army:[['ENG','อังกฤษ'],['MATH','คณิตศาสตร์'],['SCI','วิทยาศาสตร์'],['THAI','ภาษาไทย'],['SOC','สังคมศึกษา']],
   alevel:[['AL61','คณิต 1'],['AL64','ฟิสิกส์'],['AL65','เคมี'],['AL66','ชีววิทยา'],['AL82','อังกฤษ'],['AL81','ภาษาไทย'],['AL70','สังคม'],['TP30','TPAT3']],
-  reference:[['AL61','คณิต 1'],['AL64','ฟิสิกส์'],['AL65','เคมี'],['AL66','ชีววิทยา'],['AL82','อังกฤษ'],['AL81','ภาษาไทย'],['AL70','สังคม']]
+  reference:[['AL61','คณิต 1'],['AL64','ฟิสิกส์'],['AL65','เคมี'],['AL66','ชีววิทยา'],['AL82','อังกฤษ'],['AL81','ภาษาไทย'],['AL70','สังคม']],
+  dhamma:[['essay','เรียงความแก้กระทู้ธรรม'],['dhamma','วิชาธรรม'],['buddha','พุทธประวัติ'],['vinaya','วินัย / ศาสนพิธี']]
 };
 let explanationState = {bank:'army',subject:'',set:'',search:'',page:0,id:''};
 const explanationEndpoint = params => '/api/school?route=explanation-editor&'+new URLSearchParams(params).toString();
@@ -254,11 +255,11 @@ const mediaExplanationURL = url => /^https:\/\/media\.nathoeng\.com\/uploads\/sc
 function renderExplanationAdmin(bank,id) {
   if(!data?.member?.can_manage){notice('เฉพาะผู้ดูแล School');return;}
   practice?.destroy();practice=null;
-  if(['army','alevel','reference'].includes(bank) && bank!==explanationState.bank)
+  if(['army','alevel','reference','dhamma'].includes(bank) && bank!==explanationState.bank)
     explanationState={bank,subject:'',set:'',search:'',page:0,id:''};
   const s=explanationState;
   const options=(values,current)=>values.map(x=>'<option value="'+esc(x[0])+'" '+(x[0]===current?'selected':'')+'>'+esc(x[1])+'</option>').join('');
-  const bankChoices=options([['army','เตรียมทหาร จปร.'],['alevel','A-Level / TPAT3 ชุดฝึกและสอบ'],['reference','คลังอ้างอิง A-Level']],s.bank);
+  const bankChoices=options([['army','เตรียมทหาร จปร.'],['alevel','A-Level / TPAT3 ชุดฝึกและสอบ'],['reference','คลังอ้างอิง A-Level'],['dhamma','นักธรรม / ธรรมศึกษา']],s.bank);
   const setChoices=options(Array.from({length:10},(_,i)=>[String(i+1),'ชุด '+(i+1)]),s.set);
   const subjectChoices=options(explanationSubjectOptions[s.bank],s.subject);
   main.innerHTML='<section class="page-head explanation-admin-header">'+
@@ -299,7 +300,7 @@ async function openExplanationQuestion(id){
   try{
     const result=await api(explanationEndpoint({bank,question_id:id}));
     if(!box.isConnected||bank!==explanationState.bank||id!==explanationState.id)return;
-    const q=result.question,key=q.answer_key_json&&Number(q.set_no)===2?q.answer_key_json:q.answer_key;
+    const q=result.question,key=bank==='dhamma'?(q.answer_text||q.answer_key):q.answer_key_json&&Number(q.set_no)===2?q.answer_key_json:q.answer_key;
     const keyText=key==null?'—':typeof key==='object'?JSON.stringify(key):String(key);
     box.innerHTML='<h2>แก้ไขเฉลย <small>'+esc(q.question_id)+'</small></h2>'+
       '<div class="explanation-question-preview"><strong>ข้อ '+esc(q.question_no??'—')+' · '+esc(q.subject_id)+'</strong>'+
