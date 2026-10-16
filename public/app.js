@@ -1,4 +1,5 @@
 import { createPractice, learningLabels, topicLearningRoad, recordLearningProgress } from './practice.js';
+import { renderDhamma } from './dhamma.js';
 
 const main = document.querySelector('#main');
 const account = document.querySelector('#account');
@@ -58,6 +59,20 @@ const learningAreas = [
     backgroundUrl:'https://media.nathoeng.com/uploads/school/bg/hischool.png',
     titlePrefix:'เตรียมสอบ',
     cardTitle:'เข้ามหาวิทยาลัย'
+  },
+  {
+    id:'dhamma-naktham',
+    title:'นักธรรม (นักบวช)',
+    titlePrefix:'เรียน',
+    cardTitle:'นักธรรม (นักบวช)',
+    description:'นักธรรมตรี · นักธรรมโท · นักธรรมเอก · แนวข้อสอบสนามหลวง พ.ศ. 2566'
+  },
+  {
+    id:'dhamma-thammasuksa',
+    title:'ธรรมศึกษา (บุคคลทั่วไป)',
+    titlePrefix:'เรียน',
+    cardTitle:'ธรรมศึกษา (บุคคลทั่วไป)',
+    description:'ธรรมศึกษาตรี · โท · เอก แบ่งระดับประถม มัธยม และประชาชนทั่วไป'
   },
   {
     id:'military-prep',
@@ -317,12 +332,14 @@ function areaCard(area) {
       ? '<span class="learning-ready">พร้อมเรียน: ภาษาอังกฤษ ม.1 · A-Level 2568</span>'
       : area.id === 'university-prep'
       ? '<span class="learning-ready">มีคลังข้อสอบแล้ว: A-Level 2568</span>'
+      : ['dhamma-naktham','dhamma-thammasuksa'].includes(area.id)
+      ? '<span class="learning-ready">ข้อสอบและเฉลย พ.ศ. 2566 · เริ่มศึกษาได้</span>'
       : '<span class="learning-muted">อยู่ระหว่างการดำเนินงาน</span>';
   const bg = area.backgroundUrl || commonsImage(area.backgroundFile);
   const art = area.art ? learningCardArt[area.art] : '';
   const bgStyle = bg ? ` style="--card-bg:url('${esc(bg)}')"` : '';
   const mainTitle = area.cardTitle || String(area.title || '').replace(/^เรียน\s+/, '');
-  return `<button type="button" class="learning-card ${bg?'has-bg':''} ${art?'has-art art-'+esc(area.art):''}" data-area="${esc(area.id)}"${bgStyle}>${art?`<span class="learning-card-art">${art}</span>`:''}<span class="learning-card-kicker">หมวดการเรียน</span><strong class="learning-title"><span class="learning-title-prefix">${esc(area.titlePrefix || 'เรียน')}</span><span class="learning-title-main">${esc(mainTitle)}</span></strong><small>${esc(area.description)}</small>${ready}<span class="learning-arrow" aria-hidden="true">→</span></button>`;
+  return `<button type="button" class="learning-card ${bg?'has-bg':''} ${art?'has-art art-'+esc(area.art):''} ${area.id.startsWith('dhamma-')?'dhamma-track-card':''}" data-area="${esc(area.id)}"${bgStyle}>${art?`<span class="learning-card-art">${art}</span>`:''}<span class="learning-card-kicker">หมวดการเรียน</span><strong class="learning-title"><span class="learning-title-prefix">${esc(area.titlePrefix || 'เรียน')}</span><span class="learning-title-main">${esc(mainTitle)}</span></strong><small>${esc(area.description)}</small>${ready}<span class="learning-arrow" aria-hidden="true">→</span></button>`;
 }
 
 function renderLearningHome() {
@@ -342,6 +359,10 @@ function renderArea(areaId) {
   currentArea = area;
   practice?.destroy(); practice=null;
   if (area.id === 'university-prep') return renderUniversityPrep();
+  if (area.id === 'dhamma-naktham' || area.id === 'dhamma-thammasuksa'){
+    return renderDhamma({main,track:area.id==='dhamma-naktham'?'naktham':'thammasuksa',member:data.member,api,notice,
+      onHome:renderLearningHome,onEdit:id=>renderExplanationAdmin('dhamma',id)});
+  }
   if (!area.levels) return renderUnavailable(area.title, null);
   main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-home>← กลับประเภทการเรียน</button><span class="eyebrow">NATHOENG SCHOOL</span><h1>${esc(area.title)}</h1><p>${esc(area.description)} — เลือกระดับหรือสายการเรียนที่ต้องการ</p></section>
   <section class="level-grid ${area.id==='military-prep'?'military-level-grid':''}">${area.levels.map(([id,label])=>{
