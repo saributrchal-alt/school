@@ -116,6 +116,7 @@ const universityExams = [
 ];
 
 let m1SoQuestions = [];
+let m1DaysQuestions = [];
 
 let data, subject = 'ENG', query = '', filter = 'all', noticeTimer, practice, currentArea = null;
 let alevelData = null, alevelSubject = 'AL61', alevelQuery = '', alevelFilter = 'all';
@@ -412,6 +413,8 @@ function renderM1() {
   main.innerHTML = '<section class="page-head"><button type="button" class="back-link" data-back-area>← กลับชั้นมัธยม</button><span class="eyebrow">NATHOENG SCHOOL · M.1</span><h1>มัธยมศึกษาปีที่ 1</h1><p>เลือกบทเรียนและแบบฝึกหัด</p></section>'
     + '<section class="level-grid"><button type="button" class="level-card" data-m1-so-open><span><strong>ภาษาอังกฤษ — Using “So” in Conversations</strong><small class="level-status ready">15 ข้อ · เติมคำในบทสนทนา · บันทึกคะแนนเข้าระบบ</small></span><b aria-hidden="true">→</b></button>'
     + (teacher?'<button type="button" class="level-card" data-m1-so-reports><span><strong>ผลการทำแบบฝึกภาษาอังกฤษ ม.1</strong><small class="level-status ready">สำหรับครูและผู้ดูแล · คะแนนและข้อที่ยังตอบผิด</small></span><b aria-hidden="true">→</b></button>':'')
+    + '<button type="button" class="level-card" data-m1-days-open><span><strong>ภาษาอังกฤษ — What Day Is It?</strong><small class="level-status ready">20 ข้อ · Today / Tomorrow / Yesterday · ตรวจทันทีพร้อมแปลคำศัพท์และเฉลยละเอียด</small></span><b aria-hidden="true">→</b></button>'
+    + (teacher?'<button type="button" class="level-card" data-m1-days-reports><span><strong>ผลการฝึก What Day Is It? — ม.1</strong><small class="level-status ready">สำหรับครูและผู้ดูแล · คะแนนรายคนและคำตอบผิด</small></span><b aria-hidden="true">→</b></button>':'')
     + '</section><p class="progress-note" style="margin-top:18px">รายวิชาอื่นของ ม.1 อยู่ระหว่างดำเนินงาน</p>';
 }
 async function renderM1SoPractice() {
@@ -498,6 +501,107 @@ async function renderM1SoReports() {
   }catch(error){
     if(main.querySelector('[data-so-m1-report-loading]'))
       main.innerHTML='<section class="page-head"><button type="button" class="back-link" data-back-m1>← กลับบทเรียน ม.1</button><h1>ผลแบบฝึก</h1></section><section class="empty-state"><strong>โหลดรายงานไม่สำเร็จ</strong><p>'+esc(error.message)+'</p></section>';
+  }
+}
+
+
+async function renderM1DaysPractice() {
+  practice?.destroy(); practice=null;
+  main.innerHTML='<section class="empty-state" data-m1-days-loading>กำลังเปิดแบบฝึก What Day Is It?…</section>';
+  try {
+    const [paper,history]=await Promise.all([
+      api('/api/school?route=m1-days-paper'),
+      api('/api/school?route=m1-days-history')
+    ]);
+    if(!main.querySelector('[data-m1-days-loading]'))return;
+    m1DaysQuestions=paper.questions||[];
+    if(m1DaysQuestions.length!==20)throw new Error('แบบฝึกยังมีข้อไม่ครบ 20 ข้อ');
+    const past=(history.attempts||[]).slice(0,5);
+    main.innerHTML='<section class="page-head"><button type="button" class="back-link" data-back-m1>← กลับบทเรียน ม.1</button><span class="eyebrow">ENGLISH · M.1 · DAYS OF THE WEEK</span><h1>What Day Is It?</h1><p>ฝึกนับวันภาษาอังกฤษ 20 ข้อ · ส่งตรวจอัตโนมัติ พร้อมแปลโจทย์ คำศัพท์ และเหตุผลรายข้อ</p></section>'
+      +'<section class="chapter" style="padding:20px 24px;line-height:1.85"><strong>Grammar Tips / เรียนรู้ก่อนทำแบบฝึก</strong>'
+      +'<p><b>What day is it today?</b> = วันนี้วันอะไร · <b>What day will it be tomorrow?</b> = พรุ่งนี้จะเป็นวันอะไร · <b>What day was it yesterday?</b> = เมื่อวานเป็นวันอะไร</p>'
+      +'<p><b>Today</b> = วันนี้ · <b>Tomorrow</b> = พรุ่งนี้ · <b>The day after tomorrow</b> = มะรืนนี้ · <b>Yesterday</b> = เมื่อวาน · <b>The day before yesterday</b> = เมื่อวานซืน</p>'
+      +'<p><b>Sunday</b> อาทิตย์ · <b>Monday</b> จันทร์ · <b>Tuesday</b> อังคาร · <b>Wednesday</b> พุธ · <b>Thursday</b> พฤหัสบดี · <b>Friday</b> ศุกร์ · <b>Saturday</b> เสาร์</p>'
+      +'<p class="progress-note">ตอบชื่อวันเป็นภาษาอังกฤษ เช่น Monday หรือประโยค It is Monday. แล้วส่งตรวจพร้อมกันทั้ง 20 ข้อ ระบบจะเปิดเฉลยละเอียดเมื่อส่งตรวจเสร็จ</p></section>'
+      +'<section class="chapter" aria-label="What Day Is It? — 20 questions">'
+      +m1DaysQuestions.map((q,i)=>'<article class="topic" style="grid-template-columns:1fr"><div style="min-width:0;width:100%"><strong>Question '+esc(q.question_no)+'</strong>'
+       +'<p style="font-size:15px;line-height:1.7">'+esc(q.prompt_en)+'</p>'
+       +'<label for="days-m1-'+i+'" style="font-size:12px;color:#66766c;display:block;margin-bottom:6px">Answer / ตอบชื่อวันภาษาอังกฤษ</label>'
+       +'<input id="days-m1-'+i+'" data-m1-days-input="'+i+'" type="text" maxlength="80" autocomplete="off" spellcheck="false" style="padding:11px 12px;max-width:300px;width:100%;border:1px solid #cbd9ce;border-radius:10px" placeholder="e.g. Monday">'
+       +'<div data-m1-days-feedback="'+i+'" role="status" style="display:none;font-size:13px;line-height:1.8;margin-top:12px"></div></div></article>').join('')
+      +'</section><section class="chapter" style="padding:24px"><strong id="days-m1-score" role="status" style="display:block;font-size:19px;margin-bottom:16px">20 questions · ยังไม่ได้ส่งตรวจ</strong>'
+      +(data.member.can_study?'<button type="button" class="secondary" data-m1-days-check style="background:#193e35;color:white;margin-right:8px">ส่งตรวจและบันทึกคะแนน</button><button type="button" class="secondary" data-m1-days-retry>ทำอีกครั้ง / Retry</button>':'<p class="progress-note">บัญชีครูที่ไม่มีสิทธิ์นักเรียนสามารถดูโจทย์ได้ แต่ส่งคะแนนแทนนักเรียนไม่ได้</p>')
+      +'<p class="progress-note" style="margin:16px 0 0">แบบฝึกนี้ใช้ทบทวน ไม่ใช่สอบจริง แต่ละครั้งที่ส่งตรวจจะบันทึกคะแนนใหม่</p></section>'
+      +'<section class="chapter" style="padding:20px 24px"><strong>ประวัติคะแนนล่าสุดของฉัน</strong><div data-m1-days-history style="margin-top:12px">'
+      +(past.length?past.map(a=>'<p style="margin:7px 0;font-size:13px">'+esc(new Date(a.submitted_at).toLocaleString('th-TH'))+' — <b>'+esc(a.correct_count)+'/'+esc(a.total_count)+'</b></p>').join(''):'<p style="font-size:13px;color:#738078">ยังไม่เคยส่งแบบฝึกนี้</p>')
+      +'</div></section>';
+  }catch(error) {
+    if(main.querySelector('[data-m1-days-loading]'))
+      main.innerHTML='<section class="page-head"><button type="button" class="back-link" data-back-m1>← กลับบทเรียน ม.1</button><h1>What Day Is It?</h1></section><section class="empty-state"><strong>เปิดแบบฝึกไม่สำเร็จ</strong><p>'+esc(error.message)+'</p></section>';
+  }
+}
+async function checkM1DaysPractice() {
+  const button=main.querySelector('[data-m1-days-check]');
+  if(!button||button.disabled||m1DaysQuestions.length!==20)return;
+  const answers=m1DaysQuestions.map((q,i)=>({question_no:q.question_no,answer:main.querySelector('[data-m1-days-input="'+i+'"]')?.value?.trim()||''}));
+  button.disabled=true;button.textContent='กำลังตรวจและบันทึกคะแนน…';
+  try {
+    const response=await api('/api/school?route=m1-days-submit',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({answers})
+    });
+    const item=response.item;
+    if(!item||!Array.isArray(item.feedback)||item.feedback.length!==20)throw new Error('ระบบตรวจยังไม่ตอบกลับครบ 20 ข้อ');
+    const keyed=new Map(item.feedback.map(f=>[f.question_no,f]));
+    m1DaysQuestions.forEach((q,i)=>{
+      const field=main.querySelector('[data-m1-days-input="'+i+'"]');
+      const el=main.querySelector('[data-m1-days-feedback="'+i+'"]');
+      const f=keyed.get(q.question_no);
+      if(!field||!el||!f)return;
+      field.disabled=true;
+      el.style.display='block';
+      const vocab=Array.isArray(f.vocabulary)?f.vocabulary:[];
+      el.innerHTML='<div style="padding:14px;background:#f4f7f3;border:1px solid #d7e4d8;border-radius:12px">'
+        +'<p style="margin:0 0 8px;color:'+(f.is_correct?'#246346':'#9b372c')+'"><b>'+(f.is_correct?'✓ Correct! ตอบถูกต้อง':'✗ คำตอบที่ถูกต้องคือ '+esc(f.answer))+'</b></p>'
+        +'<p style="margin:5px 0"><b>ประโยคที่ถูกต้อง:</b> '+esc(f.answer_sentence)+'</p>'
+        +'<p style="margin:5px 0"><b>แปลโจทย์:</b> '+esc(f.question_translation)+'</p>'
+        +'<p style="margin:5px 0"><b>วิธีคิด:</b> '+esc(f.explanation)+'</p>'
+        +'<details open style="margin-top:10px"><summary style="cursor:pointer;font-weight:600">คำศัพท์ภาษาอังกฤษและคำแปล ('+vocab.length+' คำ/วลี)</summary>'
+        +'<ul style="margin:8px 0;padding-left:22px">'+vocab.map(v=>'<li><b>'+esc(v.word)+'</b> = '+esc(v.meaning_th)+'</li>').join('')+'</ul></details></div>';
+    });
+    const label=main.querySelector('#days-m1-score');
+    if(label)label.textContent='Your Score: '+item.correct_count+' / '+item.total_count+' ('+Math.round(100*item.correct_count/item.total_count)+'%) · บันทึกแล้ว';
+    const history=main.querySelector('[data-m1-days-history]');
+    if(history)history.insertAdjacentHTML('afterbegin','<p style="margin:7px 0;font-size:13px"><b>ล่าสุด: '+esc(new Date(item.submitted_at).toLocaleString('th-TH'))+' — '+esc(item.correct_count)+'/'+esc(item.total_count)+'</b></p>');
+    button.textContent='ส่งตรวจแล้ว ✓';
+    notice('ตรวจคำตอบ บันทึกคะแนน และเปิดเฉลยพร้อมคำศัพท์แล้ว');
+  }catch(error) {
+    button.disabled=false;button.textContent='ส่งตรวจและบันทึกคะแนน';
+    notice('ยังไม่ได้บันทึกคะแนน: '+error.message);
+  }
+}
+async function renderM1DaysReports() {
+  if(!data.member.can_teach&&!data.member.can_manage)return notice('เฉพาะครูหรือผู้ดูแล');
+  main.innerHTML='<section class="empty-state" data-m1-days-report-loading>กำลังเปิดรายงาน What Day Is It?…</section>';
+  try {
+    const result=await api('/api/school?route=m1-days-results');
+    if(!main.querySelector('[data-m1-days-report-loading]'))return;
+    const students=result.students||[];
+    const completed=students.filter(s=>s.latest).length;
+    const rows=students.map(s=>{
+      const last=s.latest,wrong=last?.wrong_answers||[];
+      return '<article class="topic" style="grid-template-columns:1fr"><div><strong>'+esc(s.member_name)+'</strong>'
+        +'<p style="margin:7px 0 0;color:#738078;font-size:12px">'+(s.is_active?'บัญชีใช้งาน':'บัญชีไม่ใช้งาน')+' · ทำแล้ว '+esc(s.attempt_count)+' ครั้ง</p>'
+        +(last?'<p style="margin:9px 0"><b>คะแนนล่าสุด '+esc(last.correct_count)+'/'+esc(last.total_count)+'</b> · '+esc(Math.round(100*last.correct_count/last.total_count))+'% · '+esc(new Date(last.submitted_at).toLocaleString('th-TH'))+'</p>'
+          +(wrong.length?'<details><summary>ข้อที่ตอบผิด ('+wrong.length+')</summary><ol>'+wrong.map(q=>'<li style="margin:12px 0">ข้อ '+esc(q.question_no)+' · ตอบ: <b>'+esc(q.selected_answer||'(ไม่ตอบ)')+'</b> · เฉลย: <b>'+esc(q.answer)+'</b><p style="font-size:12px;color:#738078">'+esc(q.explanation)+'</p></li>').join('')+'</ol></details>':'<p style="color:#246346;font-size:12px">✓ ตอบถูกทุกข้อ</p>')
+          :'<p style="margin:9px 0;color:#738078;font-size:13px">ยังไม่ส่งแบบฝึก</p>')
+        +'</div></article>';
+    }).join('');
+    main.innerHTML='<section class="page-head"><button type="button" class="back-link" data-back-m1>← กลับบทเรียน ม.1</button><span class="eyebrow">NATHOENG SCHOOL · TEACHER</span><h1>ผลการฝึก English M.1 — What Day Is It?</h1><p>คะแนนรายคนและข้อผิดพลาดของนักเรียน</p></section>'
+      +'<section class="stats"><div class="stat"><strong>'+esc(students.length)+'</strong><span>นักเรียน</span></div><div class="stat"><strong>'+esc(completed)+'</strong><span>ส่งแล้ว</span></div></section>'
+      +'<section class="chapter"><div style="padding:20px 23px"><strong>ติดตามผลรายคน</strong>'+(result.truncated?'<p class="progress-note">รายงานแสดงเฉพาะ 1,000 การทำล่าสุด</p>':'')+'</div>'+(rows||'<div class="topic">ยังไม่มีนักเรียน</div>')+'</section>';
+  }catch(error) {
+    if(main.querySelector('[data-m1-days-report-loading]'))
+      main.innerHTML='<section class="page-head"><button type="button" class="back-link" data-back-m1>← กลับบทเรียน ม.1</button><h1>ผลแบบฝึก What Day Is It?</h1></section><section class="empty-state"><strong>โหลดรายงานไม่สำเร็จ</strong><p>'+esc(error.message)+'</p></section>';
   }
 }
 
@@ -821,6 +925,10 @@ main.addEventListener('click',async event=>{
   const m1Reports=event.target.closest('[data-m1-so-reports]'); if(m1Reports){await renderM1SoReports();return;}
   const m1Check=event.target.closest('[data-so-m1-check]'); if(m1Check){await checkM1SoPractice();return;}
   const m1Retry=event.target.closest('[data-so-m1-retry]'); if(m1Retry){await renderM1SoPractice();return;}
+  const daysOpen=event.target.closest('[data-m1-days-open]'); if(daysOpen){await renderM1DaysPractice();return;}
+  const daysReports=event.target.closest('[data-m1-days-reports]'); if(daysReports){await renderM1DaysReports();return;}
+  const daysCheck=event.target.closest('[data-m1-days-check]'); if(daysCheck){await checkM1DaysPractice();return;}
+  const daysRetry=event.target.closest('[data-m1-days-retry]'); if(daysRetry){await renderM1DaysPractice();return;}
   const eq=event.target.closest('[data-explanation-question]');
   if(eq){await openExplanationQuestion(eq.dataset.explanationQuestion);return;}
   const ep=event.target.closest('[data-explanation-page]');
