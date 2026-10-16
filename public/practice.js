@@ -74,6 +74,15 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
   const subjectName = id => id === 'ALL' ? 'ข้อสอบทั้งชุด · ทุกวิชา' : (data.subjects.find(s => s.subject_id === id)?.subject_name_th || id);
   const topicName = id => data.topics.find(t => t.topic_id === id)?.topic_name_th || id;
   const canSeeResults = () => data.member.can_teach || data.member.can_manage;
+  const explanationAsset = q => {
+    const url=q?.explanation_image_url||'';
+    return /^https:\/\/media\.nathoeng\.com\/uploads\/school\/[A-Za-z0-9/_.-]+\.(png|jpe?g|webp|gif)(\?v=[A-Za-z0-9_-]{1,40})?$/i.test(url)
+      ? '<figure class="practice-source-figure"><img src="'+esc(url)+'" alt="ภาพประกอบเฉลย" loading="lazy"><figcaption>ภาพประกอบเฉลย</figcaption></figure>'
+      : '';
+  };
+  const explanationEditButton = q => data.member.can_manage
+    ? '<p><button type="button" class="secondary" data-explanation-edit="'+esc(q.question_id)+'" data-explanation-bank="'+(isALevel?'alevel':'army')+'">✎ แก้ไขเฉลยข้อนี้</button></p>' : '';
+
   const date = value => value ? new Date(value).toLocaleString('th-TH') : '—';
   const resultButton = () => canSeeResults() ? '<button type="button" class="secondary" data-student-results>ผลตรวจรายคน</button>' : '';
   const examManageButton = () => canSeeResults() ? '<button type="button" class="secondary" data-exam-manage>จัดการสอบจริง</button>' : '';
@@ -519,7 +528,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
       (result?
         '<section class="selfstudy-feedback '+(result.is_correct?'is-correct':'is-incorrect')+'" aria-live="polite"><h3>'+(result.is_correct?'🎉 ยินดีด้วย! คุณตอบถูกต้อง':'ข้อนี้ยังไม่ถูกต้อง มาศึกษาเฉลยกัน')+'</h3><p>ใช้เวลาคิด <b>'+thinkingText(result.elapsed_ms)+'</b> · '+(result.is_correct?'ตอบถูก':'ตอบผิด')+'</p>'+
         '<h4>คำตอบที่ถูกต้อง: ตัวเลือก '+esc(result.answer_key)+'</h4>'+
-        '<div class="practice-explanation"><h4>คำอธิบาย</h4><p>'+esc(result.explanation||'')+'</p><h4>เหตุผล / วิธีคิด</h4><p>'+esc(result.reasoning||'')+'</p></div></section>':
+        '<div class="practice-explanation"><h4>คำอธิบาย</h4><p>'+esc(result.explanation||'')+'</p><h4>เหตุผล / วิธีคิด</h4><p>'+esc(result.reasoning||'')+'</p>'+explanationAsset(result)+explanationEditButton(q)+'</div></section>':
         '<p class="selfstudy-hint">เลือกคำตอบ แล้วกด “ส่งตรวจ” เพื่อทราบผลข้อนี้ทันที ไม่มีการส่งข้อสอบทั้งชุด</p>')+
       '<div class="practice-navigation">'+
         '<button type="button" class="secondary" data-selfstudy-index="'+Math.max(0,selfIndex-1)+'" '+(selfIndex===0?'disabled':'')+'>← ข้อก่อนหน้า</button>'+
@@ -1133,7 +1142,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
     if(!q){modalBody.innerHTML='<p class="practice-inline-error">ไม่พบข้อสอบในรอบนี้</p>';return;}
     const answer=realExamSaved.get(q.question_id), selected=realExamChoices.get(q.question_id);
     const review=realExam.can_review
-      ? '<section class="practice-explanation"><span class="eyebrow">REVIEW & LEARN</span>'+realExamAnswerKey(q)+'<h4>วิธีทำ / การพิจารณา</h4><p>'+esc(q.explanation||'')+'</p><h4>เหตุผลและจุดที่ควรระวัง</h4><p>'+esc(q.reasoning||'')+'</p></section>'
+      ? '<section class="practice-explanation"><span class="eyebrow">REVIEW & LEARN</span>'+realExamAnswerKey(q)+'<h4>วิธีทำ / การพิจารณา</h4><p>'+esc(q.explanation||'')+'</p><h4>เหตุผลและจุดที่ควรระวัง</h4><p>'+esc(q.reasoning||'')+'</p>'+explanationAsset(q)+explanationEditButton(q)+'</section>'
       : '';
     const subjectLine=s.subject_id==='ALL'?subjectName(q.subject_id)+' · ':'';
     const savedBadge=answer?'<span class="practice-badge '+(realExam.can_review?(answer.is_correct?'correct':'incorrect'):'answered')+'">'+(realExam.can_review?(answer.is_correct?'✓ ตอบถูก':'ควรทบทวน'):'✓ บันทึกแล้ว')+'</span>':'';
@@ -1306,7 +1315,7 @@ export function createPractice({ main, data, api, notice, rerender, getSubject, 
       return;
     }
     const q = session.questions[index], answer = saved.get(q.question_id), selected = choices.get(q.question_id);
-    const explanation = session.can_review && q.answer_key != null ? `<section class="practice-explanation"><span class="eyebrow">${status === 'graded' ? 'REVIEW & LEARN' : 'TEACHER NOTES'}</span>${answerKeyText(q)}<h4>วิธีทำ / การพิจารณา</h4><p>${esc(q.explanation)}</p><h4>เหตุผลและจุดที่ควรระวัง</h4><p>${esc(q.reasoning)}</p><small>${q.source_title ? esc(q.source_title) : 'โจทย์ฝึกตามหัวข้อต้นฉบับ'}${q.source_year ? ` · พ.ศ. ${esc(q.source_year)}` : ''}</small></section>` : '';
+    const explanation = session.can_review && q.answer_key != null ? `<section class="practice-explanation"><span class="eyebrow">${status === 'graded' ? 'REVIEW & LEARN' : 'TEACHER NOTES'}</span>${answerKeyText(q)}<h4>วิธีทำ / การพิจารณา</h4><p>${esc(q.explanation)}</p><h4>เหตุผลและจุดที่ควรระวัง</h4><p>${esc(q.reasoning)}</p>${explanationAsset(q)}${explanationEditButton(q)}<small>${q.source_title ? esc(q.source_title) : 'โจทย์ฝึกตามหัวข้อต้นฉบับ'}${q.source_year ? ` · พ.ศ. ${esc(q.source_year)}` : ''}</small></section>` : '';
     const canNext=hasResponse(q,selected);
     modalBody.innerHTML = `${header}<div class="practice-question-heading"><span>${index + 1} / ${n} · ${esc(q.topic_id)}</span>${answer ? `<span class="practice-badge ${status === 'graded' ? answer.is_correct ? 'correct' : 'incorrect' : 'answered'}">${status === 'graded' ? answer.is_correct ? '✓ ตอบถูก' : 'ควรทบทวน' : '✓ บันทึกแล้ว'}</span>` : ''}<h3>${esc(topicName(q.topic_id))}</h3></div><p class="practice-prompt">${esc(q.prompt)}</p>${q.question_image_url ? `<figure class="practice-source-figure"><img src="${esc(freshQuestionImage(q.question_image_url))}" alt="ภาพประกอบข้อ ${esc(q.question_no || index + 1)}" loading="lazy"><figcaption>${q.subject_id==='TP30'?'ภาพประกอบ TPAT3 ชุด 1':'ภาพประกอบจากข้อสอบต้นฉบับ'}${q.question_no ? ` · ข้อ ${esc(q.question_no)}` : ''}</figcaption></figure>` : ''}${responseControl(q,selected)}<p class="practice-save-status" role="status">${busy ? 'กำลังบันทึกคำตอบ…' : editable() ? q.response_mode==='numeric' ? 'กรอกคำตอบแล้วกดยืนยันเพื่อบันทึกและไปข้อต่อไป' : q.response_mode==='complex' ? 'ตอบ ใช่ / ไม่ใช่ ให้ครบทุกข้อความ แล้วระบบจะบันทึกให้' : 'เลือกคำตอบแล้วระบบบันทึกให้ · กดยืนยันเพื่อไปข้อต่อไป' : status === 'submitted' ? 'ส่งแล้ว · คำตอบถูกล็อกระหว่างรอตรวจ' : status === 'graded' ? 'ดูคำตอบที่บันทึกและเฉลยด้านล่าง' : 'มุมมองครู · ดูโจทย์และเฉลยได้'}</p>${error}<div class="practice-navigation"><button type="button" class="secondary" data-back ${busy || index === 0 ? 'disabled' : ''}>← ย้อน</button>${editable() ? `<button type="button" class="secondary" data-skip ${busy ? 'disabled' : ''}>ข้าม →</button><button type="button" class="practice-primary" data-next ${busy || !canNext ? 'disabled' : ''}>${index === n - 1 ? 'ยืนยันคำตอบและสรุปวิชา' : 'ยืนยันคำตอบและไปข้อต่อไป →'}</button>` : `<button type="button" class="practice-primary" data-next ${busy ? 'disabled' : ''}>${index === n - 1 ? 'สรุปวิชา' : 'ข้อถัดไป →'}</button>`}</div>${explanation}${understandingMarkup(session,q,'practice',viewingOther)}${learningMarkup(session,q,'practice')}${questionGrid()}${viewingOther && data.member.can_manage && status === 'submitted' ? `<div class="practice-grade-action"><p>ตรวจอัตโนมัติตามเฉลยและเปิดผลให้นักเรียนพร้อมกัน</p><button type="button" class="practice-primary" data-grade="${esc(a.attempt_id)}" ${busy ? 'disabled' : ''}>ตรวจและเปิดผล</button></div>` : ''}`;
     updateLearningHeading(session, q, 'practice');
