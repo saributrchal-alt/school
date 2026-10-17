@@ -119,6 +119,7 @@ const universityExams = [
 
 let m1SoQuestions = [];
 let m1DaysQuestions = [];
+let m1TimeQuestions = [];
 
 let data, subject = 'ENG', query = '', filter = 'all', noticeTimer, practice, currentArea = null;
 let alevelData = null, alevelSubject = 'AL61', alevelQuery = '', alevelFilter = 'all';
@@ -426,6 +427,8 @@ function renderM1() {
     + (teacher?'<button type="button" class="level-card" data-m1-so-reports><span><strong>ผลการทำแบบฝึกภาษาอังกฤษ ม.1</strong><small class="level-status ready">สำหรับครูและผู้ดูแล · คะแนนและข้อที่ยังตอบผิด</small></span><b aria-hidden="true">→</b></button>':'')
     + '<button type="button" class="level-card" data-m1-days-open><span><strong>ภาษาอังกฤษ — What Day Is It?</strong><small class="level-status ready">20 ข้อ · Today / Tomorrow / Yesterday · ตรวจทันทีพร้อมแปลคำศัพท์และเฉลยละเอียด</small></span><b aria-hidden="true">→</b></button>'
     + (teacher?'<button type="button" class="level-card" data-m1-days-reports><span><strong>ผลการฝึก What Day Is It? — ม.1</strong><small class="level-status ready">สำหรับครูและผู้ดูแล · คะแนนรายคนและคำตอบผิด</small></span><b aria-hidden="true">→</b></button>':'')
+    + '<button type="button" class="level-card" data-m1-time-open><span><strong>ภาษาอังกฤษ — What Time Is It?</strong><small class="level-status ready">20 ข้อ · อ่านนาฬิกาเข็ม · เลือกคำตอบ · เฉลยและบันทึกคะแนน</small></span><b aria-hidden="true">→</b></button>'
+    + (teacher?'<button type="button" class="level-card" data-m1-time-reports><span><strong>ผลการฝึก What Time Is It? — ม.1</strong><small class="level-status ready">สำหรับครูและผู้ดูแล · คะแนนและข้อที่ตอบผิด</small></span><b aria-hidden="true">→</b></button>':'')
     + '</section><p class="progress-note" style="margin-top:18px">รายวิชาอื่นของ ม.1 อยู่ระหว่างดำเนินงาน</p>';
 }
 async function renderM1SoPractice() {
@@ -613,6 +616,124 @@ async function renderM1DaysReports() {
   }catch(error) {
     if(main.querySelector('[data-m1-days-report-loading]'))
       main.innerHTML='<section class="page-head"><button type="button" class="back-link" data-back-m1>← กลับบทเรียน ม.1</button><h1>ผลแบบฝึก What Day Is It?</h1></section><section class="empty-state"><strong>โหลดรายงานไม่สำเร็จ</strong><p>'+esc(error.message)+'</p></section>';
+  }
+}
+
+
+async function renderM1TimePractice() {
+  practice?.destroy(); practice=null;
+  main.innerHTML='<section class="empty-state" data-m1-time-loading>กำลังเปิดแบบฝึก What Time Is It?…</section>';
+  try {
+    const [paper,history]=await Promise.all([
+      api('/api/school?route=m1-time-paper'),api('/api/school?route=m1-time-history')
+    ]);
+    if(!main.querySelector('[data-m1-time-loading]'))return;
+    m1TimeQuestions=paper.questions||[];
+    if(m1TimeQuestions.length!==20 ||
+       m1TimeQuestions.some(q=>!Array.isArray(q.choices)||q.choices.length!==4))
+      throw new Error('โจทย์หรือรูปแบบตัวเลือกไม่ครบ 20 ข้อ');
+    const attempts=(history.attempts||[]).slice(0,5);
+    main.innerHTML='<section class="page-head"><button type="button" class="back-link" data-back-m1>← กลับบทเรียน ม.1</button>'
+      +'<span class="eyebrow">NATHOENG SCHOOL · ENGLISH M.1</span><h1>What Time Is It?</h1>'
+      +'<p>ดูเข็มนาฬิกาแล้วเลือกคำตอบภาษาอังกฤษที่ถูกต้อง 20 ข้อ</p></section>'
+      +'<section class="chapter" style="padding:20px 24px;line-height:1.8"><strong>Learning Tips / การบอกเวลา</strong>'
+      +'<p><b>o’clock</b> = ตรงชั่วโมง · <b>half past</b> = ผ่านมา 30 นาที · <b>a quarter past</b> = ผ่านมา 15 นาที · <b>a quarter to</b> = อีก 15 นาทีจะถึงชั่วโมงถัดไป</p>'
+      +'<p><b>past</b> = นาทีที่ผ่านชั่วโมงปัจจุบัน · <b>to</b> = นาทีที่เหลือก่อนชั่วโมงถัดไป</p></section>'
+      +'<section class="chapter" aria-label="What Time Is It? 20 questions">'
+      +m1TimeQuestions.map((q,i)=>'<article class="topic" style="grid-template-columns:1fr">'
+        +'<div style="min-width:0;width:100%"><strong>Question '+esc(q.question_no)+' — '+esc(q.prompt_en)+'</strong>'
+        +'<div style="margin:12px 0"><img src="'+esc(q.image_url)+'" alt="Analog clock for question '+esc(q.question_no)+'" width="176" height="176" loading="lazy" style="width:176px;max-width:100%;height:auto;aspect-ratio:1;object-fit:contain;background:white;border:1px solid #d5ded7;border-radius:14px"></div>'
+        +'<fieldset style="border:0;padding:0;margin:8px 0" data-m1-time-question="'+i+'"><legend style="font-size:13px;color:#66766c;margin-bottom:9px">Choose the correct answer / เลือกคำตอบที่ถูกต้อง</legend>'
+        +q.choices.map((choice,j)=>'<label style="display:flex;align-items:start;gap:9px;padding:9px 12px;margin:6px 0;background:#f7f9f7;border:1px solid #d5e0d7;border-radius:9px;cursor:pointer">'
+          +'<input type="radio" name="m1-time-'+i+'" value="'+(j+1)+'" style="margin-top:4px"><span><b>'+(j+1)+'.</b> '+esc(choice)+'</span></label>').join('')
+        +'</fieldset><div data-m1-time-feedback="'+i+'" role="status" style="display:none;margin-top:12px;font-size:13px;line-height:1.8"></div>'
+        +'</div></article>').join('')
+      +'</section><section class="chapter" style="padding:24px"><strong data-m1-time-score role="status" style="display:block;font-size:19px;margin-bottom:16px">20 questions · ยังไม่ได้ส่งตรวจ</strong>'
+      +(data.member.can_study?'<button type="button" class="secondary" data-m1-time-check style="background:#193e35;color:white;margin-right:8px">ส่งตรวจและบันทึกคะแนน</button><button type="button" class="secondary" data-m1-time-retry>ทำอีกครั้ง / Retry</button>'
+        :'<p class="progress-note">บัญชีครูที่ไม่มีสิทธิ์นักเรียนสามารถดูโจทย์ได้ แต่ไม่สามารถส่งคะแนนแทนนักเรียน</p>')
+      +'<p class="progress-note">แบบฝึกทบทวน ไม่ใช่สอบจริง · ตรวจและเปิดเฉลยหลังส่งครบ 20 ข้อ</p></section>'
+      +'<section class="chapter" style="padding:20px 24px"><strong>ประวัติคะแนนล่าสุดของฉัน</strong><div data-m1-time-history style="margin-top:12px">'
+      +(attempts.length?attempts.map(a=>'<p style="margin:7px 0;font-size:13px">'+esc(new Date(a.submitted_at).toLocaleString('th-TH'))+' — <b>'+esc(a.correct_count)+'/'+esc(a.total_count)+'</b></p>').join('')
+        :'<p style="font-size:13px;color:#738078">ยังไม่เคยทำแบบฝึกนี้</p>')
+      +'</div></section>';
+  }catch(error){
+    if(main.querySelector('[data-m1-time-loading]'))
+      main.innerHTML='<section class="page-head"><button type="button" class="back-link" data-back-m1>← กลับบทเรียน ม.1</button><h1>What Time Is It?</h1></section>'
+        +'<section class="empty-state"><strong>เปิดแบบฝึกไม่สำเร็จ</strong><p>'+esc(error.message)+'</p></section>';
+  }
+}
+
+async function checkM1TimePractice() {
+  const button=main.querySelector('[data-m1-time-check]');
+  if(!button||button.disabled||m1TimeQuestions.length!==20)return;
+  const answers=m1TimeQuestions.map((q,i)=>({
+    question_no:q.question_no,
+    choice:Number(main.querySelector('input[name="m1-time-'+i+'"]:checked')?.value||0)
+  }));
+  const firstMissing=answers.findIndex(a=>!a.choice);
+  if(firstMissing!==-1){
+    main.querySelector('[data-m1-time-question="'+firstMissing+'"]')?.scrollIntoView({behavior:'smooth',block:'center'});
+    notice('กรุณาเลือกคำตอบให้ครบ 20 ข้อ (ยังไม่ได้ตอบข้อ '+(firstMissing+1)+')');return;
+  }
+  button.disabled=true;button.textContent='กำลังตรวจและบันทึก…';
+  try {
+    const response=await api('/api/school?route=m1-time-submit',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({answers})
+    });
+    const result=response.item;
+    if(!result||!Array.isArray(result.feedback)||result.feedback.length!==20)
+      throw new Error('ระบบยังไม่ตอบกลับผลครบ 20 ข้อ');
+    const feedback=new Map(result.feedback.map(f=>[f.question_no,f]));
+    m1TimeQuestions.forEach((q,i)=>{
+      const f=feedback.get(q.question_no);
+      const el=main.querySelector('[data-m1-time-feedback="'+i+'"]');
+      if(!el||!f)return;
+      main.querySelectorAll('input[name="m1-time-'+i+'"]').forEach(input=>{input.disabled=true;});
+      el.style.display='block';
+      el.innerHTML='<div style="background:#f4f7f3;border:1px solid #d7e4d8;border-radius:12px;padding:13px">'
+        +'<p style="margin:0 0 7px;color:'+(f.is_correct?'#246346':'#9b372c')+'"><b>'+(f.is_correct?'✓ Correct! ตอบถูกต้อง':'✗ Incorrect / ยังไม่ถูกต้อง')+'</b></p>'
+        +'<p><b>Correct answer:</b> '+esc(f.correct_answer)+'</p>'
+        +'<p><b>คำอธิบาย:</b> '+esc(f.explanation)+'</p></div>';
+    });
+    const score=main.querySelector('[data-m1-time-score]');
+    if(score)score.textContent='Your Score: '+result.correct_count+' / '+result.total_count+' ('+Math.round(100*result.correct_count/result.total_count)+'%) · บันทึกแล้ว';
+    const history=main.querySelector('[data-m1-time-history]');
+    if(history)history.insertAdjacentHTML('afterbegin','<p style="margin:7px 0;font-size:13px"><b>ล่าสุด: '+esc(new Date(result.submitted_at).toLocaleString('th-TH'))+' — '+esc(result.correct_count)+'/20</b></p>');
+    button.textContent='ตรวจแล้ว ✓';
+    notice('ตรวจคำตอบและบันทึกคะแนนเรียบร้อยแล้ว');
+  }catch(error){
+    button.disabled=false;button.textContent='ส่งตรวจและบันทึกคะแนน';
+    notice('ยังไม่ได้บันทึกคะแนน: '+error.message);
+  }
+}
+
+async function renderM1TimeReports() {
+  if(!data.member.can_teach&&!data.member.can_manage)return notice('เฉพาะครูหรือผู้ดูแล');
+  main.innerHTML='<section class="empty-state" data-m1-time-report-loading>กำลังเปิดรายงาน What Time Is It?…</section>';
+  try {
+    const report=await api('/api/school?route=m1-time-results');
+    if(!main.querySelector('[data-m1-time-report-loading]'))return;
+    const students=report.students||[],completed=students.filter(s=>s.latest).length;
+    main.innerHTML='<section class="page-head"><button type="button" class="back-link" data-back-m1>← กลับบทเรียน ม.1</button>'
+      +'<span class="eyebrow">NATHOENG SCHOOL · TEACHER</span><h1>ผลการฝึก What Time Is It? — ม.1</h1>'
+      +'<p>คะแนนล่าสุดและข้อที่ตอบผิดของนักเรียน</p></section>'
+      +'<section class="stats"><div class="stat"><strong>'+esc(students.length)+'</strong><span>นักเรียน</span></div>'
+      +'<div class="stat"><strong>'+esc(completed)+'</strong><span>ส่งแล้ว</span></div></section>'
+      +'<section class="chapter">'
+      +(report.truncated?'<p class="progress-note" style="padding:15px">แสดงประวัติ 1,000 รายการล่าสุด</p>':'')
+      +(students.map(s=>'<article class="topic" style="grid-template-columns:1fr"><div><strong>'+esc(s.member_name)+'</strong>'
+        +'<p style="font-size:12px;color:#738078">ทำแล้ว '+esc(s.attempt_count)+' ครั้ง</p>'
+        +(s.latest?'<p><b>คะแนนล่าสุด '+esc(s.latest.correct_count)+'/20</b> · '+esc(new Date(s.latest.submitted_at).toLocaleString('th-TH'))+'</p>'
+          +(s.latest.wrong_answers.length?'<details><summary>ข้อที่ตอบผิด ('+s.latest.wrong_answers.length+')</summary><ol>'
+            +s.latest.wrong_answers.map(f=>'<li>ข้อ '+esc(f.question_no)+' · เลือกข้อ '+esc(f.selected_choice)+' · เฉลย '+esc(f.correct_answer)+' — '+esc(f.explanation)+'</li>').join('')
+            +'</ol></details>':'<p style="color:#246346">✓ ถูกครบทุกข้อ</p>')
+          :'<p style="color:#738078">ยังไม่ส่งแบบฝึก</p>')
+        +'</div></article>').join('')||'<div class="topic">ยังไม่มีนักเรียน</div>')
+      +'</section>';
+  }catch(error){
+    if(main.querySelector('[data-m1-time-report-loading]'))
+      main.innerHTML='<section class="page-head"><button type="button" class="back-link" data-back-m1>← กลับบทเรียน ม.1</button><h1>ผล What Time Is It?</h1></section>'
+        +'<section class="empty-state"><strong>โหลดรายงานไม่สำเร็จ</strong><p>'+esc(error.message)+'</p></section>';
   }
 }
 
@@ -940,6 +1061,10 @@ main.addEventListener('click',async event=>{
   const daysReports=event.target.closest('[data-m1-days-reports]'); if(daysReports){await renderM1DaysReports();return;}
   const daysCheck=event.target.closest('[data-m1-days-check]'); if(daysCheck){await checkM1DaysPractice();return;}
   const daysRetry=event.target.closest('[data-m1-days-retry]'); if(daysRetry){await renderM1DaysPractice();return;}
+  const timeOpen=event.target.closest('[data-m1-time-open]'); if(timeOpen){await renderM1TimePractice();return;}
+  const timeReports=event.target.closest('[data-m1-time-reports]'); if(timeReports){await renderM1TimeReports();return;}
+  const timeCheck=event.target.closest('[data-m1-time-check]'); if(timeCheck){await checkM1TimePractice();return;}
+  const timeRetry=event.target.closest('[data-m1-time-retry]'); if(timeRetry){await renderM1TimePractice();return;}
   const eq=event.target.closest('[data-explanation-question]');
   if(eq){await openExplanationQuestion(eq.dataset.explanationQuestion);return;}
   const ep=event.target.closest('[data-explanation-page]');
