@@ -467,10 +467,24 @@ export default async function handler(req, res) {
       await db('school_secondary_assignments?assignment_key=eq.'+encodeURIComponent(key),'PATCH',{is_active:true});
       return res.status(200).json({success:true,assignment_key:key,question_count:questions.length});
     }
+    if (route === 'secondary-exercise-list' && req.method === 'GET') {
+      if (!member.can_study && !member.can_teach && !member.can_manage) fail('ไม่มีสิทธิ์ดูแบบฝึกหัด',403);
+      const grade=Number(req.query.grade);if(!Number.isInteger(grade)||grade<1||grade>6) fail('ระดับชั้นไม่ถูกต้อง',400);
+      if(member.can_study&&!member.can_teach&&!member.can_manage) {
+        const enrollment=(await db('school_secondary_grade_enrollments?member_id=eq.'+encodeURIComponent(member.member_id)+'&select=grade&limit=1'))[0];
+        if(enrollment&&enrollment.grade!==grade) fail('แบบฝึกหัดไม่ตรงระดับชั้นที่ลงทะเบียน',403);
+      }
+      const assignments=await db('school_secondary_assignments?grade=eq.'+grade+'&is_active=eq.true&results_route=eq.secondary-generic-results&select=assignment_key,grade,subject,title&order=subject.asc,title.asc&limit=500');
+      return res.status(200).json({success:true,assignments});
+    }
     if (route === 'secondary-exercise-paper' && req.method === 'GET') {
       const key=String(req.query.key||'');if(!/^[a-z0-9-]{3,80}$/.test(key)) fail('รหัสแบบฝึกหัดไม่ถูกต้อง',400);
       const a=(await db('school_secondary_assignments?assignment_key=eq.'+encodeURIComponent(key)+'&is_active=eq.true&results_route=eq.secondary-generic-results&select=assignment_key,grade,subject,title&limit=1'))[0];
       if(!a) fail('ไม่พบแบบฝึกหัด',404);
+      if(member.can_study&&!member.can_teach&&!member.can_manage) {
+        const enrollment=(await db('school_secondary_grade_enrollments?member_id=eq.'+encodeURIComponent(member.member_id)+'&select=grade&limit=1'))[0];
+        if(enrollment&&enrollment.grade!==a.grade) fail('แบบฝึกหัดไม่ตรงระดับชั้นที่ลงทะเบียน',403);
+      }
       const qs=await db('school_secondary_exercise_questions?assignment_key=eq.'+encodeURIComponent(key)+'&select=question_no,prompt&order=question_no.asc&limit=100');
       return res.status(200).json({success:true,assignment:a,questions:qs});
     }
@@ -478,8 +492,12 @@ export default async function handler(req, res) {
       sameOrigin(req);if(!member.can_study) fail('เฉพาะนักเรียนส่งคำตอบได้',403);
       const p=body(req),key=String(p.assignment_key||'');
       if(!/^[a-z0-9-]{3,80}$/.test(key)||!Array.isArray(p.answers)||p.answers.length>100) fail('คำตอบไม่ถูกต้อง',400);
-      const a=(await db('school_secondary_assignments?assignment_key=eq.'+encodeURIComponent(key)+'&is_active=eq.true&results_route=eq.secondary-generic-results&select=assignment_key&limit=1'))[0];
+      const a=(await db('school_secondary_assignments?assignment_key=eq.'+encodeURIComponent(key)+'&is_active=eq.true&results_route=eq.secondary-generic-results&select=assignment_key,grade&limit=1'))[0];
       if(!a) fail('ไม่พบแบบฝึกหัด',404);
+      if(member.can_study&&!member.can_teach&&!member.can_manage) {
+        const enrollment=(await db('school_secondary_grade_enrollments?member_id=eq.'+encodeURIComponent(member.member_id)+'&select=grade&limit=1'))[0];
+        if(enrollment&&enrollment.grade!==a.grade) fail('แบบฝึกหัดไม่ตรงระดับชั้นที่ลงทะเบียน',403);
+      }
       const qs=await db('school_secondary_exercise_questions?assignment_key=eq.'+encodeURIComponent(key)+'&select=question_no,answer,explanation&order=question_no.asc&limit=100');
       if(!qs.length||qs.length!==p.answers.length||p.answers.some(x=>typeof x!=='string'||x.length>500)) fail('คำตอบไม่ครบ',400);
       const norm=x=>String(x).normalize('NFKC').trim().toLowerCase().replace(/\s+/g,' ');
