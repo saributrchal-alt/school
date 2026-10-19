@@ -434,6 +434,21 @@ export default async function handler(req, res) {
     }
     if (req.method !== 'GET') fail('Method not allowed', 405);
     if (route === 'explanation-editor') return res.status(200).json({success:true,...await explanationEditor(member,req.query)});
+    if (route === 'secondary-grade-roster' && req.method === 'GET') {
+      if (!member.can_teach && !member.can_manage) fail('เฉพาะครูและผู้ดูแล',403);
+      const grade=Number(req.query.grade);if(!Number.isInteger(grade)||grade<1||grade>6) fail('ระดับชั้นไม่ถูกต้อง',400);
+      const [enrollments,members]=await Promise.all([db('school_secondary_grade_enrollments?grade=eq.'+grade+'&select=member_id,grade&limit=1000'),db('school_members?select=member_id,member_name,can_study,is_active&order=member_name.asc&limit=1000')]);
+      const ids=new Set(enrollments.map(x=>x.member_id));
+      return res.status(200).json({success:true,students:members.filter(m=>ids.has(m.member_id)),unassigned_count:members.filter(m=>m.can_study&&!ids.has(m.member_id)).length});
+    }
+    if (route === 'secondary-grade-assign' && req.method === 'POST') {
+      sameOrigin(req);if(!member.can_manage) fail('เฉพาะผู้ดูแลจัดชั้นเรียนได้',403);
+      const p=body(req),grade=Number(p.grade),id=memberId(p.member_id);
+      if(!Number.isInteger(grade)||grade<1||grade>6) fail('ระดับชั้นไม่ถูกต้อง',400);
+      const student=await findMember(id);if(!student||!student.can_study||!student.is_active) fail('ไม่พบนักเรียนที่ใช้งานได้',404);
+      const rows=await db('school_secondary_grade_enrollments?on_conflict=member_id','POST',{member_id:id,grade,assigned_at:new Date().toISOString()},'resolution=merge-duplicates,return=representation');
+      return res.status(200).json({success:true,enrollment:rows[0]});
+    }
     if (route === 'secondary-exercise-create' && req.method === 'POST') {
       sameOrigin(req); if (!member.can_manage) fail('เฉพาะผู้ดูแลสร้างแบบฝึกหัดได้',403);
       const p=body(req),grade=Number(p.grade),key=String(p.assignment_key||''),subject=String(p.subject||'').trim(),title=String(p.title||'').trim(),questions=p.questions;
@@ -492,8 +507,10 @@ export default async function handler(req, res) {
       const item=rows[0]; if(!item) fail('ไม่พบแบบฝึกหัด',404);
       const handlers={'m1-as-well-results':m1AsWellResults,'m1-so-results':m1SoTeacherResults,'m1-days-results':m1DaysTeacherResults,'m1-time-results':m1TimeTeacherResults};
       const handler=handlers[item.results_route];
-      if(!handler && item.results_route==='secondary-generic-results') {\n        const [members,attempts]=await Promise.all([db('school_members?select=member_id,member_name,can_study,is_active&order=member_name.asc&limit=1000'),db('school_secondary_exercise_submissions?assignment_key=eq.'+encodeURIComponent(key)+'&select=member_id,correct_count,total_count,feedback,submitted_at&order=submitted_at.desc&limit=1000')]);\n        const latest=new Map(),counts=new Map();for(const a of attempts){counts.set(a.member_id,(counts.get(a.member_id)||0)+1);if(!latest.has(a.member_id))latest.set(a.member_id,a)}\n        return res.status(200).json({success:true,assignment:item,students:members.filter(m=>m.can_study||latest.has(m.member_id)).map(m=>{const a=latest.get(m.member_id);return {member_name:m.member_name,attempt_count:counts.get(m.member_id)||0,latest:a?{correct_count:a.correct_count,total_count:a.total_count,submitted_at:a.submitted_at,wrong_answers:(a.feedback||[]).filter(q=>!q.is_correct)}:null}}),truncated:attempts.length===1000});\n      }\n      if(!handler) fail('แบบฝึกหัดนี้ยังไม่ได้เชื่อมรายงาน กรุณาแจ้งผู้ดูแล',503);
-      return res.status(200).json({success:true,assignment:item,...await handler(member)});
+      const roster=await db('school_secondary_grade_enrollments?grade=eq.'+item.grade+'&select=member_id&limit=1000');
+      const rosterIds=new Set(roster.map(r=>r.member_id));
+      if(!handler && item.results_route==='secondary-generic-results') {\n        const [members,attempts]=await Promise.all([db('school_members?select=member_id,member_name,can_study,is_active&order=member_name.asc&limit=1000'),db('school_secondary_exercise_submissions?assignment_key=eq.'+encodeURIComponent(key)+'&select=member_id,correct_count,total_count,feedback,submitted_at&order=submitted_at.desc&limit=1000')]);\n        const latest=new Map(),counts=new Map();for(const a of attempts){counts.set(a.member_id,(counts.get(a.member_id)||0)+1);if(!latest.has(a.member_id))latest.set(a.member_id,a)}\n        return res.status(200).json({success:true,assignment:item,students:members.filter(m=>rosterIds.has(m.member_id)||latest.has(m.member_id)).map(m=>{const a=latest.get(m.member_id);return {member_name:m.member_name,attempt_count:counts.get(m.member_id)||0,latest:a?{correct_count:a.correct_count,total_count:a.total_count,submitted_at:a.submitted_at,wrong_answers:(a.feedback||[]).filter(q=>!q.is_correct)}:null}}),roster_ready:roster.length>0,truncated:attempts.length===1000});\n      }\n      if(!handler) fail('แบบฝึกหัดนี้ยังไม่ได้เชื่อมรายงาน กรุณาแจ้งผู้ดูแล',503);
+      const report=await handler(member);return res.status(200).json({success:true,assignment:item,...report,roster_ready:roster.length>0,students:(report.students||[]).filter(s=>rosterIds.has(s.member_id)||Boolean(s.latest))});
     }
     if (route === 'm1-as-well-results') return res.status(200).json({success:true,...await m1AsWellResults(member)});
     if (route === 'm1-so-paper') return res.status(200).json({success:true,...await m1SoPaper(member)});
