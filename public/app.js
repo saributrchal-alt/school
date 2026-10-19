@@ -416,6 +416,11 @@ function openLevel(levelId) {
     renderM6();
     return;
   }
+  if (currentArea.id === 'secondary' && /^m[2-5]$/.test(levelId) && (data.member.can_teach || data.member.can_manage)) {
+    practice?.destroy(); practice=null;
+    main.innerHTML='<section class="page-head"><button type="button" class="back-link" data-back-area>← กลับชั้นมัธยม</button><h1>'+esc(label)+'</h1><p>พื้นที่ครูและผู้ดูแล</p></section><section class="level-grid"><a class="level-card" href="/secondary-assignment-reports.html?grade='+levelId.slice(1)+'"><span><strong>📋 ตรวจการบ้านและแบบฝึกหัด '+esc(label)+'</strong><small>รายงานรวมทุกแบบฝึกหัดที่เชื่อมระบบ</small></span><b>→</b></a></section>';
+    return;
+  }
   renderUnavailable(currentArea.title, label);
 }
 
@@ -423,6 +428,7 @@ function renderM1() {
   practice?.destroy(); practice=null;
   const teacher=Boolean(data.member.can_teach || data.member.can_manage);
   main.innerHTML = '<section class="page-head"><button type="button" class="back-link" data-back-area>← กลับชั้นมัธยม</button><span class="eyebrow">NATHOENG SCHOOL · M.1</span><h1>มัธยมศึกษาปีที่ 1</h1><p>เลือกบทเรียนและแบบฝึกหัด</p></section>'
+    + (teacher?'<section class="level-grid"><a class="level-card" href="/secondary-assignment-reports.html?grade=1"><span><strong>📋 ศูนย์ตรวจการบ้าน ม.1 (รวมทุกแบบฝึกหัด)</strong><small>สำหรับครูและผู้ดูแล</small></span><b>→</b></a></section>':'')
     + '<section class="level-grid"><button type="button" class="level-card" data-m1-so-open><span><strong>ภาษาอังกฤษ — Using “So” in Conversations</strong><small class="level-status ready">15 ข้อ · เติมคำในบทสนทนา · บันทึกคะแนนเข้าระบบ</small></span><b aria-hidden="true">→</b></button>'
     + (teacher?'<button type="button" class="level-card" data-m1-so-reports><span><strong>ผลการทำแบบฝึกภาษาอังกฤษ ม.1</strong><small class="level-status ready">สำหรับครูและผู้ดูแล · คะแนนและข้อที่ยังตอบผิด</small></span><b aria-hidden="true">→</b></button>':'')
     + (teacher?'<a class="level-card" href="/m1-as-well-report.html" style="text-decoration:none;color:inherit"><span><strong>รายงาน Using “As Well” — ครูและแอดมิน</strong><small class="level-status ready">คะแนนล่าสุด · ประวัติการส่ง · ข้อที่ตอบผิด</small></span><b aria-hidden="true">→</b></a>':'')
@@ -743,6 +749,7 @@ function renderM6() {
   practice?.destroy(); practice=null;
   main.innerHTML = `<section class="page-head"><button type="button" class="back-link" data-back-area>← กลับชั้นมัธยม</button><span class="eyebrow">NATHOENG SCHOOL</span><h1>มัธยมศึกษาปีที่ 6</h1><p>เลือกการเรียนตามระดับชั้น หรือเตรียมสอบเข้ามหาวิทยาลัย</p></section>
   <section class="level-grid">
+    ${data.member.can_teach||data.member.can_manage?'<a class="level-card" href="/secondary-assignment-reports.html?grade=6"><span><strong>📋 ตรวจการบ้านและแบบฝึกหัด ม.6</strong><small>สำหรับครูและผู้ดูแล</small></span><b>→</b></a>':''}
     <button type="button" class="level-card" data-m6-path="curriculum"><span><strong>เรียนตามระดับชั้น ม.6</strong><small class="level-status pending">อยู่ระหว่างการดำเนินงาน</small></span><b aria-hidden="true">→</b></button>
     <button type="button" class="level-card" data-m6-path="university"><span><strong>เตรียมสอบเข้ามหาวิทยาลัย</strong><small class="level-status">A-Level · TGAT · TPAT</small></span><b aria-hidden="true">→</b></button>
   </section>`;
