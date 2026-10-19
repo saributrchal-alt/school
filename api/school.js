@@ -434,6 +434,12 @@ export default async function handler(req, res) {
     }
     if (req.method !== 'GET') fail('Method not allowed', 405);
     if (route === 'explanation-editor') return res.status(200).json({success:true,...await explanationEditor(member,req.query)});
+    if (route === 'secondary-grade-candidates' && req.method === 'GET') {
+      if(!member.can_manage) fail('เฉพาะผู้ดูแล School',403);
+      const [members,assigned]=await Promise.all([db('school_members?select=member_id,member_name,can_study,is_active&order=member_name.asc&limit=1000'),db('school_secondary_grade_enrollments?select=member_id,grade&limit=1000')]);
+      const grades=new Map(assigned.map(x=>[x.member_id,x.grade]));
+      return res.status(200).json({success:true,students:members.filter(x=>x.can_study&&x.is_active).map(x=>({member_id:x.member_id,member_name:x.member_name,grade:grades.get(x.member_id)||null})),truncated:members.length===1000||assigned.length===1000});
+    }
     if (route === 'secondary-grade-roster' && req.method === 'GET') {
       if (!member.can_teach && !member.can_manage) fail('เฉพาะครูและผู้ดูแล',403);
       const grade=Number(req.query.grade);if(!Number.isInteger(grade)||grade<1||grade>6) fail('ระดับชั้นไม่ถูกต้อง',400);
