@@ -461,7 +461,7 @@ export default async function handler(req, res) {
       if(!a) fail('ไม่พบแบบฝึกหัด',404);
       const qs=await db('school_secondary_exercise_questions?assignment_key=eq.'+encodeURIComponent(key)+'&select=question_no,answer,explanation&order=question_no.asc&limit=100');
       if(!qs.length||qs.length!==p.answers.length||p.answers.some(x=>typeof x!=='string'||x.length>500)) fail('คำตอบไม่ครบ',400);
-      const norm=x=>String(x).normalize('NFKC').trim().toLowerCase().replace(/\\s+/g,' ');
+      const norm=x=>String(x).normalize('NFKC').trim().toLowerCase().replace(/\s+/g,' ');
       const feedback=qs.map((q,i)=>({question_no:q.question_no,selected_answer:p.answers[i],answer:q.answer,explanation:q.explanation,is_correct:norm(p.answers[i])===norm(q.answer)}));
       const correct_count=feedback.filter(x=>x.is_correct).length;
       await db('school_secondary_exercise_submissions','POST',{assignment_key:key,member_id:member.member_id,answers:p.answers,feedback,correct_count,total_count:qs.length});
