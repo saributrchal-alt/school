@@ -1,5 +1,29 @@
 import { body, db, verifyBridge, memberId, findMember, requireMember, sameOrigin, fail, sendError, bridgeHealth, MEMBER_FIELDS, topicProgress, learningStudents, saveTopicProgress, explanationEditor, saveExplanationEditor } from '../lib/school.js';
 
+
+const AS_WELL_ANSWERS=[
+...Array(10).fill('as well'),
+'She likes music as well.','I can swim as well.','He plays tennis as well.','We study science as well.','My brother is tall as well.','They like English as well.','I have a cat as well.','She can cook as well.','My father likes tea as well.','We are happy as well.',
+'1','2','2','0','1',
+'I like English as well.','She can swim as well.','My brother plays football as well.','We are students as well.','My mother likes coffee as well.'
+];
+const normalizeAsWell = v => String(v||'').toLowerCase().replace(/[.,!?]/g,'').replace(/\s+/g,' ').trim();
+async function m1AsWellSubmit(member,payload){
+  if(!member.can_study)fail('เฉพาะนักเรียนส่งคะแนนได้',403);
+  if(!payload||!Array.isArray(payload.answers)||payload.answers.length!==30||payload.answers.some((a,i)=>typeof a!=='string'||a.length>500))fail('คำตอบไม่ถูกต้อง',400);
+  const feedback=payload.answers.map((answer,i)=>({question_no:i+1,selected_answer:answer,answer:AS_WELL_ANSWERS[i],is_correct:normalizeAsWell(answer)===normalizeAsWell(AS_WELL_ANSWERS[i])}));
+  const correct_count=feedback.filter(x=>x.is_correct).length;
+  const rows=await db('school_m1_as_well_attempts','POST',{member_id:member.member_id,correct_count,total_count:30,feedback});
+  return {attempt_id:rows[0]?.attempt_id,correct_count,total_count:30,feedback};
+}
+async function m1AsWellResults(member){
+  if(!member.can_teach&&!member.can_manage)fail('เฉพาะครูและผู้ดูแล',403);
+  const [members,attempts]=await Promise.all([db('school_members?select=member_id,member_name,can_study,is_active&order=member_name.asc&limit=1000'),db('school_m1_as_well_attempts?select=attempt_id,member_id,correct_count,total_count,feedback,submitted_at&order=submitted_at.desc&limit=1000')]);
+  const latest=new Map(),counts=new Map();
+  for(const a of attempts){counts.set(a.member_id,(counts.get(a.member_id)||0)+1);if(!latest.has(a.member_id))latest.set(a.member_id,a)}
+  return {students:members.filter(m=>m.can_study||latest.has(m.member_id)).map(m=>{const a=latest.get(m.member_id);return {member_name:m.member_name,attempt_count:counts.get(m.member_id)||0,latest:a?{correct_count:a.correct_count,total_count:a.total_count,submitted_at:a.submitted_at,wrong_answers:a.feedback.filter(f=>!f.is_correct)}:null}}),truncated:attempts.length===1000};
+}
+
 async function importMember(req, res) {
   const p = body(req);
   verifyBridge(req, p);
@@ -391,6 +415,7 @@ export default async function handler(req, res) {
       sameOrigin(req);
       return res.status(200).json({ success:true, ...await enterLiveClass(member, body(req)) });
     }
+    if (route === 'm1-as-well-submit' && req.method === 'POST') { sameOrigin(req); return res.status(200).json({success:true,item:await m1AsWellSubmit(member,body(req))}); }
     if (route === 'm1-so-submit' && req.method === 'POST') {
       sameOrigin(req);
       return res.status(200).json({success:true,item:await m1SoSubmit(member,body(req))});
@@ -409,6 +434,7 @@ export default async function handler(req, res) {
     }
     if (req.method !== 'GET') fail('Method not allowed', 405);
     if (route === 'explanation-editor') return res.status(200).json({success:true,...await explanationEditor(member,req.query)});
+    if (route === 'm1-as-well-results') return res.status(200).json({success:true,...await m1AsWellResults(member)});
     if (route === 'm1-so-paper') return res.status(200).json({success:true,...await m1SoPaper(member)});
     if (route === 'm1-so-history') return res.status(200).json({success:true,...await m1SoHistory(member)});
     if (route === 'm1-so-results') return res.status(200).json({success:true,...await m1SoTeacherResults(member)});
