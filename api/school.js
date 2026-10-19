@@ -434,6 +434,24 @@ export default async function handler(req, res) {
     }
     if (req.method !== 'GET') fail('Method not allowed', 405);
     if (route === 'explanation-editor') return res.status(200).json({success:true,...await explanationEditor(member,req.query)});
+    if (route === 'secondary-assignments') {
+      if (!member.can_teach && !member.can_manage) fail('เฉพาะครูและผู้ดูแล',403);
+      const grade=Number(req.query.grade);
+      if (!Number.isInteger(grade)||grade<1||grade>6) fail('ระดับชั้นไม่ถูกต้อง',400);
+      const assignments=await db('school_secondary_assignments?grade=eq.'+grade+'&is_active=eq.true&select=assignment_key,grade,subject,title,results_route&order=subject.asc,title.asc&limit=500');
+      return res.status(200).json({success:true,assignments});
+    }
+    if (route === 'secondary-assignment-results') {
+      if (!member.can_teach && !member.can_manage) fail('เฉพาะครูและผู้ดูแล',403);
+      const key=String(req.query.key||'');
+      if (!/^[a-z0-9-]{3,80}$/.test(key)) fail('รหัสแบบฝึกหัดไม่ถูกต้อง',400);
+      const rows=await db('school_secondary_assignments?assignment_key=eq.'+encodeURIComponent(key)+'&is_active=eq.true&select=assignment_key,grade,subject,title,results_route&limit=1');
+      const item=rows[0]; if(!item) fail('ไม่พบแบบฝึกหัด',404);
+      const handlers={'m1-as-well-results':m1AsWellResults,'m1-so-results':m1SoTeacherResults,'m1-days-results':m1DaysTeacherResults,'m1-time-results':m1TimeTeacherResults};
+      const handler=handlers[item.results_route];
+      if(!handler) fail('แบบฝึกหัดนี้ยังไม่ได้เชื่อมรายงาน กรุณาแจ้งผู้ดูแล',503);
+      return res.status(200).json({success:true,assignment:item,...await handler(member)});
+    }
     if (route === 'm1-as-well-results') return res.status(200).json({success:true,...await m1AsWellResults(member)});
     if (route === 'm1-so-paper') return res.status(200).json({success:true,...await m1SoPaper(member)});
     if (route === 'm1-so-history') return res.status(200).json({success:true,...await m1SoHistory(member)});
