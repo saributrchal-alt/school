@@ -21,7 +21,7 @@ async function m1AsWellResults(member){
   const [members,attempts]=await Promise.all([db('school_members?select=member_id,member_name,can_study,is_active&order=member_name.asc&limit=1000'),db('school_m1_as_well_attempts?select=attempt_id,member_id,correct_count,total_count,feedback,submitted_at&order=submitted_at.desc&limit=1000')]);
   const latest=new Map(),counts=new Map();
   for(const a of attempts){counts.set(a.member_id,(counts.get(a.member_id)||0)+1);if(!latest.has(a.member_id))latest.set(a.member_id,a)}
-  return {students:members.filter(m=>m.can_study||latest.has(m.member_id)).map(m=>{const a=latest.get(m.member_id);return {member_name:m.member_name,attempt_count:counts.get(m.member_id)||0,latest:a?{correct_count:a.correct_count,total_count:a.total_count,submitted_at:a.submitted_at,wrong_answers:a.feedback.filter(f=>!f.is_correct)}:null}}),truncated:attempts.length===1000};
+  return {students:members.filter(m=>m.can_study||latest.has(m.member_id)).map(m=>{const a=latest.get(m.member_id);return {member_id:m.member_id,member_name:m.member_name,attempt_count:counts.get(m.member_id)||0,latest:a?{correct_count:a.correct_count,total_count:a.total_count,submitted_at:a.submitted_at,wrong_answers:a.feedback.filter(f=>!f.is_correct)}:null}}),truncated:attempts.length===1000};
 }
 
 async function importMember(req, res) {
