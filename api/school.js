@@ -434,6 +434,16 @@ export default async function handler(req, res) {
     }
     if (req.method !== 'GET') fail('Method not allowed', 405);
     if (route === 'explanation-editor') return res.status(200).json({success:true,...await explanationEditor(member,req.query)});
+    if (route === 'secondary-assignment-register' && req.method === 'POST') {
+      sameOrigin(req);
+      if (!member.can_manage) fail('เฉพาะผู้ดูแล School ลงทะเบียนแบบฝึกหัดได้',403);
+      const p=body(req);
+      const grade=Number(p.grade),key=String(p.assignment_key||''),subject=String(p.subject||'').trim(),title=String(p.title||'').trim(),resultsRoute=String(p.results_route||'');
+      const supported={'m1-as-well-results':1,'m1-so-results':1,'m1-days-results':1,'m1-time-results':1};
+      if (!Number.isInteger(grade)||grade<1||grade>6||!/^[a-z0-9-]{3,80}$/.test(key)||!subject||subject.length>100||!title||title.length>180||supported[resultsRoute]!==grade) fail('แบบฝึกหัดนี้ยังไม่มี API รายงานที่รองรับระดับชั้นดังกล่าว',400);
+      const rows=await db('school_secondary_assignments?on_conflict=assignment_key','POST',{assignment_key:key,grade,subject,title,results_route:resultsRoute,is_active:true},'resolution=merge-duplicates,return=representation');
+      return res.status(200).json({success:true,assignment:rows[0]});
+    }
     if (route === 'secondary-assignments') {
       if (!member.can_teach && !member.can_manage) fail('เฉพาะครูและผู้ดูแล',403);
       const grade=Number(req.query.grade);
