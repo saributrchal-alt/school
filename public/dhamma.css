@@ -60,3 +60,15 @@
  .dhamma-question{padding:18px}
  .dhamma-editor{padding:15px}
 }
+
+
+/* Historical Naktham Tri blueprint (2562–2567, excluding 2564) */
+.dhamma-year-select{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;margin:1rem 0;padding:.8rem 1rem;background:var(--surface,#f4f6f3);border:1px solid rgba(60,95,72,.16);border-radius:12px;font-weight:700}
+.dhamma-year-select select{font:inherit;padding:.55rem .8rem;border:1px solid #9dad9e;border-radius:8px;background:white;min-width:170px}
+.dhamma-blueprint{margin:1rem 0 1.5rem;padding:1.1rem;border:1px solid rgba(60,95,72,.23);border-radius:14px;background:rgba(126,158,118,.055)}
+.dhamma-blueprint h3{margin:.05rem 0 .45rem}
+.dhamma-blueprint p{font-size:.92rem;margin:.35rem 0 .8rem}
+.dhamma-blueprint ol{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:.65rem;margin:0;padding:0;list-style:none}
+.dhamma-blueprint li{background:var(--card,#fff);border:1px solid rgba(90,110,94,.18);border-radius:9px;padding:.75rem}
+.dhamma-blueprint li strong,.dhamma-blueprint li small{display:block}
+.dhamma-blueprint li small{font-size:.79rem;color:var(--muted,#6b746e);margin-top:.35rem;line-height:1.5}
