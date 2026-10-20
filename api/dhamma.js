@@ -1,5 +1,5 @@
 import {requireMember,sameOrigin,body,fail,sendError} from '../lib/school.js';
-import {dhammaCatalog,dhammaQuestions,saveDhammaQuestion} from '../lib/dhamma.js';
+import {dhammaCatalog,dhammaQuestions,dhammaBlueprint,saveDhammaQuestion} from '../lib/dhamma.js';
 
 export default async function handler(req,res){
  res.setHeader('Cache-Control','no-store');
@@ -8,6 +8,7 @@ export default async function handler(req,res){
   const route=req.query?.route||'catalog';
   if(req.method==='GET'){
    if(route==='catalog')return res.status(200).json({success:true,...await dhammaCatalog(member)});
+   if(route==='blueprint')return res.status(200).json({success:true,...await dhammaBlueprint(member,req.query)});
    if(route==='questions')return res.status(200).json({success:true,...await dhammaQuestions(member,req.query)});
    fail('ไม่พบรายการการศึกษาธรรม',404);
   }
