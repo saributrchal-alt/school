@@ -117,7 +117,7 @@ export function renderDhamma({main,track,member,api,notice,onHome,onEdit}) {
   const r=root();if(!r)return;
   const a=stage.audience,sid=stage.subject,l=stage.level,year=stage.year;
   r.innerHTML='<div class="dhamma-breadcrumb"><button type="button" data-dhamma-back="subjects">← กลับวิชา</button></div>'+
-   '<div class="dhamma-section-heading"><span class="eyebrow">ข้อสอบสนามหลวง พ.ศ. '+year+'</span><h2>'+labelOf(SUBJECTS,sid)+'</h2><p>'+title+' '+labelOf(LEVELS,l)+(stream==='thammasuksa'?' · '+labelOf(AUDIENCES,a):'')+'</p></div>'+
+   '<div class="dhamma-section-heading"><span class="eyebrow">ข้อสอบสนามหลวง พ.ศ. '+year+'</span><h2>'+labelOf(SUBJECTS,sid)+'</h2><p>'+title+' '+labelOf(LEVELS,l)+(stream==='thammasuksa'?' · '+labelOf(AUDIENCES,a):'')+'</p></div>'+yearPicker()+
    '<div id="dhamma-question-list" role="status">กำลังโหลดข้อสอบ…</div>';
   try{
    const params=new URLSearchParams({track:stream,level:l,audience:a,subject_id:sid,year_be:year});
@@ -135,7 +135,7 @@ export function renderDhamma({main,track,member,api,notice,onHome,onEdit}) {
     (admin&&x.review_status!=='verified'?' · รอตรวจต้นฉบับ':'')+'</small></li>').join('')+'</ol></section>':'';
    holder.innerHTML=outline+(admin?'<button type="button" class="secondary dhamma-add" data-dhamma-add>+ เพิ่มข้อสอบ/เฉลยของวิชานี้</button>':'')+
     (stage.questions.length?stage.questions.map(studyCard).join(''):
-      '<div class="dhamma-empty"><strong>ยังไม่มีข้อสอบที่เผยแพร่ในระบบสำหรับวิชานี้</strong><p>สามารถอ่านข้อสอบจริงพร้อมเฉลยจาก PDF ต้นฉบับด้านล่างได้ก่อน และผู้ดูแลสามารถทยอยนำข้อสอบเข้าระบบหลังตรวจทาน</p></div>')+sourceLink();
+      '<div class="dhamma-empty"><strong>ยังไม่มีข้อสอบที่เผยแพร่ในระบบสำหรับวิชานี้</strong><p>ผู้เรียนสามารถดูหัวข้อจาก Blueprint ได้ก่อน เมื่อครูตรวจทานและอนุมัติข้อสอบแล้วจึงจะเปิดแบบฝึกพร้อมเฉลย</p></div>')+sourceLink();
   }catch(err){const holder=root()?.querySelector('#dhamma-question-list');if(holder)holder.textContent=err.message;}
  }
  function showQuestionForm(q){
