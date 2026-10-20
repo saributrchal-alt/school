@@ -25,7 +25,7 @@ export function renderDhamma({main,track,member,api,notice,onHome,onEdit}) {
   main.innerHTML='<section class="hero dhamma-hero '+(stream==='naktham'?'dhamma-monk':'dhamma-lay')+'">'+
    '<button type="button" class="hero-back" data-dhamma-home>← กลับประเภทการเรียน</button>'+
    '<span class="eyebrow">NATHOENG SCHOOL · DHAMMA STUDIES</span><h1>'+title+'</h1>'+
-   '<p>ศึกษาข้อสอบธรรมสนามหลวงตามระดับชั้น · คลังปี ๒๕๖๒–๒๕๖๗ (เว้นปี ๒๕๖๔) พร้อมแนวเฉลย</p></section>'+
+   '<p>ศึกษาข้อสอบธรรมสนามหลวงตามระดับชั้น · '+(stream==='naktham'?'ชั้นตรีมีคลังปี ๒๕๖๒, ๒๕๖๓, ๒๕๖๕–๒๕๖๗ (เว้น ๒๕๖๔)':'คลังต้นฉบับ พ.ศ. ๒๕๖๖')+' พร้อมแนวเฉลย</p></section>'+
    '<div id="dhamma-content" class="dhamma-content"></div>';
   renderLevels();
   loadCounts();
