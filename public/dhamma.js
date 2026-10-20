@@ -1,5 +1,7 @@
 const esc = value => String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const PDF_2566='https://www.gongtham.net/docs/2566/ans2566_dsc-dst.pdf';
+const NAKTHAM_TRI_YEARS=[2567,2566,2565,2563,2562];
+const NAKTHAM_TRI_PAGES={2562:[14,24],2563:[15,24],2565:[19,29],2566:[37,46],2567:[45,54]};
 const LEVELS=[['tri','ชั้นตรี'],['tho','ชั้นโท'],['ek','ชั้นเอก']];
 const AUDIENCES=[['primary','ระดับประถมศึกษา'],['secondary','ระดับมัธยมศึกษา'],['general','ระดับอุดมศึกษาและประชาชนทั่วไป']];
 const SUBJECTS=[['essay','เรียงความแก้กระทู้ธรรม'],['dhamma','วิชาธรรม'],['buddha','พุทธประวัติ'],['vinaya','วินัย / ศาสนพิธี']];
@@ -18,34 +20,44 @@ export function renderDhamma({main,track,member,api,notice,onHome,onEdit}) {
  const admin=Boolean(member.can_manage);
  const stream=track==='naktham'?'naktham':'thammasuksa';
  const title=stream==='naktham'?'นักธรรม (นักบวช)':'ธรรมศึกษา (บุคคลทั่วไป)';
- const stage={level:'',audience:'',subject:'',year:2566,revealed:new Set(),choices:new Map(),questions:[],counts:{},draftQuestion:null};
+ const stage={level:'',audience:'',subject:'',year:2566,revealed:new Set(),choices:new Map(),questions:[],counts:{},blueprintCounts:{},draftQuestion:null};
  const mount=()=>{
   main.innerHTML='<section class="hero dhamma-hero '+(stream==='naktham'?'dhamma-monk':'dhamma-lay')+'">'+
    '<button type="button" class="hero-back" data-dhamma-home>← กลับประเภทการเรียน</button>'+
    '<span class="eyebrow">NATHOENG SCHOOL · DHAMMA STUDIES</span><h1>'+title+'</h1>'+
-   '<p>ศึกษาข้อสอบธรรมสนามหลวงตามระดับชั้น · คลังต้นฉบับ พ.ศ. ๒๕๖๖ พร้อมแนวเฉลย</p></section>'+
+   '<p>ศึกษาข้อสอบธรรมสนามหลวงตามระดับชั้น · คลังปี ๒๕๖๒–๒๕๖๗ (เว้นปี ๒๕๖๔) พร้อมแนวเฉลย</p></section>'+
    '<div id="dhamma-content" class="dhamma-content"></div>';
   renderLevels();
   loadCounts();
  };
  const root=()=>main.querySelector('#dhamma-content');
  const pages=()=>{
-  const p=stream==='naktham'?SRC_PAGES.naktham[stage.level]:SRC_PAGES.thammasuksa[stage.level]?.[stage.audience];
+  const p=stream==='naktham'?(stage.level==='tri'?NAKTHAM_TRI_PAGES[stage.year]:SRC_PAGES.naktham[stage.level]):SRC_PAGES.thammasuksa[stage.level]?.[stage.audience];
   return p||null;
  };
  const sourceLink=()=>{
   const range=pages();
+  if(stream==='naktham'&&stage.level==='tri'&&stage.year!==2566)
+   return '<p class="dhamma-source">ต้นฉบับสำนักงานแม่กองธรรมสนามหลวง พ.ศ. '+stage.year+' · หน้า PDF '+range[0]+'–'+range[1]+' · ต้นฉบับบันทึกในคลังเอกสารของครู</p>';
   return range?'<p class="dhamma-source">ต้นฉบับจากสำนักงานแม่กองธรรมสนามหลวง พ.ศ. 2566 · หน้าหนังสือ '+range[0]+'–'+range[1]+
    ' <a href="'+PDF_2566+'#page='+range[0]+'" target="_blank" rel="noopener noreferrer">เปิดต้นฉบับ PDF ↗</a></p>':'';
  };
+ const blueprintEnabled=()=>stream==='naktham'&&stage.level==='tri';
+ function yearPicker(){
+  if(!blueprintEnabled())return '';
+  return '<label class="dhamma-year-select">เลือกปีข้อสอบนักธรรมตรี <select data-dhamma-year>'+
+   NAKTHAM_TRI_YEARS.map(y=>'<option value="'+y+'" '+(stage.year===y?'selected':'')+'>พ.ศ. '+y+'</option>').join('')+
+   '</select></label>';
+ }
+ const blueprintCount=(level,audience,subject)=>stage.blueprintCounts[[stream,level,audience||'monk',stage.year,subject].join('/')]||0;
  async function loadCounts(){
   try{
    const result=await api('/api/dhamma?route=catalog');
-   if(root())stage.counts=result.counts||{};
+   if(root()){stage.counts=result.counts||{};stage.blueprintCounts=result.blueprint_counts||{};}
    if(root()&&!stage.subject){if(!stage.level)renderLevels();else if(!stage.audience)renderAudiences();else renderSubjects();}
   }catch(err){if(root())notice('ข้อมูลคลังธรรม: '+err.message);}
  }
- const itemCount=(level,audience,subject)=>stage.counts[[stream,level,audience||'monk',stage.year,subject].join('/')]||0;
+ const itemCount=(level,audience,subject)=>Math.max(stage.counts[[stream,level,audience||'monk',stage.year,subject].join('/')]||0,blueprintCount(level,audience,subject));
  const levelCount=(level,audience)=>SUBJECTS.reduce((sum,[id])=>sum+itemCount(level,audience,id),0);
  const courseCount=(level)=>stream==='naktham'?levelCount(level,'monk'):AUDIENCES.reduce((sum,[aud])=>sum+levelCount(level,aud),0);
  function renderLevels(){
@@ -53,7 +65,7 @@ export function renderDhamma({main,track,member,api,notice,onHome,onEdit}) {
   const r=root();if(!r)return;
   r.innerHTML='<div class="dhamma-section-heading"><span class="eyebrow">เลือกชั้นการศึกษา</span><h2>'+title+'</h2>'+
    '<p>'+ (stream==='naktham'?'สำหรับพระภิกษุและสามเณร':'สำหรับฆราวาสและผู้สนใจศึกษาพระพุทธศาสนา')+
-   ' · ปีข้อสอบต้นฉบับ ๒๕๖๖</p></div>'+
+   ' · ข้อสอบต้นฉบับตามปีการศึกษา</p></div>'+
    '<div class="dhamma-level-grid">'+LEVELS.map(([id,label])=>
     '<button type="button" class="dhamma-level-card" data-dhamma-level="'+id+'"><span class="dhamma-level-symbol" aria-hidden="true">'+({tri:'๑',tho:'๒',ek:'๓'}[id])+'</span>'+
     '<span><strong>'+(stream==='naktham'?'นักธรรม':'ธรรมศึกษา')+label+'</strong><small>'+courseCount(id)+' ข้อในระบบ · เปิดคลังรายวิชา</small></span><b>→</b></button>').join('')+'</div>'+
@@ -73,9 +85,9 @@ export function renderDhamma({main,track,member,api,notice,onHome,onEdit}) {
   const r=root();if(!r)return;
   const audienceText=stream==='naktham'?'พระภิกษุและสามเณร':labelOf(AUDIENCES,stage.audience);
   r.innerHTML='<div class="dhamma-breadcrumb"><button type="button" data-dhamma-back="'+(stream==='naktham'?'levels':'audiences')+'">← ย้อนกลับ</button></div>'+
-   '<div class="dhamma-section-heading"><span class="eyebrow">ปีการศึกษา ๒๕๖๖</span><h2>'+title+' · '+labelOf(LEVELS,stage.level)+'</h2><p>'+audienceText+' · เลือกวิชาที่ต้องการศึกษา</p></div>'+
+   '<div class="dhamma-section-heading"><span class="eyebrow">ปีการศึกษา '+stage.year+'</span><h2>'+title+' · '+labelOf(LEVELS,stage.level)+'</h2><p>'+audienceText+' · เลือกวิชาที่ต้องการศึกษา</p></div>'+yearPicker()+
    '<div class="dhamma-subject-grid">'+SUBJECTS.map(([id,label])=>
-     '<button type="button" class="dhamma-subject-card" data-dhamma-subject="'+id+'"><strong>'+label+'</strong><small>'+itemCount(stage.level,stage.audience,id)+' ข้อที่เปิดให้อ่านในระบบ</small><span>ศึกษาและทบทวนเฉลย →</span></button>').join('')+'</div>'+sourceLink();
+     '<button type="button" class="dhamma-subject-card" data-dhamma-subject="'+id+'"><strong>'+label+'</strong><small>'+itemCount(stage.level,stage.audience,id)+' หัวข้อใน Blueprint/คลังข้อสอบ</small><span>ศึกษาและทบทวนเฉลย →</span></button>').join('')+'</div>'+sourceLink();
  }
  function studyCard(q){
   const revealed=stage.revealed.has(q.question_id),response=stage.choices.get(q.question_id),choice= q.question_type==='choice';
@@ -83,7 +95,7 @@ export function renderDhamma({main,track,member,api,notice,onHome,onEdit}) {
   const options=choice?'<fieldset class="dhamma-options"><legend>เลือกคำตอบแล้วกดตรวจ</legend>'+(q.choices||[]).map((text,i)=>
     '<label><input type="radio" name="dhamma-choice-'+esc(q.question_id)+'" value="'+(i+1)+'" data-dhamma-choice="'+esc(q.question_id)+'" '+(Number(response)===i+1?'checked':'')+' '+(revealed?'disabled':'')+'>'+String.fromCharCode(3585+i)+'. '+esc(text)+'</label>').join('')+'</fieldset>':
     '<label class="dhamma-selfanswer">ลองเขียนคำตอบก่อนดูเฉลย<textarea rows="3" placeholder="ฝึกตอบด้วยตนเอง (ไม่บันทึกคำตอบ)"></textarea></label>';
-  const answer=revealed?'<section class="dhamma-answer"><h4>แนวเฉลยจากต้นฉบับ พ.ศ. ๒๕๖๖</h4>'+
+  const answer=revealed?'<section class="dhamma-answer"><h4>แนวเฉลยจากต้นฉบับ พ.ศ. '+esc(q.year_be)+'</h4>'+
     (choice?'<p class="dhamma-check-result">'+(Number(response)===Number(key)?'✓ ตอบถูกต้อง':'ควรทบทวนอีกครั้ง · เฉลยคือข้อ '+esc(key))+'</p>':'')+
     '<p>'+esc(q.answer_text||'ไม่มีคำตอบจากต้นฉบับที่บันทึกไว้')+'</p>'+
     (q.explanation?'<h4>คำอธิบายเพิ่มเติม</h4><p>'+esc(q.explanation)+'</p>':'')+
@@ -103,16 +115,25 @@ export function renderDhamma({main,track,member,api,notice,onHome,onEdit}) {
  }
  async function renderQuestions(){
   const r=root();if(!r)return;
-  const a=stage.audience,sid=stage.subject,l=stage.level;
+  const a=stage.audience,sid=stage.subject,l=stage.level,year=stage.year;
   r.innerHTML='<div class="dhamma-breadcrumb"><button type="button" data-dhamma-back="subjects">← กลับวิชา</button></div>'+
-   '<div class="dhamma-section-heading"><span class="eyebrow">ข้อสอบสนามหลวง พ.ศ. ๒๕๖๖</span><h2>'+labelOf(SUBJECTS,sid)+'</h2><p>'+title+' '+labelOf(LEVELS,l)+(stream==='thammasuksa'?' · '+labelOf(AUDIENCES,a):'')+'</p></div>'+
+   '<div class="dhamma-section-heading"><span class="eyebrow">ข้อสอบสนามหลวง พ.ศ. '+year+'</span><h2>'+labelOf(SUBJECTS,sid)+'</h2><p>'+title+' '+labelOf(LEVELS,l)+(stream==='thammasuksa'?' · '+labelOf(AUDIENCES,a):'')+'</p></div>'+
    '<div id="dhamma-question-list" role="status">กำลังโหลดข้อสอบ…</div>';
   try{
-   const result=await api('/api/dhamma?route=questions&'+new URLSearchParams({track:stream,level:l,audience:a,subject_id:sid,year_be:stage.year}));
-   if(!root()||stage.subject!==sid||stage.level!==l||stage.audience!==a)return;
+   const params=new URLSearchParams({track:stream,level:l,audience:a,subject_id:sid,year_be:year});
+   const [result,blueprint]=await Promise.all([
+    api('/api/dhamma?route=questions&'+params),
+    blueprintEnabled()?api('/api/dhamma?route=blueprint&'+params):Promise.resolve({items:[]})
+   ]);
+   if(!root()||stage.subject!==sid||stage.level!==l||stage.audience!==a||stage.year!==year)return;
    stage.questions=result.questions;stage.revealed.clear();stage.choices.clear();
    const holder=root().querySelector('#dhamma-question-list');
-   holder.innerHTML=(admin?'<button type="button" class="secondary dhamma-add" data-dhamma-add>+ เพิ่มข้อสอบ/เฉลยของวิชานี้</button>':'')+
+   const outline=blueprint.items?.length?'<section class="dhamma-blueprint"><h3>Blueprint จำแนกหัวข้อ · พ.ศ. '+year+'</h3>'+
+    '<p>หัวข้อตามข้อสอบจริง '+blueprint.items.length+' รายการ · ข้อที่ยังไม่ผ่านการตรวจต้นฉบับจะไม่เผยแพร่เป็นแบบฝึก</p>'+
+    '<ol>'+blueprint.items.map(x=>'<li><strong>ข้อ '+esc(x.question_no)+': '+esc(x.topic_name_th)+'</strong>'+
+    '<small>'+esc(x.unit_name_th)+' · '+esc(x.skill_name_th)+' · หน้า PDF '+esc(x.source_pdf_page||'—')+
+    (admin&&x.review_status!=='verified'?' · รอตรวจต้นฉบับ':'')+'</small></li>').join('')+'</ol></section>':'';
+   holder.innerHTML=outline+(admin?'<button type="button" class="secondary dhamma-add" data-dhamma-add>+ เพิ่มข้อสอบ/เฉลยของวิชานี้</button>':'')+
     (stage.questions.length?stage.questions.map(studyCard).join(''):
       '<div class="dhamma-empty"><strong>ยังไม่มีข้อสอบที่เผยแพร่ในระบบสำหรับวิชานี้</strong><p>สามารถอ่านข้อสอบจริงพร้อมเฉลยจาก PDF ต้นฉบับด้านล่างได้ก่อน และผู้ดูแลสามารถทยอยนำข้อสอบเข้าระบบหลังตรวจทาน</p></div>')+sourceLink();
   }catch(err){const holder=root()?.querySelector('#dhamma-question-list');if(holder)holder.textContent=err.message;}
@@ -144,6 +165,8 @@ export function renderDhamma({main,track,member,api,notice,onHome,onEdit}) {
  const view=main.querySelector('.dhamma-content');
  main.querySelector('.dhamma-hero [data-dhamma-home]')?.addEventListener('click',onHome);
  view?.addEventListener('change',event=>{
+  const yearSelect=event.target.closest('[data-dhamma-year]');
+  if(yearSelect){const y=Number(yearSelect.value);if(NAKTHAM_TRI_YEARS.includes(y)){stage.year=y;stage.subject?renderQuestions():renderSubjects();}return;}
   const el=event.target.closest('[data-dhamma-choice]');
   if(el)stage.choices.set(el.dataset.dhammaChoice,Number(el.value));
  });
@@ -154,7 +177,7 @@ export function renderDhamma({main,track,member,api,notice,onHome,onEdit}) {
    const where=t.dataset.dhammaBack;
    if(where==='levels')renderLevels();else if(where==='audiences')renderAudiences();else if(where==='subjects')renderSubjects();return;
   }
-  if(t.dataset.dhammaLevel){stage.level=t.dataset.dhammaLevel;renderAudiences();return;}
+  if(t.dataset.dhammaLevel){stage.level=t.dataset.dhammaLevel;stage.year=(stream==='naktham'&&stage.level==='tri')?2567:2566;renderAudiences();return;}
   if(t.dataset.dhammaAudience){stage.audience=t.dataset.dhammaAudience;renderSubjects();return;}
   if(t.dataset.dhammaSubject){stage.subject=t.dataset.dhammaSubject;await renderQuestions();return;}
   if(t.dataset.dhammaReveal){
