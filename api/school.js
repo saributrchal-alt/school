@@ -383,7 +383,7 @@ export default async function handler(req, res) {
   const route = req.query?.route || 'catalog';
   try {
     if (route === 'health') {
-      if (req.method !== 'GET') fail('Method not allowed', 405);
+      if (req.method !== 'GET' && !(req.method === 'POST' && ['secondary-exercise-submit','secondary-exercise-create','secondary-grade-assign','secondary-assignment-register'].includes(route))) fail('Method not allowed', 405);
       // A readiness check only: limit=0 verifies access/schema without reading member rows.
       await bridgeHealth();
       return res.status(200).json({ success: true, status: 'ready' });
