@@ -383,8 +383,7 @@ export default async function handler(req, res) {
   const route = req.query?.route || 'catalog';
   try {
     if (route === 'health') {
-      if (req.method !== 'GET') fail('Method not allowed', 405);
-      // A readiness check only: limit=0 verifies access/schema without reading member rows.
+        // A readiness check only: limit=0 verifies access/schema without reading member rows.
       await bridgeHealth();
       return res.status(200).json({ success: true, status: 'ready' });
     }
@@ -516,6 +515,8 @@ export default async function handler(req, res) {
       const rows=await db('school_secondary_assignments?on_conflict=assignment_key','POST',{assignment_key:key,grade,subject,title,results_route:resultsRoute,is_active:true},'resolution=merge-duplicates,return=representation');
       return res.status(200).json({success:true,assignment:rows[0]});
     }
+    // Secondary assignment POST handlers must run before the GET-only guard.
+    if (req.method !== 'GET') fail('Method not allowed', 405);
     if (route === 'secondary-assignments') {
       if (!member.can_teach && !member.can_manage) fail('เฉพาะครูและผู้ดูแล',403);
       const grade=Number(req.query.grade);
