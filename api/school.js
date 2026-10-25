@@ -431,7 +431,6 @@ export default async function handler(req, res) {
       sameOrigin(req);
       return res.status(200).json({ success: true, item: await saveTopicProgress(member, body(req)) });
     }
-    if (req.method !== 'GET') fail('Method not allowed', 405);
     if (route === 'explanation-editor') return res.status(200).json({success:true,...await explanationEditor(member,req.query)});
     if (route === 'secondary-grade-candidates' && req.method === 'GET') {
       if(!member.can_manage) fail('เฉพาะผู้ดูแล School',403);
