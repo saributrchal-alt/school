@@ -427,6 +427,29 @@ export default async function handler(req, res) {
       sameOrigin(req);
       return res.status(200).json({success:true,item:await m1DaysSubmit(member,body(req))});
     }
+    if (route === 'm1-colors-submit' && req.method === 'POST') {
+      sameOrigin(req);
+      if (!member.can_study) fail('เฉพาะนักเรียนส่งแบบฝึกหัดได้',403);
+      const payload=body(req);
+      const answers=payload?.answers;
+      if (!Array.isArray(answers)||answers.length!==10||answers.some(x=>!Number.isInteger(x)||x<0||x>3)) fail('กรุณาตอบให้ครบทั้ง 10 ข้อ',400);
+      if (typeof payload.submission_id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(payload.submission_id)) fail('รหัสการส่งไม่ถูกต้อง',400);
+      const key=[2,1,0,3,1,2,3,0,2,1];
+      const feedback=answers.map((selected,i)=>({question_no:i+1,selected_answer:selected,correct_answer:key[i],is_correct:selected===key[i]}));
+      const correct_count=feedback.filter(x=>x.is_correct).length;
+      const existing=await db('school_m1_colors_attempts?submission_id=eq.'+encodeURIComponent(payload.submission_id)+'&select=attempt_id,member_id,correct_count,total_count,feedback&limit=1');
+      if (existing.length) {
+        if(existing[0].member_id!==member.member_id) fail('รหัสการส่งซ้ำกับผู้อื่น',409);
+        return res.status(200).json({success:true,item:existing[0],passed:existing[0].correct_count>=6});
+      }
+      const rows=await db('school_m1_colors_attempts','POST',{submission_id:payload.submission_id,member_id:member.member_id,correct_count,total_count:10,responses:answers,feedback});
+      return res.status(200).json({success:true,item:rows[0],passed:correct_count>=6});
+    }
+    if (route === 'm1-colors-results' && req.method === 'GET') {
+      if (!member.can_teach&&!member.can_manage) fail('เฉพาะครูและผู้ดูแล',403);
+      const attempts=await db('school_m1_colors_attempts?select=member_id,correct_count,total_count,submitted_at&order=submitted_at.desc&limit=1000');
+      return res.status(200).json({success:true,attempts});
+    }
     if (route === 'progress' && req.method === 'POST') {
       sameOrigin(req);
       return res.status(200).json({ success: true, item: await saveTopicProgress(member, body(req)) });
